@@ -1,0 +1,6 @@
+# Dependencias para el backend
+Django>=4.2,<5
+djangorestframework>=3.14,<4
+django-cors-headers>=3.13,<4
+python-dotenv>=1.0
+psycopg2-binary>=2.9
