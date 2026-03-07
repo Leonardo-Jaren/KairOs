@@ -1,6 +1,18 @@
-# Dependencias para el backend
+# ============================================
+# Dependencias para el backend KairOs
+# ============================================
+
+# Framework
 Django>=4.2,<5
+
+# API REST
 djangorestframework>=3.14,<4
-django-cors-headers>=3.13,<4
+
+# CORS
+django-cors-headers>=4.0,<5
+
+# Variables de entorno
 python-dotenv>=1.0
+
+# Base de datos PostgreSQL
 psycopg2-binary>=2.9

@@ -1,0 +1,2 @@
+# historial/urls
+# TODO: Implementar rutas para el módulo de historial
