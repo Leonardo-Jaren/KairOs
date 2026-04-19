@@ -1,2 +1,14 @@
-# historial/views
-# TODO: Implementar vistas/viewsets para Historial
+from .historial_view import (
+    HistorialListCreateView,
+    HistorialDetailView,
+    HistorialPorEquipoView,
+    HistorialPorMantenimientoView,
+)
+
+__all__ = [
+    'HistorialListCreateView',
+    'HistorialDetailView',
+    'HistorialPorEquipoView',
+    'HistorialPorMantenimientoView', 
+]
+

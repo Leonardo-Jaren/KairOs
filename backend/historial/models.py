@@ -1,45 +1,30 @@
 from django.db import models
+from equipos.models import Equipo
+from mantenimiento.models import Mantenimiento
 
 
-class Historial(models.Model):
-    """
-    Registro histórico de eventos asociados a equipos.
-    Puede estar vinculado a un mantenimiento específico.
-    Ej: 'Se asignó a laboratorio LAB-203', 'Se realizó mantenimiento preventivo'.
-    """
-
-    equipo = models.ForeignKey(
-        'equipos.Equipo',
+class Historial(models.Model): 
+    id_historial = models.AutoField(primary_key=True)
+    id_equipo_fk = models.ForeignKey(
+        Equipo, 
         on_delete=models.CASCADE,
-        related_name='historial',
-        verbose_name='Equipo',
+        db_column='id_equipo_fk',
+        related_name='historiales',
     )
-    mantenimiento = models.OneToOneField(
-        'mantenimiento.Mantenimiento',
+    id_mantenimiento_fk = models.ForeignKey(
+        Mantenimiento,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='historial',
-        verbose_name='Mantenimiento asociado',
+        db_column='id_mantenimiento_fk',
+        related_name='historiales',
     )
-    fecha = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Fecha del evento',
-    )
-    descripcion = models.TextField(
-        verbose_name='Descripción',
-        help_text='Ej: Se asignó a laboratorio LAB-203',
-    )
-
-    class Meta:
-        db_table = 'historial'
-        verbose_name = 'Historial'
-        verbose_name_plural = 'Historiales'
-        ordering = ['-fecha']
-        indexes = [
-            models.Index(fields=['fecha'], name='idx_historial_fecha'),
-            models.Index(fields=['equipo'], name='idx_historial_equipo'),
-        ]
+    fecha = models.DateTimeField()
+    descripcion = models.TextField()
+ 
+class Meta:
+    db_table = 'historial'
+    ordering = ['-fecha']  # Ordenar por fecha descendente
 
     def __str__(self):
-        return f"Hist-{self.id} ({self.equipo.codigo}) - {self.fecha:%Y-%m-%d}"
+        return f"Historial #{self.id_historial} - Equipo {self.id_equipo_fk_id} ({self.fecha})"  
