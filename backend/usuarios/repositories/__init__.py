@@ -1,2 +1,4 @@
-# usuarios/repositories
-# TODO: Implementar repositorios para Usuario y PerfilTecnico
+from .usuario_repository import UsuarioRepository, PerfilTecnicoRepository
+
+__all__ = ['UsuarioRepository', 'PerfilTecnicoRepository']
+

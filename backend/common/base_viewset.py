@@ -1,0 +1,68 @@
+from typing import Any
+
+from rest_framework import status, viewsets
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+from .base_service import BaseService
+
+
+class BaseViewSet(viewsets.ModelViewSet):
+    service: BaseService = None
+    serializer_class = None
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+
+    def get_serializer_class(self):
+        return self.serializer_class
+
+    def list(self, request: Request, *args, **kwargs) -> Response:
+        queryset = self.service.get_all()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request: Request, *args, **kwargs) -> Response:
+        try:
+            instance = self.service.get_by_id(kwargs['pk'])
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.service.create(serializer.validated_data)
+        output = self.get_serializer(instance)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request: Request, *args, **kwargs) -> Response:
+        partial = kwargs.pop('partial', False)
+        try:
+            instance = self.service.get_by_id(kwargs['pk'])
+        except Exception as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        updated = self.service.update(kwargs['pk'], serializer.validated_data)
+        output = self.get_serializer(updated)
+        return Response(output.data)
+
+    def destroy(self, request: Request, *args, **kwargs) -> Response:
+        try:
+            self.service.delete(kwargs['pk'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_404_NOT_FOUND,
+            )

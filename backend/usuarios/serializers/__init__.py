@@ -1,2 +1,4 @@
-# usuarios/serializers
-# TODO: Implementar serializers para Usuario y PerfilTecnico
+from .usuario_serializers import UsuarioSerializer, UsuarioCreateUpdateSerializer
+
+__all__ = ['UsuarioSerializer', 'UsuarioCreateUpdateSerializer']
+

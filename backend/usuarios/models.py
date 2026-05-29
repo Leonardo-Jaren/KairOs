@@ -39,6 +39,7 @@ class Usuario(AbstractUser):
         db_table = 'usuarios'
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
+        ordering = ['-id']
         indexes = [
             models.Index(fields=['correo'], name='idx_usuario_correo'),
             models.Index(fields=['rol'], name='idx_usuario_rol'),

@@ -16,3 +16,13 @@ python-dotenv>=1.0
 
 # Base de datos PostgreSQL
 psycopg2-binary>=2.9
+
+# JWT Authentication
+djangorestframework-simplejwt>=5.3,<6
+
+# Filtros avanzados
+django-filter>=24.1,<25
+
+# Autenticación con Google e Integración
+google-auth>=2.20.0
+requests>=2.31.0
