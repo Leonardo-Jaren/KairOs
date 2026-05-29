@@ -99,3 +99,61 @@ class TokenServiceTests(TestCase):
         self.assertIn('refresh', tokens)
         self.assertTrue(isinstance(tokens['access'], str))
         self.assertTrue(isinstance(tokens['refresh'], str))
+
+
+from django.core import mail
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from autenticacion.services.password_service import PasswordService
+
+class PasswordServiceTests(TestCase):
+    """
+    Casos de prueba para el servicio de recuperación de contraseñas.
+    """
+    def setUp(self):
+        self.service = PasswordService()
+        self.user = Usuario.objects.create(
+            correo="reset.test@example.com",
+            username="resetuser",
+            nombre="Reset User",
+            rol="usuario"
+        )
+        self.user.set_password("oldpassword123")
+        self.user.save()
+
+    def test_request_password_reset_sends_email(self):
+        """Valida que solicitar recuperación de contraseña envíe un correo."""
+        self.service.request_password_reset("reset.test@example.com")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "Recuperación de contraseña en KairOs")
+        self.assertIn("reset.test@example.com", mail.outbox[0].to)
+        self.assertIn("reset-password/", mail.outbox[0].body)
+
+    def test_request_password_reset_invalid_email_silent(self):
+        """Valida que un correo inexistente no lance error ni envíe correos (seguridad)."""
+        self.service.request_password_reset("nonexistent@example.com")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_validate_token_and_reset_success(self):
+        """Valida que con token correcto se actualice la contraseña."""
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = PasswordResetTokenGenerator().make_token(self.user)
+        
+        success = self.service.validate_token_and_reset(uidb64, token, "newpassword123")
+        self.assertTrue(success)
+        
+        # Verificar en base de datos
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("newpassword123"))
+
+    def test_validate_token_and_reset_invalid_token(self):
+        """Valida que el servicio rechace tokens inválidos."""
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        
+        success = self.service.validate_token_and_reset(uidb64, "invalid-token-123", "newpassword123")
+        self.assertFalse(success)
+        
+        # La contraseña antigua debe mantenerse
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("oldpassword123"))
