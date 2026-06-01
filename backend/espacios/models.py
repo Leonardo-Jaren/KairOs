@@ -1,7 +1,8 @@
 from django.db import models
+from common.models import BaseModel
 
 
-class Espacio(models.Model):
+class Espacio(BaseModel):
     """
     Espacios físicos: laboratorios, oficinas, aulas, etc.
     Ejemplo de codigo_espacio: LAB-203

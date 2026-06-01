@@ -1,7 +1,8 @@
 from django.db import models
+from common.models import BaseModel
 
 
-class Historial(models.Model):
+class Historial(BaseModel):
     """
     Registro histórico de eventos asociados a equipos.
     Puede estar vinculado a un mantenimiento específico.

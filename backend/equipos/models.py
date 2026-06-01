@@ -1,7 +1,8 @@
 from django.db import models
+from common.models import BaseModel
 
 
-class Equipo(models.Model):
+class Equipo(BaseModel):
     """
     Equipos informáticos registrados en el sistema.
     Cada equipo pertenece a un espacio físico y tiene un estado operativo.
@@ -114,7 +115,7 @@ class Equipo(models.Model):
         return f"{self.codigo} - {self.marca} {self.modelo} ({self.get_estado_display()})"
 
 
-class Componente(models.Model):
+class Componente(BaseModel):
     """
     Componentes internos de un equipo.
     Ej: CPU, RAM, SSD, GPU, etc.

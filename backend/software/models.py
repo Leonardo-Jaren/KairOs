@@ -1,7 +1,8 @@
 from django.db import models
+from common.models import BaseModel
 
 
-class ProductoSoftware(models.Model):
+class ProductoSoftware(BaseModel):
     """
     Catálogo de productos de software con gestión de licencias.
     Cada registro representa un software con su versión y licenciamiento.
@@ -77,7 +78,7 @@ class ProductoSoftware(models.Model):
         return self.licencias_totales - usadas
 
 
-class SoftwareInstalado(models.Model):
+class SoftwareInstalado(BaseModel):
     """
     Registro de software instalado en equipos específicos.
     Tabla intermedia entre Equipo y ProductoSoftware.

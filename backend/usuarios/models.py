@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from common.models import BaseModel
 
 
 class Usuario(AbstractUser):
@@ -49,7 +50,7 @@ class Usuario(AbstractUser):
         return f"{self.nombre} ({self.correo})"
 
 
-class PerfilTecnico(models.Model):
+class PerfilTecnico(BaseModel):
     """
     Perfil específico para usuarios con rol de técnico.
     Relación 1:1 con Usuario.

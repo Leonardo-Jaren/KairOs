@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.db import models
+from common.models import BaseModel
 
 
-class Incidencia(models.Model):
+class Incidencia(BaseModel):
     """
     Reportes de incidencias generados por usuarios.
     Asociados obligatoriamente a un espacio y opcionalmente a un equipo.

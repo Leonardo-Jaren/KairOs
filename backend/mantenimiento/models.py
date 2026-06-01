@@ -1,7 +1,8 @@
 from django.db import models
+from common.models import BaseModel
 
 
-class Mantenimiento(models.Model):
+class Mantenimiento(BaseModel):
     """
     Tickets de mantenimiento para equipos.
     Puede ser preventivo o correctivo, con seguimiento de estado.
@@ -58,7 +59,7 @@ class Mantenimiento(models.Model):
         return f"Mant-{self.id} ({self.equipo.codigo}) - {self.get_estado_display()}"
 
 
-class TecnicoMantenimiento(models.Model):
+class TecnicoMantenimiento(BaseModel):
     """
     Tabla intermedia que asigna técnicos a tickets de mantenimiento.
     Un mantenimiento puede tener varios técnicos asignados.
