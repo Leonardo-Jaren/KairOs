@@ -1,0 +1,2 @@
+class RegistroNoEncontrado(Exception):
+    pass

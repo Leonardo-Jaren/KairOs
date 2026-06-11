@@ -1,2 +1,5 @@
-# mantenimiento/urls
-# TODO: Implementar rutas para el módulo de mantenimiento
+from django.urls import path, include
+
+urlpatterns = [
+    path('', include('mantenimiento.urls.mantenimiento_urls')),
+]

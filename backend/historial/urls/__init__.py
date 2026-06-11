@@ -1,2 +1,5 @@
-# historial/urls
-# TODO: Implementar rutas para el módulo de historial
+from django.urls import path, include
+
+urlpatterns = [
+    path('', include('historial.urls.historial_urls')),
+]

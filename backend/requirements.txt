@@ -1,18 +1,28 @@
-# ============================================
-# Dependencias para el backend KairOs
-# ============================================
-
-# Framework
-Django>=4.2,<5
-
-# API REST
-djangorestframework>=3.14,<4
-
-# CORS
-django-cors-headers>=4.0,<5
-
-# Variables de entorno
-python-dotenv>=1.0
-
-# Base de datos PostgreSQL
-psycopg2-binary>=2.9
+asgiref==3.11.1
+attrs==26.1.0
+Django==5.2.15
+django-cors-headers==4.9.0
+django-debug-toolbar==6.3.0
+django-extensions==4.1
+django-filter==25.2
+djangorestframework==3.17.0
+djangorestframework_simplejwt==5.5.1
+drf-spectacular==0.29.0
+inflection==0.5.1
+iniconfig==2.3.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+model-bakery==1.23.5
+packaging==26.2
+pluggy==1.6.0
+psycopg2-binary==2.9.11
+Pygments==2.20.0
+PyJWT==2.12.1
+pytest==9.0.3
+pytest-django==4.12.0
+python-dotenv==1.2.2
+PyYAML==6.0.3
+referencing==0.37.0
+rpds-py==2026.5.1
+sqlparse==0.5.5
+uritemplate==4.2.0

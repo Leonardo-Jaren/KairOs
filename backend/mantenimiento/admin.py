@@ -10,21 +10,17 @@ class TecnicoMantenimientoInline(admin.TabularInline):
 @admin.register(Mantenimiento)
 class MantenimientoAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'equipo', 'fecha', 'tipo_mantenimiento',
-        'estado', 'descripcion_corta',
+        'id_mantenimiento', 'equipo', 'tipo_mantenimiento',
+        'estado', 'fecha_inicio', 'fecha_cierre',
     )
-    list_filter = ('tipo_mantenimiento', 'estado', 'fecha')
+    list_filter  = ('estado', 'tipo_mantenimiento')
     search_fields = ('equipo__codigo', 'descripcion')
-    ordering = ('-fecha',)
-    inlines = [TecnicoMantenimientoInline]
-
-    @admin.display(description='Descripción')
-    def descripcion_corta(self, obj):
-        return obj.descripcion[:80] + '...' if len(obj.descripcion) > 80 else obj.descripcion
+    ordering     = ('-fecha_inicio',)
+    inlines      = [TecnicoMantenimientoInline]
 
 
 @admin.register(TecnicoMantenimiento)
 class TecnicoMantenimientoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'mantenimiento', 'tecnico')
-    list_filter = ('tecnico__area',)
+    list_display  = ('id', 'mantenimiento', 'tecnico')
+    list_filter   = ('tecnico__area',)
     search_fields = ('tecnico__usuario__nombre', 'mantenimiento__equipo__codigo')

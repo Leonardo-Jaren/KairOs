@@ -4,14 +4,35 @@ from .models import Usuario, PerfilTecnico
 
 @admin.register(Usuario)
 class UsuarioAdmin(admin.ModelAdmin):
-    list_display = ('id', 'username', 'nombre', 'correo', 'rol', 'is_active')
-    list_filter = ('rol', 'is_active')
-    search_fields = ('nombre', 'correo', 'username')
-    ordering = ('id',)
+    list_display = (
+        'id_usuario', 
+        'nombre', 
+        'correo', 
+        'rol', 
+        'activo',
+        'created_at')
+    list_filter = (
+        'rol', 
+        'activo',
+        'created_at')
+    search_fields = (
+        'nombre', 
+        'correo',)
+    ordering = ('id_usuario',)
+    readonly_fields = (
+        'created_at',
+        'updated_at')
 
 
 @admin.register(PerfilTecnico)
 class PerfilTecnicoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'usuario', 'area')
+    list_display = (
+        'id_tecnico', 
+        'usuario', 
+        'area')
     list_filter = ('area',)
-    search_fields = ('usuario__nombre', 'area')
+    search_fields = (
+        'usuario__nombre',
+        'usuario__correo', 
+        'area')
+    ordering = ("id_tecnico",)

@@ -1,2 +1,5 @@
-# incidencias/urls
-# TODO: Implementar rutas para el módulo de incidencias
+from django.urls import path, include
+
+urlpatterns = [
+    path('', include('incidencias.urls.incidencia_urls')),
+]

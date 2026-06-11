@@ -5,7 +5,7 @@ from .models import ProductoSoftware, SoftwareInstalado
 @admin.register(ProductoSoftware)
 class ProductoSoftwareAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'software', 'version', 'tipo_licencia',
+        'id_producto_software', 'software', 'version', 'tipo_licencia',
         'licencias_totales', 'licencias_disponibles', 'fecha_expiracion',
     )
     list_filter = ('tipo_licencia',)
@@ -16,7 +16,7 @@ class ProductoSoftwareAdmin(admin.ModelAdmin):
 @admin.register(SoftwareInstalado)
 class SoftwareInstaladoAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'equipo', 'producto_software',
+        'id_instalacion', 'equipo', 'producto_software',
         'numero_licencia_usado', 'fecha_instalacion',
     )
     list_filter = ('fecha_instalacion',)
