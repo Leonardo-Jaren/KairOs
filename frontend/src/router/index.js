@@ -1,16 +1,100 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: () => import('../views/HomeView.vue'),
+    redirect: '/dashboard',
   },
-]
+  {
+    path: '/auth',
+    component: () => import('@/layouts/AuthLayout.vue'),
+    meta: { guestOnly: true },
+    children: [
+      {
+        path: 'login',
+        name: 'Login',
+        component: () => import('@/views/auth/LoginView.vue'),
+      },
+      {
+        path: 'password-reset',
+        name: 'PasswordReset',
+        component: () => import('@/views/auth/PasswordResetView.vue'),
+      },
+    ],
+  },
+  // Redirecciones directas para facilidad de acceso
+  {
+    path: '/login',
+    redirect: '/auth/login',
+  },
+  {
+    path: '/password-reset',
+    redirect: '/auth/password-reset',
+  },
+  {
+    path: '/dashboard',
+    component: () => import('@/layouts/DashboardLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Dashboard',
+        component: () => import('@/views/dashboard/DashboardView.vue'),
+      },
+    ],
+  },
+  // Ruta comodin para redirigir paginas no encontradas
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/',
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-})
+});
 
-export default router
+// Guard de navegacion moderno en Vue Router 4 (retornando la ruta de destino)
+router.beforeEach((to) => {
+  const authStore = useAuthStore();
+  
+  // Intentar cargar la sesion desde localStorage si no se ha cargado en memoria
+  if (!authStore.accessToken) {
+    authStore.tryAutoLogin();
+  }
+  
+  const isAuthenticated = authStore.isAuthenticated;
+
+  // 1. Validar si la ruta requiere estar autenticado
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
+    if (!isAuthenticated) {
+      // Redirigir al inicio de sesion si no esta autenticado
+      return { name: 'Login' };
+    }
+    
+    // Validar autorizacion por roles si la ruta los especifica
+    const allowedRoles = to.meta.roles;
+    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(authStore.user?.rol)) {
+      // Redirigir al dashboard si el rol del usuario no tiene permisos
+      return { name: 'Dashboard' };
+    }
+    
+    return true;
+  } 
+  
+  // 2. Validar si la ruta es exclusiva para invitados (Login, Recuperacion)
+  if (to.matched.some((record) => record.meta.guestOnly)) {
+    if (isAuthenticated) {
+      // Redirigir al dashboard si ya esta autenticado
+      return { name: 'Dashboard' };
+    }
+    return true;
+  } 
+  
+  // 3. Ruta publica sin restricciones
+  return true;
+});
+
+export default router;
