@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from common.models import BaseModel
+from shared.models import BaseModel
 
 
 class Incidencia(BaseModel):

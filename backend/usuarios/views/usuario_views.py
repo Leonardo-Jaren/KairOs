@@ -1,4 +1,4 @@
-from common.base_viewset import BaseViewSet
+from shared.base_viewset import BaseViewSet
 from usuarios.services import UsuarioService
 from usuarios.serializers import UsuarioSerializer, UsuarioCreateUpdateSerializer
 

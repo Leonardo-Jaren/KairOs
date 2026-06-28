@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     # Apps del proyecto
-    'common',
+    'shared',
     'autenticacion',
     'usuarios',
     'espacios',

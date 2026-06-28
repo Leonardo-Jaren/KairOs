@@ -1,4 +1,4 @@
-from common.base_repository import BaseRepository
+from shared.base_repository import BaseRepository
 from usuarios.models import Usuario, PerfilTecnico
 
 

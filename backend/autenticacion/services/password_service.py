@@ -4,7 +4,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.conf import settings
 
-from common.base_service import BaseService
+from shared.base_service import BaseService
 from usuarios.services.usuario_service import UsuarioService
 
 

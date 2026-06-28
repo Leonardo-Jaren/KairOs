@@ -1,4 +1,4 @@
-from common.base_service import BaseService
+from shared.base_service import BaseService
 from usuarios.repositories.usuario_repository import UsuarioRepository
 from usuarios.models import Usuario
 
