@@ -1,0 +1,41 @@
+---
+description: Arquitectura backend Django KairOs — capas, SOLID y shared/
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Backend KairOs — Arquitectura
+
+Referencia completa: `docs/CONTRIBUCION-IA.md`. App de referencia: `backend/usuarios/`.
+
+## Capas obligatorias
+
+Flujo: **ViewSet/APIView → Serializer → Service → Repository → Model**
+
+- **Repository:** solo ORM. Hereda `shared.base_repository.BaseRepository`.
+- **Service:** logica de negocio. Hereda `shared.base_service.BaseService`.
+- **ViewSet:** HTTP y permisos. Hereda `shared.base_viewset.BaseViewSet`.
+- **Model:** hereda `shared.models.BaseModel` cuando aplique auditoria.
+
+No acceder al ORM desde views. No poner reglas de negocio en serializers.
+
+## SOLID
+
+- Un archivo/clase, una responsabilidad (Repository vs Service vs ViewSet).
+- Extender bases en `shared/` en lugar de reimplementar CRUD.
+- Serializers distintos para lectura y escritura si los campos difieren.
+
+## Nombres
+
+- Apps en espanol plural: `equipos`, `usuarios`.
+- Clases: `EquipoRepository`, `EquipoService`, `EquipoViewSet`.
+- Archivos: `equipo_repository.py`, `equipo_service.py`.
+- Campos de dominio en espanol.
+
+## Comentarios
+
+Docstrings en espanol, sin emojis. Explicar funcionalidad y reglas de negocio no obvias.
+
+## Nuevos endpoints
+
+Registrar en `backend/server/urls.py` bajo `api/v1/<modulo>/`.
