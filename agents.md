@@ -1,5 +1,8 @@
 # Lineamientos y Arquitectura Frontend de KairOs (Guía para Agentes y Desarrolladores)
 
+> **Backend y flujo de trabajo (PR, docs, GitHub Projects):** ver [`docs/CONTRIBUCION-IA.md`](docs/CONTRIBUCION-IA.md).  
+> **VS Code + Copilot:** ver [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
+
 Este documento define la arquitectura y las reglas de codificación para todo el desarrollo frontend en el proyecto KairOs. Cualquier agente de IA o desarrollador humano debe seguir estrictamente estas pautas para mantener la consistencia, modularidad y escalabilidad del sistema.
 
 ---

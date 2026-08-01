@@ -1,0 +1,42 @@
+---
+description: Flujo de trabajo KairOs — docs, ramas, PR y GitHub Projects
+alwaysApply: true
+---
+
+# Flujo de trabajo KairOs
+
+Referencia: `docs/CONTRIBUCION-IA.md` y `.github/copilot-instructions.md`.
+
+## Ramas
+
+Formato: `{ANIO}{InicialNombre}{InicialApellido}_{MesAbrev}{Dia}_{descripcion-kebab}`
+
+Ejemplo: `2026WS_Jun28_listar-equipos`
+
+Iniciales en `.github/developer-config.json` (copiar desde `developer-config.example.json`).
+
+## Documentacion al implementar flujos
+
+Crear o actualizar en `docs/` usando plantillas de `docs/plantillas/`:
+
+- `docs/requerimientos-funcionales/<modulo>-<slug>.md`
+- `docs/requerimientos-no-funcionales/<modulo>-<slug>.md`
+- `docs/historias-de-usuario/<modulo>-<slug>.md`
+
+Hacerlo al cerrar un flujo funcional o cuando el usuario lo pida, antes del PR.
+
+## Cuando el usuario diga "sube el PR"
+
+1. Verificar commits en la rama actual.
+2. Ejecutar:
+
+```powershell
+.\scripts\create-pr-and-project.ps1 -Descripcion "<slug>" -Modulo "<modulo>" -HistoriaTitulo "<titulo>"
+```
+
+3. No pushear a `main` directamente.
+4. Usar plantilla `.github/pull_request_template.md`.
+
+## Frontend
+
+Si la tarea es frontend, seguir `AGENTS.md` en la raiz del repo.
