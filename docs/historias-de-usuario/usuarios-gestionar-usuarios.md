@@ -45,5 +45,5 @@ Se corrigió la migración de `apellido` y `dni`, se añadieron filtros y estad�
 
 ## Enlaces
 
-- PR: N/A
-- Issue GitHub: N/A
+- PR: https://github.com/Leonardo-Jaren/KairOs/pull/3
+- Issue GitHub: https://github.com/Leonardo-Jaren/KairOs/issues/4

@@ -13,3 +13,8 @@ de la institución para conocer su ubicación, responsables y equipos asignados.
 6. Puedo abrir el detalle y visualizar sus equipos asignados.
 7. Un técnico puede consultar, pero no modificar.
 8. Un usuario sin rol administrativo no puede acceder.
+
+## Enlaces
+
+- PR: https://github.com/Leonardo-Jaren/KairOs/pull/3
+- Issue GitHub: https://github.com/Leonardo-Jaren/KairOs/issues/4

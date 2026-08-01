@@ -47,5 +47,5 @@ Se añadió `EspacioUsuario` con restricción única, auditoría, borrado lógic
 
 ## Enlaces
 
-- PR: N/A
-- Issue GitHub: N/A
+- PR: https://github.com/Leonardo-Jaren/KairOs/pull/3
+- Issue GitHub: https://github.com/Leonardo-Jaren/KairOs/issues/4
