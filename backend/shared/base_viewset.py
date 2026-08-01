@@ -3,13 +3,23 @@ from typing import Any
 from rest_framework import status, viewsets
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .base_service import BaseService
+
+
+class BasePagination(PageNumberPagination):
+    # Paginacion por defecto de 10 elementos
+    page_size = 10
+    # Permite al frontend especificar un tamaño de pagina diferente usando el parametro 'page_size'
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class BaseViewSet(viewsets.ModelViewSet):
     service: BaseService = None
     serializer_class = None
+    pagination_class = BasePagination
     http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
 
     def get_serializer_class(self):

@@ -5,12 +5,12 @@ from .models import Incidencia
 @admin.register(Incidencia)
 class IncidenciaAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'usuario', 'espacio', 'equipo',
+        'id', 'tecnico', 'docente', 'espacio', 'equipo',
         'fecha_generado', 'descripcion_corta',
     )
     list_filter = ('fecha_generado', 'espacio')
     search_fields = (
-        'descripcion', 'usuario__nombre',
+        'descripcion', 'tecnico__nombre', 'docente__nombre',
         'equipo__codigo', 'espacio__codigo_espacio',
     )
     ordering = ('-fecha_generado',)

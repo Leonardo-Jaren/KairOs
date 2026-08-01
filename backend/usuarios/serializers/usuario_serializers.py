@@ -14,6 +14,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
             'username',
             'correo',
             'nombre',
+            'apellido',
+            'dni',
             'rol',
             'is_active',
             'created_at',
@@ -39,6 +41,8 @@ class UsuarioCreateUpdateSerializer(serializers.ModelSerializer):
             'username',
             'correo',
             'nombre',
+            'apellido',
+            'dni',
             'rol',
             'password',
             'is_active'
@@ -70,3 +74,18 @@ class UsuarioCreateUpdateSerializer(serializers.ModelSerializer):
         if queryset.exists():
             raise serializers.ValidationError("Ya existe un usuario registrado con este nombre de usuario.")
         return value
+
+    def validate(self, attrs):
+        """
+        Valida que un técnico solo pueda registrar o modificar usuarios con rol 'docente'.
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if request.user.rol == 'tecnico':
+                # Al actualizar o crear, el rol debe ser docente
+                rol = attrs.get('rol')
+                if rol and rol != 'docente':
+                    raise serializers.ValidationError({
+                        "rol": "Los técnicos solo tienen autorización para registrar usuarios con el rol de Docente."
+                    })
+        return attrs
