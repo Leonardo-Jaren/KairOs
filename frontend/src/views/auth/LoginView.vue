@@ -1,26 +1,10 @@
 <script setup>
-import { onMounted } from 'vue';
 import { User, Lock } from '@lucide/vue';
 import useLogin from '@/composables/auth/useLogin';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
 
-const { correo, password, loading, error, handleLogin, handleGoogleLogin } = useLogin();
-
-onMounted(() => {
-  /* global google */
-  if (typeof google === 'undefined') return;
-
-  google.accounts.id.initialize({
-    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-    callback: ({ credential }) => handleGoogleLogin(credential),
-  });
-
-  google.accounts.id.renderButton(
-    document.getElementById('google-btn-div'),
-    { theme: 'outline', size: 'large', width: '380', text: 'continue_with', shape: 'rectangular', logo_alignment: 'center' }
-  );
-});
+const { correo, password, loading, googleButtonElement, googleLoading, error, handleLogin } = useLogin();
 </script>
 
 <template>
@@ -80,8 +64,14 @@ onMounted(() => {
     </div>
 
     <!-- Envuelto para que el botón de Google encaje visualmente -->
-    <div class="w-full overflow-hidden rounded-[10px] opacity-90 hover:opacity-100 transition-opacity duration-200">
-      <div id="google-btn-div" class="w-full flex justify-center" />
+    <div class="relative w-full min-h-10 overflow-hidden rounded-[10px] opacity-90 hover:opacity-100 transition-opacity duration-200">
+      <div
+        v-if="googleLoading"
+        class="absolute inset-0 flex items-center justify-center text-xs text-white/45"
+      >
+        Cargando acceso con Google...
+      </div>
+      <div ref="googleButtonElement" class="w-full flex justify-center" />
     </div>
 
   </div>

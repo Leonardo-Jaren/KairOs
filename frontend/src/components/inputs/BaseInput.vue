@@ -1,5 +1,6 @@
 <script setup>
 import { computed, useSlots } from 'vue';
+import { CircleAlert } from '@lucide/vue';
 
 const props = defineProps({
   modelValue:  { type: String,  default: '' },
@@ -9,6 +10,8 @@ const props = defineProps({
   error:       { type: String,  default: '' },
   id:          { type: String,  required: true },
   disabled:    { type: Boolean, default: false },
+  appearance:  { type: String,  default: 'dark' },
+  autocomplete:{ type: String,  default: 'off' },
 });
 
 const emit  = defineEmits(['update:modelValue']);
@@ -25,7 +28,8 @@ const value = computed({
     <label
       v-if="label"
       :for="id"
-      class="text-xs font-medium text-white/50 tracking-wide pl-0.5 select-none"
+      class="text-xs font-semibold tracking-wide pl-0.5 select-none"
+      :class="appearance === 'light' ? 'text-slate-600' : 'text-white/50'"
     >
       {{ label }}
     </label>
@@ -33,12 +37,15 @@ const value = computed({
     <div
       class="relative flex items-center rounded-[10px] border transition-all duration-200"
       :class="error
-        ? 'bg-red-500/5 border-red-500/50 focus-within:border-red-500/80 focus-within:ring-2 focus-within:ring-red-500/10'
-        : 'bg-white/[0.07] border-white/15 hover:bg-white/10 hover:border-white/25 focus-within:bg-white/10 focus-within:border-white/55 focus-within:ring-2 focus-within:ring-white/[0.07]'"
+        ? 'bg-danger-50 border-danger-300 focus-within:border-danger-400 focus-within:ring-4 focus-within:ring-danger-100'
+        : appearance === 'light'
+          ? 'bg-white border-slate-200 hover:border-slate-300 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-100'
+          : 'bg-white/[0.07] border-white/15 hover:bg-white/10 hover:border-white/25 focus-within:bg-white/10 focus-within:border-white/55 focus-within:ring-2 focus-within:ring-white/[0.07]'"
     >
       <span
         v-if="slots.icon"
-        class="absolute left-3.5 flex items-center text-white/35 transition-colors duration-200 group-focus-within:text-white/70"
+        class="absolute left-3.5 flex items-center transition-colors duration-200"
+        :class="appearance === 'light' ? 'text-slate-400' : 'text-white/35'"
         aria-hidden="true"
       >
         <slot name="icon" />
@@ -50,10 +57,13 @@ const value = computed({
         :disabled="disabled"
         :placeholder="placeholder"
         v-model="value"
-        autocomplete="off"
+        :autocomplete="autocomplete"
         spellcheck="false"
-        class="w-full bg-transparent outline-none text-white placeholder-white/30 text-sm py-2.5 pr-4 disabled:opacity-40 disabled:cursor-not-allowed"
-        :class="slots.icon ? 'pl-10' : 'pl-4'"
+        class="w-full bg-transparent outline-none text-sm py-2.5 pr-4 disabled:opacity-40 disabled:cursor-not-allowed"
+        :class="[
+          slots.icon ? 'pl-10' : 'pl-4',
+          appearance === 'light' ? 'text-slate-800 placeholder-slate-400' : 'text-white placeholder-white/30'
+        ]"
       />
     </div>
 
@@ -63,12 +73,8 @@ const value = computed({
       leave-to-class="opacity-0 -translate-y-1"
       leave-active-class="transition-all duration-200"
     >
-      <p v-if="error" role="alert" class="flex items-center gap-1.5 text-[13px] text-red-300 pl-0.5">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true" class="shrink-0">
-          <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" stroke-opacity="0.6"/>
-          <path d="M6.5 3.5V7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          <circle cx="6.5" cy="9.5" r="0.6" fill="currentColor"/>
-        </svg>
+      <p v-if="error" role="alert" class="flex items-center gap-1.5 pl-0.5 text-[13px] text-danger-600">
+        <CircleAlert :size="13" class="shrink-0" />
         {{ error }}
       </p>
     </Transition>

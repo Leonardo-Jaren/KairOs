@@ -1,2 +1,4 @@
-# espacios/services
-# TODO: Implementar servicios de lógica de negocio para espacios
+from .espacio_service import EspacioService
+from .espacio_usuario_service import EspacioUsuarioService
+
+__all__ = ['EspacioService', 'EspacioUsuarioService']

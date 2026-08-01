@@ -1,6 +1,7 @@
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { renderGoogleButton } from '@/services/google-identity.service';
 
 export function useLogin() {
   const router = useRouter();
@@ -9,13 +10,16 @@ export function useLogin() {
   const correo = ref('');
   const password = ref('');
   const validationError = ref('');
+  const googleButtonElement = ref(null);
+  const googleLoading = ref(true);
+  const googleError = ref('');
 
   // Estados reactivos mapeados desde el store de Pinia
   const loading = computed(() => authStore.loading);
   const apiError = computed(() => authStore.error);
   
   // Combina errores de validacion local y respuestas de la API
-  const error = computed(() => validationError.value || apiError.value);
+  const error = computed(() => validationError.value || apiError.value || googleError.value);
 
   // Valida que el formato del correo electronico sea correcto
   const validarCorreo = (email) => {
@@ -63,13 +67,32 @@ export function useLogin() {
     }
   };
 
+  // Espera la carga del SDK antes de inicializar el boton de Google.
+  const initializeGoogleLogin = async () => {
+    googleError.value = '';
+    googleLoading.value = true;
+
+    try {
+      await renderGoogleButton(googleButtonElement.value, handleGoogleLogin);
+    } catch (err) {
+      googleError.value = err.message || 'No se pudo inicializar el inicio de sesion con Google.';
+    } finally {
+      googleLoading.value = false;
+    }
+  };
+
+  onMounted(initializeGoogleLogin);
+
   return {
     correo,
     password,
     loading,
+    googleButtonElement,
+    googleLoading,
     error,
     handleLogin,
     handleGoogleLogin,
+    initializeGoogleLogin,
   };
 }
 export default useLogin;

@@ -10,14 +10,27 @@ class Usuario(AbstractUser):
     """
 
     ROL_CHOICES = [
+        ('usuario', 'Usuario'), #clase base que heredan los demás 
         ('admin', 'Administrador'),
         ('tecnico', 'Técnico'),
-        ('usuario', 'Usuario'),
+        ('docente', 'Docente'), #Se esta añadiendo para poder dividir el como se interactua con los reportes
     ]
 
     nombre = models.CharField(
         max_length=255,
         verbose_name='Nombre completo',
+    )
+    apellido = models.CharField(
+        max_length=255,
+        verbose_name='Apellido completo',
+        default='',
+    )
+    dni = models.CharField(
+        max_length=8,
+        unique=True,
+        verbose_name='DNI',
+        null=True,
+        blank=True,
     )
     correo = models.EmailField(
         unique=True,
