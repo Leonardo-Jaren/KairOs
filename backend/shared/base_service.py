@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.db.models import QuerySet
+from rest_framework.exceptions import NotFound
 
 from .base_repository import BaseRepository
 
@@ -29,5 +30,4 @@ class BaseService:
         self.repository.delete(instance)
 
     def _not_found_error(self, id: int):
-        from django.core.exceptions import ValidationError
-        return ValidationError(f"Object with id {id} not found.")
+        return NotFound(f'No se encontró el recurso con id {id}.')

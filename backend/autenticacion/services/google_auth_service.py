@@ -1,4 +1,4 @@
-import os
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -9,8 +9,8 @@ class GoogleAuthService:
     Servicio encargado de la integración con Google Identity Services.
     Valida de forma segura y descentralizada la firma de los tokens emitidos por Google.
     """
-    def __init__(self):
-        self.client_id = os.getenv('GOOGLE_CLIENT_ID')
+    def __init__(self, client_id=None):
+        self.client_id = client_id if client_id is not None else settings.GOOGLE_CLIENT_ID
 
     def verify_token(self, token: str) -> dict:
         """
@@ -32,16 +32,19 @@ class GoogleAuthService:
             )
             
             # Validar el emisor (issuer)
-            if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+            if id_info.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
                 raise ValueError("El emisor del token (issuer) no coincide con Google.")
 
             # Garantizar que el correo esté verificado
             if not id_info.get('email_verified', False):
                 raise ValueError("La dirección de correo de Google no está verificada.")
 
+            if not id_info.get('email') or not id_info.get('sub'):
+                raise ValueError("El token de Google no contiene un perfil identificable.")
+
             return {
                 'correo': id_info.get('email'),
-                'nombre': id_info.get('name'),
+                'nombre': id_info.get('name') or id_info['email'].split('@')[0],
                 'google_id': id_info.get('sub'),
             }
         except Exception as e:

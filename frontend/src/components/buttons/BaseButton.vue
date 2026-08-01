@@ -1,15 +1,29 @@
 <script setup>
-const props = defineProps({
-  type:    { type: String,  default: 'button' },
+import { LoaderCircle } from '@lucide/vue';
+
+defineProps({
+  type: { type: String, default: 'button' },
   loading: { type: Boolean, default: false },
-  variant: { type: String,  default: 'primary' },
-  id:      { type: String,  required: true },
+  disabled: { type: Boolean, default: false },
+  variant: { type: String, default: 'primary' },
+  size: { type: String, default: 'md' },
+  fullWidth: { type: Boolean, default: true },
+  id: { type: String, default: undefined },
 });
 
 const variants = {
-  primary:   'bg-white text-kairos-navy hover:bg-white/95 hover:shadow-lg focus:ring-4 focus:ring-white/20',
-  secondary: 'bg-transparent text-white border border-white/30 hover:border-white/80 hover:bg-white/5 focus:ring-4 focus:ring-white/10',
-  google:    'bg-kairos-navy-light text-white border border-white/10 hover:bg-kairos-navy hover:shadow-md focus:ring-4 focus:ring-kairos-blue/20',
+  primary: 'bg-white text-secondary-900 hover:bg-slate-100 focus:ring-white/30',
+  accent: 'bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-200',
+  secondary: 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-200',
+  danger: 'bg-red-50 text-red-700 hover:bg-red-100 focus:ring-red-100',
+  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-100',
+  google: 'border border-white/10 bg-secondary-800 text-white hover:bg-secondary-900 focus:ring-primary-200',
+};
+
+const sizes = {
+  sm: 'min-h-9 px-3 py-1.5 text-sm rounded-lg',
+  md: 'min-h-10 px-4 py-2 text-sm rounded-xl',
+  lg: 'min-h-12 px-6 py-2.5 text-base rounded-xl',
 };
 </script>
 
@@ -17,21 +31,12 @@ const variants = {
   <button
     :id="id"
     :type="type"
-    :disabled="loading"
-    class="w-full flex items-center justify-center gap-2.5 font-semibold text-base py-2.5 px-6 rounded-lg shadow transition-all duration-200 cursor-pointer select-none outline-none active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
-    :class="variants[variant]"
+    :disabled="loading || disabled"
+    class="inline-flex items-center justify-center gap-2 font-semibold shadow-sm outline-none transition-all duration-200 focus:ring-4 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-55"
+    :class="[variants[variant], sizes[size], fullWidth ? 'w-full' : 'w-auto']"
   >
-    <svg
-      v-if="loading"
-      class="animate-spin size-5 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25" />
-      <path fill="currentColor" class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-    </svg>
-
-    <span class="tracking-wide"><slot /></span>
+    <LoaderCircle v-if="loading" :size="18" class="animate-spin" aria-hidden="true" />
+    <slot name="icon" />
+    <span><slot /></span>
   </button>
 </template>

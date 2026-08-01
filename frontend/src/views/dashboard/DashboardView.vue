@@ -9,10 +9,10 @@ const user = computed(() => authStore.user);
 
 // Tarjetas de resumen conceptuales del sistema
 const stats = [
-  { title: 'Total Equipos', value: '48', desc: 'Hardware registrado en el sistema', color: 'border-l-4 border-kairos-blue bg-white/5' },
-  { title: 'Incidencias Activas', value: '5', desc: 'Pendientes por resolver', color: 'border-l-4 border-red-500 bg-white/5' },
-  { title: 'Espacios Habilitados', value: '12', desc: 'Aulas, pabellones y laboratorios', color: 'border-l-4 border-emerald-500 bg-white/5' },
-  { title: 'Licencias de Software', value: '18', desc: 'Productos vigentes registrados', color: 'border-l-4 border-amber-500 bg-white/5' }
+  { title: 'Total Equipos', value: '48', desc: 'Hardware registrado en el sistema', color: 'border-l-4 border-primary-500 bg-white' },
+  { title: 'Incidencias Activas', value: '5', desc: 'Pendientes por resolver', color: 'border-l-4 border-danger-500 bg-white' },
+  { title: 'Espacios Habilitados', value: '12', desc: 'Aulas, pabellones y laboratorios', color: 'border-l-4 border-success-500 bg-white' },
+  { title: 'Licencias de Software', value: '18', desc: 'Productos vigentes registrados', color: 'border-l-4 border-warning-500 bg-white' }
 ];
 </script>
 
@@ -21,10 +21,10 @@ const stats = [
     
     <!-- Bienvenida Personalizada -->
     <section class="flex flex-col gap-2">
-      <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-wide">
+      <h1 class="text-3xl md:text-4xl font-extrabold text-secondary-950 tracking-wide">
         Bienvenido, {{ user ? user.nombre : 'Usuario' }}
       </h1>
-      <p class="text-white/60 text-sm md:text-base">
+      <p class="text-slate-500 text-sm md:text-base">
         Este es tu panel central de KairOs. Desde aquí puedes gestionar los equipos de hardware, espacios de campus, incidencias y control de software.
       </p>
     </section>
@@ -35,15 +35,15 @@ const stats = [
         v-for="stat in stats" 
         :key="stat.title"
         :class="[stat.color]"
-        class="p-6 rounded-r-xl shadow transition-all duration-300 hover:scale-[1.02] hover:bg-white/10"
+        class="p-6 rounded-r-xl border-y border-r border-slate-200 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md"
       >
-        <span class="text-xs font-bold text-white/50 uppercase tracking-widest block mb-1">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">
           {{ stat.title }}
         </span>
-        <span class="text-3xl font-extrabold text-white block mb-2">
+        <span class="text-3xl font-extrabold text-secondary-950 block mb-2">
           {{ stat.value }}
         </span>
-        <span class="text-xs text-white/60">
+        <span class="text-xs text-slate-500">
           {{ stat.desc }}
         </span>
       </div>

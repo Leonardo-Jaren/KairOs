@@ -2,6 +2,8 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.test import APITestCase
 
 from autenticacion.services.google_auth_service import GoogleAuthService
 from autenticacion.services.token_service import TokenService
@@ -15,29 +17,23 @@ class GoogleAuthServiceTests(TestCase):
     para evitar peticiones de red reales durante las pruebas.
     """
     def setUp(self):
-        self.service = GoogleAuthService()
+        self.service = GoogleAuthService(client_id="dummy-client-id")
 
-    @patch('autenticacion.services.google_auth_service.os.getenv')
-    def test_verify_token_requires_client_id(self, mock_getenv):
+    def test_verify_token_requires_client_id(self):
         """
         Valida que se lance un error si GOOGLE_CLIENT_ID no está configurado.
         """
-        mock_getenv.return_value = None
-        self.service.client_id = None
+        self.service.client_id = ''
         
         with self.assertRaises(ValidationError) as context:
             self.service.verify_token("any-dummy-token")
         self.assertIn("GOOGLE_CLIENT_ID no está configurada", str(context.exception))
 
     @patch('google.oauth2.id_token.verify_oauth2_token')
-    @patch('autenticacion.services.google_auth_service.os.getenv')
-    def test_verify_token_success(self, mock_getenv, mock_verify):
+    def test_verify_token_success(self, mock_verify):
         """
         Valida que un token correcto e issuer legítimo retorne los datos esperados.
         """
-        mock_getenv.return_value = "dummy-client-id"
-        self.service.client_id = "dummy-client-id"
-        
         mock_verify.return_value = {
             'iss': 'https://accounts.google.com',
             'email': 'john.doe@gmail.com',
@@ -50,16 +46,14 @@ class GoogleAuthServiceTests(TestCase):
         self.assertEqual(profile['correo'], 'john.doe@gmail.com')
         self.assertEqual(profile['nombre'], 'John Doe')
         self.assertEqual(profile['google_id'], 'google-uid-12345')
+        mock_verify.assert_called_once()
+        self.assertEqual(mock_verify.call_args.args[2], 'dummy-client-id')
 
     @patch('google.oauth2.id_token.verify_oauth2_token')
-    @patch('autenticacion.services.google_auth_service.os.getenv')
-    def test_verify_token_invalid_issuer(self, mock_getenv, mock_verify):
+    def test_verify_token_invalid_issuer(self, mock_verify):
         """
         Valida que se lance error si el emisor (issuer) no es de confianza.
         """
-        mock_getenv.return_value = "dummy-client-id"
-        self.service.client_id = "dummy-client-id"
-        
         mock_verify.return_value = {
             'iss': 'https://malicious-issuer.com',
             'email': 'john.doe@gmail.com',
@@ -71,6 +65,97 @@ class GoogleAuthServiceTests(TestCase):
         with self.assertRaises(ValidationError) as context:
             self.service.verify_token("mock-google-id-token")
         self.assertIn("El emisor del token (issuer) no coincide con Google", str(context.exception))
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_verify_token_requires_verified_email(self, mock_verify):
+        """Valida que Google haya verificado el correo del perfil."""
+        mock_verify.return_value = {
+            'iss': 'accounts.google.com',
+            'email': 'john.doe@gmail.com',
+            'sub': 'google-uid-12345',
+            'email_verified': False,
+        }
+
+        with self.assertRaises(ValidationError) as context:
+            self.service.verify_token("mock-google-id-token")
+        self.assertIn("no est", str(context.exception))
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_verify_token_requires_identifiable_profile(self, mock_verify):
+        """Valida que el token incluya correo e identificador de Google."""
+        mock_verify.return_value = {
+            'iss': 'accounts.google.com',
+            'email_verified': True,
+        }
+
+        with self.assertRaises(ValidationError) as context:
+            self.service.verify_token("mock-google-id-token")
+        self.assertIn("no contiene un perfil identificable", str(context.exception))
+
+
+class GoogleLoginViewTests(APITestCase):
+    """Pruebas de integracion del endpoint de inicio con Google."""
+
+    endpoint = '/api/v1/auth/google/'
+
+    @patch('autenticacion.views.login_views.GoogleAuthService.verify_token')
+    def test_google_login_creates_user_and_returns_local_tokens(self, mock_verify):
+        """Crea la cuenta local y devuelve los JWT propios del sistema."""
+        mock_verify.return_value = {
+            'correo': 'nuevo.usuario@gmail.com',
+            'nombre': 'Nuevo Usuario',
+            'google_id': 'google-uid-12345',
+        }
+
+        response = self.client.post(
+            self.endpoint,
+            {'token': 'id-token-valido'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertEqual(response.data['usuario']['correo'], 'nuevo.usuario@gmail.com')
+        self.assertTrue(Usuario.objects.filter(correo='nuevo.usuario@gmail.com').exists())
+
+    @patch('autenticacion.views.login_views.GoogleAuthService.verify_token')
+    def test_google_login_rejects_inactive_user(self, mock_verify):
+        """Impide iniciar sesion a una cuenta local desactivada."""
+        Usuario.objects.create(
+            correo='inactivo@gmail.com',
+            username='inactivo',
+            nombre='Usuario Inactivo',
+            rol='usuario',
+            is_active=False,
+        )
+        mock_verify.return_value = {
+            'correo': 'inactivo@gmail.com',
+            'nombre': 'Usuario Inactivo',
+            'google_id': 'google-uid-inactivo',
+        }
+
+        response = self.client.post(
+            self.endpoint,
+            {'token': 'id-token-valido'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch('autenticacion.views.login_views.GoogleAuthService.verify_token')
+    def test_google_login_rejects_invalid_google_token(self, mock_verify):
+        """Expone un error controlado cuando Google rechaza el ID token."""
+        mock_verify.side_effect = ValidationError('Token de Google invalido.')
+
+        response = self.client.post(
+            self.endpoint,
+            {'token': 'id-token-invalido'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Token de Google invalido', response.data['detail'])
 
 
 class TokenServiceTests(TestCase):

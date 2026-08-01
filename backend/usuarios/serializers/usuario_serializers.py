@@ -1,12 +1,13 @@
 from rest_framework import serializers
+
 from usuarios.models import Usuario
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
-    """
-    Serializer de salida para representar los datos de un usuario.
-    Excluye campos de seguridad sensibles como contraseñas.
-    """
+    """Representa datos públicos de una cuenta sin campos sensibles."""
+
+    nombre_completo = serializers.SerializerMethodField()
+
     class Meta:
         model = Usuario
         fields = [
@@ -15,24 +16,29 @@ class UsuarioSerializer(serializers.ModelSerializer):
             'correo',
             'nombre',
             'apellido',
+            'nombre_completo',
             'dni',
             'rol',
             'is_active',
             'created_at',
-            'updated_at'
+            'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = fields
+
+    def get_nombre_completo(self, obj: Usuario) -> str:
+        """Combina nombre y apellido para su presentación en tablas."""
+        return f'{obj.nombre} {obj.apellido}'.strip()
 
 
 class UsuarioCreateUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer de entrada para validar datos de creación y actualización de usuarios.
-    """
+    """Valida el formato de los datos de escritura de usuarios."""
+
     password = serializers.CharField(
         write_only=True,
         required=False,
+        min_length=8,
+        trim_whitespace=False,
         style={'input_type': 'password'},
-        help_text='Contraseña para el usuario. Dejar en blanco si inicia sesión con Google.'
     )
 
     class Meta:
@@ -45,47 +51,19 @@ class UsuarioCreateUpdateSerializer(serializers.ModelSerializer):
             'dni',
             'rol',
             'password',
-            'is_active'
+            'is_active',
         ]
+        extra_kwargs = {
+            'correo': {'validators': []},
+            'username': {'validators': []},
+        }
 
     def validate_correo(self, value: str) -> str:
-        """
-        Valida que el correo electrónico sea único en el sistema.
-        """
-        # Obtenemos la instancia actual para excluirla en caso de actualización
-        instance = self.instance
-        queryset = Usuario.objects.filter(correo=value)
-        if instance:
-            queryset = queryset.exclude(id=instance.id)
-            
-        if queryset.exists():
-            raise serializers.ValidationError("Ya existe un usuario registrado con este correo electrónico.")
-        return value
+        """Normaliza el correo antes de delegar su unicidad al service."""
+        return value.strip().lower()
 
-    def validate_username(self, value: str) -> str:
-        """
-        Valida que el nombre de usuario (username) sea único en el sistema.
-        """
-        instance = self.instance
-        queryset = Usuario.objects.filter(username=value)
-        if instance:
-            queryset = queryset.exclude(id=instance.id)
-            
-        if queryset.exists():
-            raise serializers.ValidationError("Ya existe un usuario registrado con este nombre de usuario.")
+    def validate_dni(self, value: str | None) -> str | None:
+        """Acepta únicamente DNI peruanos de ocho dígitos."""
+        if value and (len(value) != 8 or not value.isdigit()):
+            raise serializers.ValidationError('El DNI debe contener 8 dígitos.')
         return value
-
-    def validate(self, attrs):
-        """
-        Valida que un técnico solo pueda registrar o modificar usuarios con rol 'docente'.
-        """
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            if request.user.rol == 'tecnico':
-                # Al actualizar o crear, el rol debe ser docente
-                rol = attrs.get('rol')
-                if rol and rol != 'docente':
-                    raise serializers.ValidationError({
-                        "rol": "Los técnicos solo tienen autorización para registrar usuarios con el rol de Docente."
-                    })
-        return attrs
