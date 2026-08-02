@@ -8,6 +8,7 @@ class UsuarioAdmin(admin.ModelAdmin):
     list_filter = ('rol', 'is_active')
     search_fields = ('nombre', 'correo', 'username')
     ordering = ('id',)
+    exclude = ('first_name', 'last_name', 'email')
 
 
 @admin.register(PerfilTecnico)
