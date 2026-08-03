@@ -13,5 +13,8 @@
   "files.exclude": {
     "**/__pycache__": true,
     "**/.pytest_cache": true
-  }
+  },
+  "cursorpyright.analysis.extraPaths": [
+    "${workspaceFolder}/backend"
+  ]
 }

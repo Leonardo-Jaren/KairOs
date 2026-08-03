@@ -1,2 +1,3 @@
-# mantenimiento/services
-# TODO: Implementar servicios de lógica de negocio para mantenimiento
+from .mantenimiento_service import MantenimientoService
+
+__all__ = ['MantenimientoService']

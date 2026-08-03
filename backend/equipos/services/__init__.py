@@ -1,2 +1,3 @@
-# equipos/services
-# TODO: Implementar servicios de lógica de negocio para equipos
+from .equipo_service import EquipoService
+
+__all__ = ['EquipoService']

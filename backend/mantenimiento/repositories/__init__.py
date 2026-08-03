@@ -1,2 +1,3 @@
-# mantenimiento/repositories
-# TODO: Implementar repositorios para Mantenimiento y TecnicoMantenimiento
+from .mantenimiento_repository import MantenimientoRepository
+
+__all__ = ['MantenimientoRepository']

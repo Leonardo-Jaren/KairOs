@@ -1,2 +1,3 @@
-# equipos/repositories
-# TODO: Implementar repositorios para Equipo y Componente
+from .equipo_repository import EquipoRepository
+
+__all__ = ['EquipoRepository']

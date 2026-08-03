@@ -1,10 +1,38 @@
-from django.test import TestCase
+from django.contrib import admin
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
+from usuarios.admin import UsuarioAdmin
 from usuarios.models import Usuario
 from usuarios.repositories import UsuarioRepository
 from usuarios.services import UsuarioService
+
+
+class UsuarioAdminTests(TestCase):
+    """Verifica que el administrador use solo los campos de dominio."""
+
+    def setUp(self):
+        self.request = RequestFactory().get('/admin/usuarios/usuario/')
+        self.request.user = Usuario.objects.create_superuser(
+            correo='superadmin@example.com',
+            username='superadmin',
+            nombre='Superadministrador',
+            password='AdminPass123',
+        )
+
+    def test_form_hides_inherited_duplicate_identity_fields(self):
+        """Oculta nombre, apellido y correo heredados de AbstractUser."""
+        model_admin = UsuarioAdmin(Usuario, admin.site)
+
+        form_fields = model_admin.get_form(request=self.request).base_fields
+
+        self.assertNotIn('first_name', form_fields)
+        self.assertNotIn('last_name', form_fields)
+        self.assertNotIn('email', form_fields)
+        self.assertIn('nombre', form_fields)
+        self.assertIn('apellido', form_fields)
+        self.assertIn('correo', form_fields)
 
 
 class UsuarioRepositoryServiceTests(TestCase):
