@@ -1,6 +1,6 @@
 from django.db.models import Count, Q
 
-from shared.base_repository import BaseRepository
+from shared.base import BaseRepository
 from usuarios.models import PerfilTecnico, Usuario
 
 

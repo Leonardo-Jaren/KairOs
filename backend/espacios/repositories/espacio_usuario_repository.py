@@ -1,7 +1,7 @@
 from django.db.models import Q
 
 from espacios.models import Espacio, EspacioUsuario
-from shared.base_repository import BaseRepository
+from shared.base import BaseRepository
 from usuarios.models import Usuario
 
 

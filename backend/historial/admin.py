@@ -1,14 +1,19 @@
 from django.contrib import admin
-from .models import Historial
+
+from historial.models import Historial
 
 
 @admin.register(Historial)
 class HistorialAdmin(admin.ModelAdmin):
-    list_display = ('id', 'equipo', 'mantenimiento', 'fecha', 'descripcion_corta')
-    list_filter = ('fecha',)
-    search_fields = ('equipo__codigo', 'descripcion')
+    list_display = ('id', 'tipo_evento', 'modulo_display', 'object_id', 'usuario', 'fecha')
+    list_filter = ('tipo_evento', 'fecha')
+    search_fields = ('tipo_evento', 'descripcion', 'usuario__nombre')
     ordering = ('-fecha',)
+    readonly_fields = (
+        'tipo_evento', 'content_type', 'object_id',
+        'usuario', 'fecha', 'descripcion', 'datos_extra',
+    )
 
-    @admin.display(description='Descripción')
-    def descripcion_corta(self, obj):
-        return obj.descripcion[:80] + '...' if len(obj.descripcion) > 80 else obj.descripcion
+    @admin.display(description='Módulo')
+    def modulo_display(self, obj: Historial) -> str:
+        return obj.content_type.model

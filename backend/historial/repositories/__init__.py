@@ -1,2 +1,2 @@
-# historial/repositories
-# TODO: Implementar repositorios para Historial
+from historial.repositories.historial_repository import HistorialRepository
+__all__ = ['HistorialRepository']

@@ -1,2 +1,2 @@
-# historial/services
-# TODO: Implementar servicios de lógica de negocio para historial
+from historial.services.historial_service import HistorialService
+__all__ = ['HistorialService']

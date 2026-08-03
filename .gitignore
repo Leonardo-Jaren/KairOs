@@ -5,3 +5,23 @@ skills-lock.json
 # Config personal / local de GitHub (copiar desde *.example.json)
 .github/developer-config.json
 .github/project-config.json
+
+# ─── Enviroment ───────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+.env
+.env.*
+!.env.example
+
+
+
+# ─── SKills ───────────────────────────────────────────────────────────
+skills/
+skills/docs
+
+# ─── Logs ─────────────────────────────────────────────────────────────
+backend/logs/
+

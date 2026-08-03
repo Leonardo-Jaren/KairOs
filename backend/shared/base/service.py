@@ -3,7 +3,7 @@ from typing import Any
 from django.db.models import QuerySet
 from rest_framework.exceptions import NotFound
 
-from .base_repository import BaseRepository
+from .repository import BaseRepository
 
 
 class BaseService:

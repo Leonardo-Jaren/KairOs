@@ -68,6 +68,12 @@ const routes = [
         meta: { title: 'Detalle del espacio', roles: ['admin', 'tecnico'] },
       },
       {
+        path: '/historial',
+        name: 'Historial',
+        component: () => import('@/views/historial/HistorialView.vue'),
+        meta: { title: 'Historial de auditoría', roles: ['admin', 'tecnico'] },
+      },
+      {
         path: '/equipos',
         name: 'Equipos',
         component: () => import('@/views/equipos/EquiposView.vue'),

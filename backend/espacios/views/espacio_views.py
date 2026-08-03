@@ -10,7 +10,7 @@ from espacios.serializers import (
     EspacioSerializer,
 )
 from espacios.services import EspacioService
-from shared.base_viewset import BaseViewSet
+from shared.base import BaseViewSet
 
 
 class EspacioViewSet(BaseViewSet):
