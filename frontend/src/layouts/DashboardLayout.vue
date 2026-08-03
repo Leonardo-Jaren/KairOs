@@ -35,7 +35,7 @@ const menuItems = computed(() => [
   { name: 'Usuarios', path: '/usuarios', icon: UsersRound, roles: ['admin', 'tecnico'] },
   { name: 'Espacios', path: '/espacios', icon: Building2, roles: ['admin', 'tecnico'] },
   { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, roles: ['admin', 'tecnico'] },
-  { name: 'Equipos', path: '/equipos', icon: MonitorCog },
+  { name: 'Equipos', path: '/equipos', icon: MonitorCog, roles: ['admin', 'tecnico'] },
   { name: 'Componentes', path: '/componentes', icon: Boxes },
   { name: 'Software', path: '/software', icon: PanelLeftClose },
   { name: 'Mantenimiento', path: '/mantenimiento', icon: Wrench },
