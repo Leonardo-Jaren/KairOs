@@ -2,7 +2,7 @@ from django.db.models import Count, Q
 
 from equipos.models import Equipo
 from mantenimiento.models import Mantenimiento, TecnicoMantenimiento
-from shared.base_repository import BaseRepository
+from shared.base import BaseRepository
 from usuarios.models import PerfilTecnico
 
 

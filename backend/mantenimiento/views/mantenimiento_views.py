@@ -9,7 +9,7 @@ from mantenimiento.serializers import (
     MantenimientoSerializer,
 )
 from mantenimiento.services import MantenimientoService
-from shared.base_viewset import BaseViewSet
+from shared.base import BaseViewSet
 
 
 class MantenimientoViewSet(BaseViewSet):

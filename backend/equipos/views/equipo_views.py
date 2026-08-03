@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from equipos.permissions import CanManageEquipo
 from equipos.serializers import EquipoCreateUpdateSerializer, EquipoSerializer
 from equipos.services import EquipoService
-from shared.base_viewset import BaseViewSet
+from shared.base import BaseViewSet
 
 
 class EquipoViewSet(BaseViewSet):

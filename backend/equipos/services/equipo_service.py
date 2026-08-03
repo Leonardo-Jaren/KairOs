@@ -2,7 +2,7 @@ from rest_framework.exceptions import ValidationError
 
 from equipos.models import Equipo
 from equipos.repositories import EquipoRepository
-from shared.base_service import BaseService
+from shared.base import BaseService
 from usuarios.models import Usuario
 
 

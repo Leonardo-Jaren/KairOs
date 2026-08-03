@@ -2,7 +2,7 @@ from rest_framework.exceptions import ValidationError
 
 from mantenimiento.models import Mantenimiento
 from mantenimiento.repositories import MantenimientoRepository
-from shared.base_service import BaseService
+from shared.base import BaseService
 from usuarios.models import Usuario
 
 

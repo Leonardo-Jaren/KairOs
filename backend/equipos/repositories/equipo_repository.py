@@ -1,7 +1,7 @@
 from django.db.models import Count, Q
 
 from equipos.models import Equipo
-from shared.base_repository import BaseRepository
+from shared.base import BaseRepository
 
 
 class EquipoRepository(BaseRepository):
