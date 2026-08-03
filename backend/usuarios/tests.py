@@ -185,7 +185,7 @@ class UsuarioAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn('correo', response.data)
+        self.assertIn('correo', response.data['errores'])
 
     def test_tecnico_sees_only_docentes_and_cannot_create_admin(self):
         """Aplica el alcance funcional del rol técnico."""
@@ -208,7 +208,7 @@ class UsuarioAPITests(APITestCase):
         self.assertEqual(list_response.data['count'], 1)
         self.assertEqual(list_response.data['results'][0]['rol'], 'docente')
         self.assertEqual(create_response.status_code, 400)
-        self.assertIn('rol', create_response.data)
+        self.assertIn('rol', create_response.data['errores'])
 
     def test_filters_and_statistics(self):
         """Entrega resultados filtrados e indicadores consistentes."""

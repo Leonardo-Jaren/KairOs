@@ -1,2 +1,2 @@
-# historial/views
-# TODO: Implementar vistas/viewsets para Historial
+from historial.views.historial_views import HistorialViewSet
+__all__ = ['HistorialViewSet']

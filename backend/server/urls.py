@@ -14,5 +14,5 @@ urlpatterns = [
     # path('api/v1/software/', include('software.urls')),
     # path('api/v1/mantenimiento/', include('mantenimiento.urls')),
     # path('api/v1/incidencias/', include('incidencias.urls')),
-    # path('api/v1/historial/', include('historial.urls')),
+    path('api/v1/historial/', include('historial.urls')),
 ]

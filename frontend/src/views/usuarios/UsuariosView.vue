@@ -1,5 +1,6 @@
 <script setup>
 import {
+  Eye,
   Pencil,
   Plus,
   Search,
@@ -9,7 +10,9 @@ import {
   UserX,
   Wrench,
 } from '@lucide/vue';
+import { shallowRef } from 'vue';
 
+import EntityDetailModal from '@/components/shared/EntityDetailModal.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
@@ -19,6 +22,8 @@ import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTable from '@/components/tables/BaseTable.vue';
 import BaseToast from '@/components/toasts/BaseToast.vue';
 import { useUsuarios } from '@/composables/usuarios/useUsuarios';
+
+const detailUsuario = shallowRef(null);
 
 const columns = [
   { key: 'usuario', label: 'Usuario' },
@@ -169,15 +174,19 @@ const roleLabels = {
         </span>
       </template>
       <template #cell-acciones="{ item }">
-        <div v-if="canManageAll" class="flex justify-end gap-1">
-          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar usuario" @click="openEdit(item)">
-            <Pencil :size="17" />
+        <div class="flex justify-end gap-1">
+          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Ver detalle" @click="detailUsuario = item">
+            <Eye :size="17" />
           </button>
-          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Desactivar usuario" @click="askDelete(item)">
-            <UserX :size="17" />
-          </button>
+          <template v-if="canManageAll">
+            <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar usuario" @click="openEdit(item)">
+              <Pencil :size="17" />
+            </button>
+            <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Desactivar usuario" @click="askDelete(item)">
+              <UserX :size="17" />
+            </button>
+          </template>
         </div>
-        <span v-else class="text-xs text-slate-400">Solo lectura</span>
       </template>
     </BaseTable>
 
@@ -229,6 +238,59 @@ const roleLabels = {
         <BaseButton variant="danger" :loading="saving" :full-width="false" @click="confirmDelete">Desactivar</BaseButton>
       </template>
     </BaseModal>
+
+    <EntityDetailModal
+      :open="detailUsuario !== null"
+      :title="detailUsuario?.nombre_completo ?? ''"
+      description="Información de la cuenta y registro de auditoría."
+      modulo="usuario"
+      :object-id="detailUsuario?.id"
+      @close="detailUsuario = null"
+    >
+      <template #info>
+        <div v-if="detailUsuario" class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+          <div class="flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Nombre</p>
+            <p class="text-sm font-semibold text-slate-800">{{ detailUsuario.nombre }}</p>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Apellido</p>
+            <p class="text-sm font-semibold text-slate-800">{{ detailUsuario.apellido }}</p>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Usuario</p>
+            <p class="font-mono text-sm text-slate-700">@{{ detailUsuario.username }}</p>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">DNI</p>
+            <p class="font-mono text-sm text-slate-700">{{ detailUsuario.dni || '—' }}</p>
+          </div>
+          <div class="sm:col-span-2 flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Correo institucional</p>
+            <p class="text-sm text-slate-700">{{ detailUsuario.correo }}</p>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Rol</p>
+            <span
+              class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset"
+              :class="roleClasses[detailUsuario.rol]"
+            >
+              {{ roleLabels[detailUsuario.rol] ?? detailUsuario.rol }}
+            </span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Estado</p>
+            <span
+              class="inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+              :class="detailUsuario.is_active ? 'bg-success-50 text-success-700' : 'bg-slate-100 text-slate-500'"
+            >
+              <span class="size-1.5 rounded-full" :class="detailUsuario.is_active ? 'bg-success-500' : 'bg-slate-400'" />
+              {{ detailUsuario.is_active ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+        </div>
+      </template>
+    </EntityDetailModal>
 
     <BaseToast :show="toast.show" :message="toast.message" :type="toast.type" @close="closeToast" />
   </div>

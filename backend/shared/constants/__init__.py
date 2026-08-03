@@ -1,0 +1,3 @@
+from .roles import ROL_ADMIN, ROL_TECNICO, ROL_DOCENTE, ROLES
+
+__all__ = ['ROL_ADMIN', 'ROL_TECNICO', 'ROL_DOCENTE', 'ROLES']

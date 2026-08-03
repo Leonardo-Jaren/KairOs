@@ -67,6 +67,12 @@ const routes = [
         component: () => import('@/views/espacios/EspacioDetalleView.vue'),
         meta: { title: 'Detalle del espacio', roles: ['admin', 'tecnico'] },
       },
+      {
+        path: '/historial',
+        name: 'Historial',
+        component: () => import('@/views/historial/HistorialView.vue'),
+        meta: { title: 'Historial de auditoría', roles: ['admin', 'tecnico'] },
+      },
     ],
   },
   // Ruta comodin para redirigir paginas no encontradas

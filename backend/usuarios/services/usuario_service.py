@@ -1,12 +1,18 @@
 from rest_framework.exceptions import ValidationError
 
-from shared.base_service import BaseService
+from shared.base import BaseService
+from shared.mixins import AuditableMixin
 from usuarios.models import Usuario
 from usuarios.repositories.usuario_repository import UsuarioRepository
 
 
-class UsuarioService(BaseService):
+class UsuarioService(AuditableMixin, BaseService):
     """Aplica las reglas de negocio de administración de usuarios."""
+
+    ALTA          = 'usuario.alta'
+    ACTUALIZACION = 'usuario.actualizacion'
+    DESACTIVACION = 'usuario.desactivacion'
+    CAMBIO_ROL    = 'usuario.cambio_rol'
 
     def __init__(self):
         self.repository = UsuarioRepository()
@@ -18,7 +24,6 @@ class UsuarioService(BaseService):
         rol: str = '',
         activo: bool | None = None,
     ):
-        """Lista cuentas respetando el alcance permitido para el actor."""
         return self.repository.listar(
             busqueda=busqueda.strip(),
             rol=rol,
@@ -26,8 +31,9 @@ class UsuarioService(BaseService):
             solo_docentes=actor.rol == 'tecnico',
         )
 
-    def create(self, data: dict, actor: Usuario | None = None) -> Usuario:
-        """Crea una cuenta después de validar unicidad y permisos de rol."""
+    # ── Hooks de lógica de negocio ─────────────────────────────────────────────
+
+    def _do_create(self, data: dict, actor=None) -> Usuario:
         clean_data = data.copy()
         self._validar_actor(actor, clean_data.get('rol', 'usuario'))
         self._validar_unicidad(clean_data)
@@ -35,55 +41,69 @@ class UsuarioService(BaseService):
         clean_data['username'] = clean_data['username'].strip()
         return self.repository.create(**clean_data)
 
-    def update(
-        self,
-        id: int,
-        data: dict,
-        actor: Usuario | None = None,
-    ) -> Usuario:
-        """Actualiza una cuenta sin permitir duplicados ni escalamiento de rol."""
+    def _do_update(self, id: int, data: dict, actor=None) -> Usuario:
         instance = self.get_by_id(id)
         clean_data = data.copy()
-        resulting_role = clean_data.get('rol', instance.rol)
-        self._validar_actor(actor, resulting_role, instance)
+        self._validar_actor(actor, clean_data.get('rol', instance.rol), instance)
         self._validar_unicidad(clean_data, exclude_id=instance.id)
-
         if 'correo' in clean_data:
             clean_data['correo'] = clean_data['correo'].strip().lower()
         if 'username' in clean_data:
             clean_data['username'] = clean_data['username'].strip()
-
         return self.repository.update(instance, **clean_data)
 
-    def delete(self, id: int, actor: Usuario | None = None) -> None:
-        """Desactiva una cuenta sin eliminar sus relaciones históricas."""
+    def _do_delete(self, id: int, actor=None) -> Usuario:
         instance = self.get_by_id(id)
         if actor and actor.id == instance.id:
-            raise ValidationError({
-                'detail': 'No puedes desactivar tu propia cuenta.'
-            })
+            raise ValidationError({'detail': 'No puedes desactivar tu propia cuenta.'})
         self.repository.deactivate(instance)
+        return instance
+
+    # ── Hooks de auditoría ─────────────────────────────────────────────────────
+
+    def _audit_on_create(self, instance, data, actor, ctx: dict):
+        self._audit_registrar(
+            instance, self.ALTA, actor,
+            f'Cuenta {instance.username} registrada con rol {instance.rol}.',
+        )
+
+    def _audit_on_update(self, cambios: list, instance, actor):
+        rol_cambio = next((c for c in cambios if c['campo'] == 'Rol'), None)
+        if rol_cambio:
+            self._audit_registrar(
+                instance, self.CAMBIO_ROL, actor,
+                f'Rol de {instance.username} cambiado de {rol_cambio["antes"]} a {rol_cambio["despues"]}.',
+                datos_extra={'cambios': [rol_cambio]},
+            )
+        otros = [c for c in cambios if c['campo'] != 'Rol']
+        if otros:
+            self._audit_registrar(
+                instance, self.ACTUALIZACION, actor,
+                f'Datos de {instance.username} actualizados.',
+                datos_extra={'cambios': otros},
+            )
+
+    def _audit_on_delete(self, instance, actor):
+        self._audit_registrar(
+            instance, self.DESACTIVACION, actor,
+            f'Cuenta {instance.username} desactivada.',
+        )
+
+    # ── Métodos auxiliares ─────────────────────────────────────────────────────
 
     def get_by_correo(self, correo: str) -> Usuario | None:
-        """Obtiene una cuenta mediante su correo electrónico."""
         return self.repository.get_by_correo(correo)
 
     def get_estadisticas(self, actor: Usuario) -> dict:
-        """Retorna métricas agregadas del módulo de usuarios."""
-        return self.repository.get_estadisticas(
-            solo_docentes=actor.rol == 'tecnico'
-        )
+        return self.repository.get_estadisticas(solo_docentes=actor.rol == 'tecnico')
 
     def create_google_user(self, correo: str, nombre: str) -> Usuario:
-        """Crea una cuenta externa con un nombre de usuario único."""
         base_username = correo.split('@')[0]
         username = base_username
         counter = 1
-
         while self.repository.username_exists(username):
             username = f'{base_username}{counter}'
             counter += 1
-
         return self.repository.create_user(
             correo=correo.strip().lower(),
             username=username,
@@ -92,21 +112,14 @@ class UsuarioService(BaseService):
             is_active=True,
         )
 
-    def _validar_unicidad(
-        self,
-        data: dict,
-        exclude_id: int | None = None,
-    ) -> None:
-        """Valida campos únicos sin acceder al ORM fuera del repository."""
+    def _validar_unicidad(self, data: dict, exclude_id: int | None = None) -> None:
         correo = data.get('correo')
         username = data.get('username')
         errors = {}
-
         if correo and self.repository.correo_exists(correo, exclude_id):
             errors['correo'] = 'Ya existe un usuario con este correo electrónico.'
         if username and self.repository.username_exists(username, exclude_id):
             errors['username'] = 'Ya existe un usuario con este nombre de usuario.'
-
         if errors:
             raise ValidationError(errors)
 
@@ -116,10 +129,7 @@ class UsuarioService(BaseService):
         resulting_role: str,
         instance: Usuario | None = None,
     ) -> None:
-        """Impide que un técnico gestione cuentas ajenas al rol docente."""
         if not actor or actor.rol != 'tecnico':
             return
         if resulting_role != 'docente' or (instance and instance.rol != 'docente'):
-            raise ValidationError({
-                'rol': 'Los técnicos solo pueden gestionar usuarios docentes.'
-            })
+            raise ValidationError({'rol': 'Los técnicos solo pueden gestionar usuarios docentes.'})
