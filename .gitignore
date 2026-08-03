@@ -23,5 +23,5 @@ skills/
 skills/docs
 
 # ─── Logs ─────────────────────────────────────────────────────────────
-backend/logs/*.log
+backend/logs/
 
