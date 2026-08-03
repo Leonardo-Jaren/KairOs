@@ -56,5 +56,5 @@ El registro de auditoría es automático mediante `AuditableMixin` en `shared/`,
 
 ## Enlaces
 
-- PR: pendiente
-- Issue GitHub: pendiente
+- PR: https://github.com/Leonardo-Jaren/KairOs/pull/11
+- Issue GitHub: https://github.com/Leonardo-Jaren/KairOs/issues/12
