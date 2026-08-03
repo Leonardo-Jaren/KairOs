@@ -24,5 +24,5 @@ técnicos en todo momento.
 
 ## Enlaces
 
-- PR: Pendiente de generar
-- Issue GitHub: Pendiente de generar
+- PR: https://github.com/Leonardo-Jaren/KairOs/pull/9
+- Issue GitHub: https://github.com/Leonardo-Jaren/KairOs/issues/10
