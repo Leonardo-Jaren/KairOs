@@ -1,2 +1,3 @@
-# mantenimiento/views
-# TODO: Implementar vistas/viewsets para Mantenimiento y TecnicoMantenimiento
+from .mantenimiento_views import MantenimientoViewSet
+
+__all__ = ['MantenimientoViewSet']
