@@ -1,2 +1,6 @@
-# mantenimiento/serializers
-# TODO: Implementar serializers para Mantenimiento y TecnicoMantenimiento
+from .mantenimiento_serializers import (
+    MantenimientoCreateUpdateSerializer,
+    MantenimientoSerializer,
+)
+
+__all__ = ['MantenimientoSerializer', 'MantenimientoCreateUpdateSerializer']

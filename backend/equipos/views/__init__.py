@@ -1,2 +1,3 @@
-# equipos/views
-# TODO: Implementar vistas/viewsets para Equipo y Componente
+from .equipo_views import EquipoViewSet
+
+__all__ = ['EquipoViewSet']

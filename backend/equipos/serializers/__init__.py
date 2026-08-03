@@ -1,2 +1,3 @@
-# equipos/serializers
-# TODO: Implementar serializers para Equipo y Componente
+from .equipo_serializers import EquipoCreateUpdateSerializer, EquipoSerializer
+
+__all__ = ['EquipoSerializer', 'EquipoCreateUpdateSerializer']
