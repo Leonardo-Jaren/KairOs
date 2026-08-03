@@ -338,7 +338,7 @@ class EspacioUsuarioAPITests(APITestCase):
         response = self.client.post(self.list_url, self.payload, format='json')
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn('detail', response.data)
+        self.assertIn('detail', response.data['errores'])
 
     def test_tecnico_has_read_only_access(self):
         """Permite consultas a técnicos y bloquea modificaciones."""
