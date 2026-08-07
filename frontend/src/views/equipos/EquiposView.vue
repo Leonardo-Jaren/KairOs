@@ -2,6 +2,7 @@
 import {
   AlertTriangle,
   Boxes,
+  Eye,
   MonitorCog,
   Pencil,
   Plus,
@@ -9,9 +10,11 @@ import {
   Trash2,
   Wrench,
 } from '@lucide/vue';
+import { shallowRef } from 'vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
+import EquipoDetailModal from '@/components/equipos/EquipoDetailModal.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BasePagination from '@/components/pagination/BasePagination.vue';
@@ -61,6 +64,8 @@ const {
   changePage,
   closeToast,
 } = useEquipos();
+
+const detailEquipo = shallowRef(null);
 
 const estadoClasses = {
   en_uso: 'bg-success-50 text-success-700',
@@ -174,15 +179,19 @@ const estadoDotClasses = {
         </span>
       </template>
       <template #cell-acciones="{ item }">
-        <div v-if="canManageAll" class="flex justify-end gap-1">
-          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar equipo" @click="openEdit(item)">
-            <Pencil :size="17" />
+        <div class="flex justify-end gap-1">
+          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Ver detalle" @click="detailEquipo = item">
+            <Eye :size="17" />
           </button>
-          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Retirar equipo" @click="askDelete(item)">
-            <Trash2 :size="17" />
-          </button>
+          <template v-if="canManageAll">
+            <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar equipo" @click="openEdit(item)">
+              <Pencil :size="17" />
+            </button>
+            <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Retirar equipo" @click="askDelete(item)">
+              <Trash2 :size="17" />
+            </button>
+          </template>
         </div>
-        <span v-else class="text-xs text-slate-400">Solo lectura</span>
       </template>
     </BaseTable>
 
@@ -233,5 +242,12 @@ const estadoDotClasses = {
     </BaseModal>
 
     <BaseToast :show="toast.show" :message="toast.message" :type="toast.type" @close="closeToast" />
+
+    <EquipoDetailModal
+      :open="detailEquipo !== null"
+      :equipo="detailEquipo"
+      :can-edit="canManageAll"
+      @close="detailEquipo = null"
+    />
   </div>
 </template>

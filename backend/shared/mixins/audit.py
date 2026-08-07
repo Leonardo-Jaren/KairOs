@@ -70,10 +70,11 @@ class AuditableMixin:
 
     def update(self, id: int, data: dict, actor=None):
         before = self._audit_snapshot(self.get_by_id(id))
-        updated = self._do_update(id, data, actor)
+        result = self._do_update(id, data, actor)
+        updated, ctx = result if isinstance(result, tuple) else (result, {})
         after = self._audit_snapshot(updated)
         cambios = self._audit_detect_changes(before, after)
-        self._audit_on_update(cambios, updated, actor)
+        self._audit_on_update(cambios, updated, actor, ctx)
         return updated
 
     def delete(self, id: int, actor=None):
@@ -103,7 +104,7 @@ class AuditableMixin:
             f'{str(instance)} registrado.',
         )
 
-    def _audit_on_update(self, cambios: list, instance, actor):
+    def _audit_on_update(self, cambios: list, instance, actor, ctx: dict | None = None):
         if cambios:
             self._audit_registrar(
                 instance,

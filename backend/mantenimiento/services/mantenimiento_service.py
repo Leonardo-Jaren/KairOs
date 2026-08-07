@@ -3,11 +3,19 @@ from rest_framework.exceptions import ValidationError
 from mantenimiento.models import Mantenimiento
 from mantenimiento.repositories import MantenimientoRepository
 from shared.base import BaseService
+from shared.mixins import AuditableMixin
 from usuarios.models import Usuario
 
 
-class MantenimientoService(BaseService):
+class MantenimientoService(AuditableMixin, BaseService):
     """Aplica las reglas de negocio para gestionar tickets de mantenimiento."""
+
+    APERTURA           = 'mantenimiento.apertura'
+    ACTUALIZACION      = 'mantenimiento.actualizacion'
+    ASIGNACION_TECNICO = 'mantenimiento.asignacion_tecnico'
+    EN_PROCESO         = 'mantenimiento.en_proceso'
+    RESOLUCION         = 'mantenimiento.resolucion'
+    CANCELACION        = 'mantenimiento.cancelacion'
 
     def __init__(self):
         self.repository = MantenimientoRepository()
@@ -19,7 +27,6 @@ class MantenimientoService(BaseService):
         tipo_mantenimiento: str = '',
         equipo_id: int | None = None,
     ):
-        """Lista tickets aplicando filtros normalizados."""
         return self.repository.listar(
             busqueda=busqueda.strip(),
             estado=estado.strip(),
@@ -27,44 +34,70 @@ class MantenimientoService(BaseService):
             equipo_id=equipo_id,
         )
 
-    def create(self, data: dict, actor: Usuario) -> Mantenimiento:
-        """Crea un ticket de mantenimiento junto a sus tecnicos asignados."""
+    # ── Hooks de lógica de negocio ─────────────────────────────────────────────
+
+    def _do_create(self, data: dict, actor: Usuario = None) -> Mantenimiento:
         clean_data = data.copy()
         tecnico_ids = clean_data.pop('tecnicos_ids', [])
         equipo = self._resolver_equipo(clean_data.pop('equipo_id'))
         self._validar_tecnicos(tecnico_ids)
-
-        instance = self.repository.create(
-            **clean_data,
-            equipo=equipo,
-            created_by=actor,
-            updated_by=actor,
-        )
+        instance = self.repository.create(**clean_data, equipo=equipo, created_by=actor, updated_by=actor)
         self.repository.sync_tecnicos(instance, tecnico_ids)
         return self.repository.get_by_id(instance.id)
 
-    def update(self, id: int, data: dict, actor: Usuario) -> Mantenimiento:
-        """Actualiza un ticket y resincroniza sus tecnicos asignados."""
+    def _do_update(self, id: int, data: dict, actor: Usuario = None):
         instance = self.get_by_id(id)
         clean_data = data.copy()
         tecnico_ids = clean_data.pop('tecnicos_ids', None)
-
         if 'equipo_id' in clean_data:
             clean_data['equipo'] = self._resolver_equipo(clean_data.pop('equipo_id'))
-
         clean_data['updated_by'] = actor
         self.repository.update(instance, **clean_data)
-
+        tecnicos_cambiaron = False
         if tecnico_ids is not None:
             self._validar_tecnicos(tecnico_ids)
             self.repository.sync_tecnicos(instance, tecnico_ids)
+            tecnicos_cambiaron = True
+        return self.repository.get_by_id(instance.id), {'tecnicos_cambiaron': tecnicos_cambiaron}
 
-        return self.repository.get_by_id(instance.id)
-
-    def delete(self, id: int, actor: Usuario) -> None:
-        """Realiza borrado logico del ticket de mantenimiento."""
+    def _do_delete(self, id: int, actor: Usuario = None) -> Mantenimiento:
         instance = self.get_by_id(id)
         self.repository.soft_delete(instance, actor)
+        return instance
+
+    # ── Hooks de auditoría ─────────────────────────────────────────────────────
+
+    def _audit_on_create(self, instance, data, actor, ctx: dict):
+        self._audit_registrar(instance, self.APERTURA, actor, f'Ticket {instance} abierto.')
+
+    def _audit_on_update(self, cambios: list, instance, actor, ctx: dict | None = None):
+        ctx = ctx or {}
+        restantes = []
+        for cambio in cambios:
+            if cambio['campo'] == 'Estado':
+                nuevo = cambio['despues']
+                if nuevo == 'en_proceso':
+                    self._audit_registrar(instance, self.EN_PROCESO, actor,
+                        f'Ticket {instance}: trabajo iniciado.')
+                elif nuevo == 'resuelto':
+                    self._audit_registrar(instance, self.RESOLUCION, actor,
+                        f'Ticket {instance} resuelto.')
+                elif nuevo == 'cancelado':
+                    self._audit_registrar(instance, self.CANCELACION, actor,
+                        f'Ticket {instance} cancelado.')
+            else:
+                restantes.append(cambio)
+        if ctx.get('tecnicos_cambiaron'):
+            self._audit_registrar(instance, self.ASIGNACION_TECNICO, actor,
+                f'Técnicos del ticket {instance} actualizados.')
+        if restantes:
+            self._audit_registrar(instance, self.ACTUALIZACION, actor,
+                f'Ticket {instance} actualizado.',
+                datos_extra={'cambios': restantes},
+            )
+
+    def _audit_on_delete(self, instance, actor):
+        self._audit_registrar(instance, self.CANCELACION, actor, f'Ticket {instance} cancelado.')
 
     def get_estadisticas(self) -> dict:
         """Retorna indicadores agregados para la cabecera del modulo."""

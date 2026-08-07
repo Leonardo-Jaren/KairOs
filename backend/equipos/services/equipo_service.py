@@ -3,11 +3,20 @@ from rest_framework.exceptions import ValidationError
 from equipos.models import Equipo
 from equipos.repositories import EquipoRepository
 from shared.base import BaseService
+from shared.mixins import AuditableMixin
 from usuarios.models import Usuario
 
 
-class EquipoService(BaseService):
+class EquipoService(AuditableMixin, BaseService):
     """Aplica las reglas de negocio para gestionar equipos informaticos."""
+
+    ALTA                 = 'equipo.alta'
+    BAJA                 = 'equipo.baja'
+    ACTUALIZACION        = 'equipo.actualizacion'
+    CAMBIO_ESTADO        = 'equipo.cambio_estado'
+    ASIGNACION_ESPACIO   = 'equipo.asignacion_espacio'
+    REASIGNACION_ESPACIO = 'equipo.reasignacion_espacio'
+    CAMBIO_RESPONSABLE   = 'equipo.cambio_responsable'
 
     def __init__(self):
         self.repository = EquipoRepository()
@@ -19,7 +28,6 @@ class EquipoService(BaseService):
         estado: str = '',
         espacio_id: int | None = None,
     ):
-        """Lista equipos aplicando filtros normalizados."""
         return self.repository.listar(
             busqueda=busqueda.strip(),
             tipo_equipo=tipo_equipo.strip(),
@@ -27,19 +35,15 @@ class EquipoService(BaseService):
             espacio_id=espacio_id,
         )
 
-    def create(self, data: dict, actor: Usuario) -> Equipo:
-        """Crea un equipo validando unicidad de codigo y numero de serie."""
+    # ── Hooks de lógica de negocio ─────────────────────────────────────────────
+
+    def _do_create(self, data: dict, actor: Usuario = None) -> Equipo:
         clean_data = self._normalizar(data)
         self._validar_unicidad(clean_data)
-        instance = self.repository.create(
-            **clean_data,
-            created_by=actor,
-            updated_by=actor,
-        )
+        instance = self.repository.create(**clean_data, created_by=actor, updated_by=actor)
         return self.repository.get_by_id(instance.id)
 
-    def update(self, id: int, data: dict, actor: Usuario) -> Equipo:
-        """Actualiza un equipo conservando la unicidad de sus identificadores."""
+    def _do_update(self, id: int, data: dict, actor: Usuario = None) -> Equipo:
         instance = self.get_by_id(id)
         clean_data = self._normalizar(data, partial=True)
         self._validar_unicidad(clean_data, exclude_id=instance.id)
@@ -47,10 +51,51 @@ class EquipoService(BaseService):
         self.repository.update(instance, **clean_data)
         return self.repository.get_by_id(instance.id)
 
-    def delete(self, id: int, actor: Usuario) -> None:
-        """Realiza borrado logico del equipo."""
+    def _do_delete(self, id: int, actor: Usuario = None) -> Equipo:
         instance = self.get_by_id(id)
         self.repository.soft_delete(instance, actor)
+        return instance
+
+    # ── Hooks de auditoría ─────────────────────────────────────────────────────
+
+    def _audit_on_create(self, instance, data, actor, ctx: dict):
+        self._audit_registrar(instance, self.ALTA, actor, f'Equipo {instance.codigo} registrado.')
+
+    def _audit_on_update(self, cambios: list, instance, actor, ctx: dict | None = None):
+        restantes = []
+        for cambio in cambios:
+            campo, antes, despues = cambio['campo'], cambio['antes'], cambio['despues']
+            if campo == 'Estado':
+                self._audit_registrar(
+                    instance, self.CAMBIO_ESTADO, actor,
+                    f'{instance.codigo}: estado cambió a "{despues}".',
+                    datos_extra={'cambios': [cambio]},
+                )
+            elif campo == 'Espacio asignado':
+                tipo = self.ASIGNACION_ESPACIO if antes == '—' else self.REASIGNACION_ESPACIO
+                desc = (
+                    f'{instance.codigo} asignado a espacio (id={despues}).'
+                    if antes == '—'
+                    else f'{instance.codigo} movido de espacio (id={antes}) a (id={despues}).'
+                )
+                self._audit_registrar(instance, tipo, actor, desc, datos_extra={'cambios': [cambio]})
+            elif campo == 'Usuario asignado/responsable':
+                self._audit_registrar(
+                    instance, self.CAMBIO_RESPONSABLE, actor,
+                    f'Responsable de {instance.codigo} cambió a "{despues}".',
+                    datos_extra={'cambios': [cambio]},
+                )
+            else:
+                restantes.append(cambio)
+        if restantes:
+            self._audit_registrar(
+                instance, self.ACTUALIZACION, actor,
+                f'Equipo {instance.codigo} actualizado.',
+                datos_extra={'cambios': restantes},
+            )
+
+    def _audit_on_delete(self, instance, actor):
+        self._audit_registrar(instance, self.BAJA, actor, f'Equipo {instance.codigo} dado de baja.')
 
     def get_estadisticas(self) -> dict:
         """Retorna indicadores para la cabecera del modulo."""

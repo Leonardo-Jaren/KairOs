@@ -67,7 +67,7 @@ class UsuarioService(AuditableMixin, BaseService):
             f'Cuenta {instance.username} registrada con rol {instance.rol}.',
         )
 
-    def _audit_on_update(self, cambios: list, instance, actor):
+    def _audit_on_update(self, cambios: list, instance, actor, ctx: dict | None = None):
         rol_cambio = next((c for c in cambios if c['campo'] == 'Rol'), None)
         if rol_cambio:
             self._audit_registrar(
