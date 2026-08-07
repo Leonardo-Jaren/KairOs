@@ -9,6 +9,20 @@ defineProps({
 
 const emit = defineEmits(['show-detail']);
 
+const MODULO_LABELS = {
+  usuario:        'Usuario',
+  espacio:        'Espacio',
+  espaciousuario: 'Espacio usuario',
+  equipo:         'Equipo',
+  mantenimiento:  'Mantenimiento',
+  incidencia:     'Incidencia',
+  software:       'Software',
+};
+
+function formatModulo(modulo) {
+  return MODULO_LABELS[modulo] ?? modulo;
+}
+
 const COLUMNS = [
   { key: 'fecha', label: 'Fecha' },
   { key: 'usuario_nombre', label: 'Usuario' },
@@ -31,8 +45,8 @@ const COLUMNS = [
     </template>
 
     <template #cell-modulo="{ item }">
-      <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold capitalize text-primary-700">
-        {{ item.modulo }}
+      <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+        {{ formatModulo(item.modulo) }}
       </span>
     </template>
 

@@ -80,6 +80,12 @@ const routes = [
         meta: { title: 'Equipos', roles: ['admin', 'tecnico'] },
       },
       {
+        path: '/componentes',
+        name: 'Componentes',
+        component: () => import('@/views/equipos/ComponentesView.vue'),
+        meta: { title: 'Componentes', roles: ['admin', 'tecnico'] },
+      },
+      {
         path: '/mantenimiento',
         name: 'Mantenimiento',
         component: () => import('@/views/mantenimiento/MantenimientoView.vue'),

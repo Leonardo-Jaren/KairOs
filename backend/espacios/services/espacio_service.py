@@ -68,7 +68,7 @@ class EspacioService(AuditableMixin, BaseService):
         )
         self._audit_registrar(instance, self.ALTA, actor, desc)
 
-    def _audit_on_update(self, cambios: list, instance, actor):
+    def _audit_on_update(self, cambios: list, instance, actor, ctx: dict | None = None):
         if cambios:
             self._audit_registrar(
                 instance, self.ACTUALIZACION, actor,

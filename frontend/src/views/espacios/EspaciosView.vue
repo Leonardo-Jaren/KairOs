@@ -101,10 +101,11 @@
       </template>
       <template #cell-acciones="{ item }">
         <div class="flex justify-end gap-1">
-          <RouterLink :to="`/espacios/${item.id}`"
-            class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Ver espacio">
+          <button type="button"
+            class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Ver espacio"
+            @click="detailEspacio = item">
             <Eye :size="17" />
-          </RouterLink>
+          </button>
           <button v-if="canEdit" type="button"
             class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar espacio"
             @click="openEdit(item)">
@@ -163,15 +164,76 @@
       </template>
     </BaseModal>
 
+    <EntityDetailModal
+      :open="detailEspacio !== null"
+      :title="detailEspacio?.codigo_espacio ?? ''"
+      description="Información del espacio y registro de auditoría."
+      modulo="espacio"
+      :object-id="detailEspacio?.id"
+      @close="detailEspacio = null"
+    >
+      <template #info>
+        <div class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Código</dt>
+            <dd class="mt-1 text-sm font-semibold text-slate-900">{{ detailEspacio?.codigo_espacio }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tipo</dt>
+            <dd class="mt-1">
+              <span class="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                {{ detailEspacio?.tipo_display }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Pabellón</dt>
+            <dd class="mt-1 text-sm text-slate-700">{{ detailEspacio?.pabellon }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Piso</dt>
+            <dd class="mt-1 text-sm text-slate-700">{{ detailEspacio?.piso }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Responsable</dt>
+            <dd class="mt-1">
+              <template v-if="detailEspacio?.responsable">
+                <p class="text-sm font-medium text-slate-900">{{ detailEspacio.responsable.nombre_completo }}</p>
+                <p class="text-xs text-slate-400">{{ detailEspacio.responsable.correo }}</p>
+              </template>
+              <span v-else class="text-xs text-slate-400">Sin asignar</span>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Equipos asignados</dt>
+            <dd class="mt-1 text-sm font-semibold text-slate-900">{{ detailEspacio?.cantidad_equipos ?? 0 }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Estado</dt>
+            <dd class="mt-1">
+              <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                :class="detailEspacio?.activo ? 'bg-success-50 text-success-700' : 'bg-slate-100 text-slate-500'">
+                <span class="size-1.5 rounded-full"
+                  :class="detailEspacio?.activo ? 'bg-success-500' : 'bg-slate-400'" />
+                {{ detailEspacio?.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+            </dd>
+          </div>
+        </div>
+      </template>
+    </EntityDetailModal>
+
     <BaseToast :show="toast.show" :message="toast.message" :type="toast.type" @close="closeToast" />
   </div>
 </template>
 
 <script setup>
+import { shallowRef } from 'vue';
 import { Building2, Eye, FlaskConical, Monitor, Pencil, Plus, Search, Trash2 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
+import EntityDetailModal from '@/components/shared/EntityDetailModal.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BasePagination from '@/components/pagination/BasePagination.vue';
@@ -179,6 +241,8 @@ import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTable from '@/components/tables/BaseTable.vue';
 import BaseToast from '@/components/toasts/BaseToast.vue';
 import { useEspacios } from '@/composables/espacios/useEspacios';
+
+const detailEspacio = shallowRef(null);
 
 const columns = [
   { key: 'espacio', label: 'Espacio' },
