@@ -213,6 +213,7 @@ const formatFecha = (fecha) => {
       :page="filters.page"
       :total-pages="pagination.totalPages"
       :total="pagination.total"
+      :loading="loading"
       @change="changePage"
     />
 

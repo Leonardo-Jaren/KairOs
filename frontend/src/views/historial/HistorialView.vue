@@ -55,6 +55,7 @@ const selectedEvent = shallowRef(null);
       :page="filters.page"
       :total-pages="pagination.totalPages"
       :total="pagination.total"
+      :loading="loading"
       @change="changePage"
     />
 

@@ -5,6 +5,7 @@ defineProps({
   page: { type: Number, default: 1 },
   totalPages: { type: Number, default: 1 },
   total: { type: Number, default: 0 },
+  loading: { type: Boolean, default: false },
 });
 
 defineEmits(['change']);
@@ -18,8 +19,8 @@ defineEmits(['change']);
     <div class="flex items-center gap-2">
       <button
         type="button"
-        class="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:border-slate-300 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40"
-        :disabled="page <= 1"
+        class="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition-colors duration-150 hover:border-slate-300 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40"
+        :disabled="loading || page <= 1"
         aria-label="Página anterior"
         @click="$emit('change', page - 1)"
       >
@@ -30,8 +31,8 @@ defineEmits(['change']);
       </span>
       <button
         type="button"
-        class="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:border-slate-300 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40"
-        :disabled="page >= totalPages"
+        class="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition-colors duration-150 hover:border-slate-300 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40"
+        :disabled="loading || page >= totalPages"
         aria-label="Página siguiente"
         @click="$emit('change', page + 1)"
       >
