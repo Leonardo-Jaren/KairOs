@@ -1,6 +1,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import espaciosService from '@/services/espacios.service';
+import edificiosService from '@/services/edificios.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
@@ -8,12 +9,12 @@ import { getApiErrorMessage } from '@/utils/api-errors';
 const emptyForm = () => ({
   codigo_espacio: '',
   tipo: 'laboratorio',
-  pabellon: '',
+  edificio_id: '',
   piso: '',
   activo: true,
 });
 
-export function useEspacios(service = espaciosService) {
+export function useEspacios(service = espaciosService, buildingService = edificiosService) {
   const authStore = useAuthStore();
   const espacios = ref([]);
   const loading = ref(false);
@@ -28,6 +29,7 @@ export function useEspacios(service = espaciosService) {
   const pagination = reactive({ total: 0, totalPages: 1 });
   const stats = reactive({ total: 0, activos: 0, laboratorios: 0, equipos: 0 });
   const toast = reactive({ show: false, message: '', type: 'success' });
+  const buildings = ref([]);
 
   const canEdit = computed(() => authStore.user?.rol === 'admin');
   const isEditing = computed(() => Boolean(editingSpace.value));
@@ -38,6 +40,10 @@ export function useEspacios(service = espaciosService) {
     { value: 'sala_computo', label: 'Sala de cómputo' },
     { value: 'otro', label: 'Otro' },
   ];
+  const buildingOptions = computed(() => buildings.value.map((building) => ({
+    value: building.id,
+    label: `${building.codigo} · ${building.nombre}`,
+  })));
 
   const loadSpaces = async () => {
     loading.value = true;
@@ -61,7 +67,15 @@ export function useEspacios(service = espaciosService) {
     }
   };
 
-  const loadData = () => Promise.all([loadSpaces(), loadStats()]);
+  const loadBuildings = async () => {
+    try {
+      const data = await buildingService.listar({ activo: true, page_size: 100 });
+      buildings.value = data.results ?? data;
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudieron cargar los edificios.'), 'error');
+    }
+  };
+  const loadData = () => Promise.all([loadSpaces(), loadStats(), loadBuildings()]);
   const resetForm = () => {
     Object.assign(form, emptyForm());
     Object.keys(formErrors).forEach((key) => delete formErrors[key]);
@@ -77,7 +91,7 @@ export function useEspacios(service = espaciosService) {
     Object.assign(form, {
       codigo_espacio: space.codigo_espacio,
       tipo: space.tipo,
-      pabellon: space.pabellon,
+      edificio_id: space.edificio_id ?? space.edificio?.id ?? '',
       piso: space.piso,
       activo: space.activo,
     });
@@ -92,7 +106,7 @@ export function useEspacios(service = espaciosService) {
     Object.keys(formErrors).forEach((key) => delete formErrors[key]);
     if (!form.codigo_espacio.trim()) formErrors.codigo_espacio = 'Ingresa el código del espacio.';
     if (!form.tipo) formErrors.tipo = 'Selecciona el tipo de espacio.';
-    if (!form.pabellon.trim()) formErrors.pabellon = 'Ingresa el pabellón o edificio.';
+    if (!form.edificio_id) formErrors.edificio_id = 'Selecciona un edificio.';
     if (!form.piso.trim()) formErrors.piso = 'Ingresa el piso.';
     return Object.keys(formErrors).length === 0;
   };
@@ -156,7 +170,7 @@ export function useEspacios(service = espaciosService) {
   return {
     espacios, loading, saving, modalOpen, deleteModalOpen, pendingDelete,
     form, formErrors, filters, pagination, stats, toast, canEdit, isEditing,
-    typeOptions, loadSpaces, openCreate, openEdit, closeModal, submit,
+    typeOptions, buildingOptions, loadSpaces, openCreate, openEdit, closeModal, submit,
     askDelete, cancelDelete, confirmDelete, applyFilters, clearFilters,
     changePage, closeToast,
   };

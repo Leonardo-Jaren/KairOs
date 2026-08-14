@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from equipos.models import Equipo
 from mantenimiento.models import Mantenimiento
+from usuarios.models import Usuario
 
 
 class EquipoResumenSerializer(serializers.ModelSerializer):
@@ -10,6 +11,20 @@ class EquipoResumenSerializer(serializers.ModelSerializer):
     class Meta:
         model = Equipo
         fields = ['id', 'codigo', 'marca', 'modelo', 'tipo_equipo']
+
+
+class ReportanteSerializer(serializers.ModelSerializer):
+    """Representa los datos mínimos del usuario que reportó el ticket."""
+
+    nombre_completo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = ['id', 'nombre_completo', 'correo', 'rol']
+
+    def get_nombre_completo(self, obj: Usuario) -> str:
+        """Combina nombre y apellido del usuario reportante."""
+        return f'{obj.nombre} {obj.apellido}'.strip()
 
 
 class TecnicoAsignadoSerializer(serializers.Serializer):
@@ -29,6 +44,7 @@ class MantenimientoSerializer(serializers.ModelSerializer):
     """Representa un ticket de mantenimiento con sus relaciones expandidas."""
 
     equipo = EquipoResumenSerializer(read_only=True)
+    reportado_por = ReportanteSerializer(read_only=True)
     tipo_mantenimiento_display = serializers.CharField(
         source='get_tipo_mantenimiento_display', read_only=True,
     )
@@ -41,6 +57,7 @@ class MantenimientoSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'equipo',
+            'reportado_por',
             'fecha',
             'tipo_mantenimiento',
             'tipo_mantenimiento_display',
@@ -72,6 +89,7 @@ class MantenimientoCreateUpdateSerializer(serializers.Serializer):
     """Valida el formato de los datos de creacion y edicion de un ticket."""
 
     equipo_id = serializers.IntegerField(min_value=1)
+    reportado_por_id = serializers.IntegerField(min_value=1, required=False)
     fecha = serializers.DateField()
     tipo_mantenimiento = serializers.ChoiceField(choices=Mantenimiento.TIPO_CHOICES)
     estado = serializers.ChoiceField(choices=Mantenimiento.ESTADO_CHOICES, required=False, default='pendiente')

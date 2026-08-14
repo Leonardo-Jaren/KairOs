@@ -6,7 +6,11 @@ import {
   Cpu,
   HardDrive,
   MapPin,
+  Pencil,
+  Settings2,
   ShieldAlert,
+  Trash2,
+  UserRound,
   Wrench,
   X,
 } from '@lucide/vue';
@@ -15,9 +19,12 @@ import BaseButton from '@/components/buttons/BaseButton.vue';
 
 defineProps({
   equipment: { type: Object, default: null },
+  activeMaintenances: { type: Array, default: () => [] },
+  maintenanceLoading: { type: Boolean, default: false },
+  canEdit: { type: Boolean, default: false },
 });
 
-defineEmits(['close', 'report']);
+defineEmits(['close', 'report', 'edit', 'delete', 'manage']);
 
 const statusClasses = {
   en_uso: 'bg-success-50 text-success-700',
@@ -79,6 +86,44 @@ const statusClasses = {
                   <dd class="mt-1.5 text-xs font-semibold text-slate-700">{{ equipment.fecha_adquisicion }}</dd>
                 </div>
               </dl>
+
+              <section v-if="maintenanceLoading || activeMaintenances.length" class="mt-6 rounded-2xl border border-warning-200 bg-warning-50/60 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-extrabold text-slate-900">Atención activa</p>
+                  <span v-if="activeMaintenances.length" class="rounded-full bg-warning-100 px-2.5 py-1 text-[10px] font-bold text-warning-800">
+                    {{ activeMaintenances.length }} ticket{{ activeMaintenances.length === 1 ? '' : 's' }}
+                  </span>
+                </div>
+                <p v-if="maintenanceLoading" class="mt-3 text-xs text-slate-400">Consultando mantenimiento...</p>
+                <article v-for="ticket in activeMaintenances" v-else :key="ticket.id" class="mt-3 rounded-xl border border-warning-100 bg-white p-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wide text-warning-700">{{ ticket.estado_display }}</span>
+                    <span class="text-[10px] text-slate-400">{{ ticket.fecha }}</span>
+                  </div>
+                  <p class="mt-2 text-sm leading-5 text-slate-700">{{ ticket.descripcion }}</p>
+                  <div class="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <UserRound :size="13" />
+                    Reportó {{ ticket.reportado_por?.nombre_completo || 'Usuario no disponible' }}
+                  </div>
+                  <p class="mt-1 text-[11px] text-slate-400">Responsable: {{ ticket.tecnico_responsable }}</p>
+                </article>
+              </section>
+
+              <section v-if="canEdit" class="mt-6 grid grid-cols-2 gap-2">
+                <BaseButton variant="ghost" :full-width="false" @click="$emit('edit')">
+                  <template #icon><Pencil :size="16" /></template>
+                  Editar PC
+                </BaseButton>
+                <BaseButton variant="danger" :full-width="false" @click="$emit('delete')">
+                  <template #icon><Trash2 :size="16" /></template>
+                  Retirar
+                </BaseButton>
+              </section>
+
+              <BaseButton class="mt-3" variant="secondary" @click="$emit('manage')">
+                <template #icon><Settings2 :size="17" /></template>
+                Hardware y software
+              </BaseButton>
 
               <section class="mt-6 rounded-2xl border border-warning-200 bg-warning-50/60 p-4">
                 <div class="flex gap-3">

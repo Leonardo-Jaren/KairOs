@@ -22,10 +22,13 @@ El mapa tecnológico complementa el inventario tradicional con una vista espacia
 
 ## Criterios de aceptacion
 
-- [x] **Dado** que existen espacios activos, **cuando** se abre el mapa, **entonces** se muestran agrupados por edificio con sus laboratorios y métricas.
+- [x] **Dado** que existen espacios activos, **cuando** se abre Campus, **entonces** se muestran agrupados por edificio y piso, incluyendo laboratorios, aulas y oficinas.
+- [x] **Dado** un administrador, **cuando** gestiona Campus, **entonces** puede crear, editar o desactivar edificios y ambientes sin abandonar la vista.
 - [x] **Dado** un laboratorio con equipos, **cuando** se abre su plano, **entonces** cada estación presenta un color según su estado.
 - [x] **Dado** un administrador en modo edición, **cuando** mueve una estación y guarda, **entonces** la nueva posición persiste en la base de datos.
 - [x] **Dado** un equipo seleccionado, **cuando** se abre su ficha, **entonces** se muestran sus características principales.
+- [x] **Dado** un administrador dentro del plano, **cuando** crea o edita una PC, **entonces** puede completar sus componentes y software desde la misma ficha.
+- [x] **Dado** un equipo con atención activa, **cuando** se selecciona, **entonces** se visualiza qué falla tiene, quién la reportó y qué técnico está asignado.
 - [x] **Dado** un equipo con una falla, **cuando** se envía a mantenimiento, **entonces** se crea un ticket correctivo y el equipo cambia a En mantenimiento.
 
 ## Alcance tecnico
@@ -44,7 +47,7 @@ El mapa tecnológico complementa el inventario tradicional con una vista espacia
 
 ## Notas de implementacion
 
-La configuración del plano se almacena como JSON validado dentro del espacio. La interfaz genera una distribución inicial automática para equipos que todavía no tienen posición guardada.
+La configuración del plano se almacena como JSON validado dentro del espacio. La interfaz genera una distribución inicial automática con pasillo central para equipos que todavía no tienen posición guardada, y mantiene fija la barra de guardado mientras se edita.
 
 ## Enlaces
 

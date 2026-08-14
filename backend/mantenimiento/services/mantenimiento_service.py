@@ -42,8 +42,18 @@ class MantenimientoService(AuditableMixin, BaseService):
         clean_data = data.copy()
         tecnico_ids = clean_data.pop('tecnicos_ids', [])
         equipo = self._resolver_equipo(clean_data.pop('equipo_id'))
+        reportado_por = self._resolver_reportante(
+            clean_data.pop('reportado_por_id', None),
+            actor,
+        )
         self._validar_tecnicos(tecnico_ids)
-        instance = self.repository.create(**clean_data, equipo=equipo, created_by=actor, updated_by=actor)
+        instance = self.repository.create(
+            **clean_data,
+            equipo=equipo,
+            reportado_por=reportado_por,
+            created_by=actor,
+            updated_by=actor,
+        )
         self.repository.sync_tecnicos(instance, tecnico_ids)
         if instance.estado == 'en_proceso' and equipo.estado != 'en_mantenimiento':
             self.equipo_service.update(
@@ -59,6 +69,11 @@ class MantenimientoService(AuditableMixin, BaseService):
         tecnico_ids = clean_data.pop('tecnicos_ids', None)
         if 'equipo_id' in clean_data:
             clean_data['equipo'] = self._resolver_equipo(clean_data.pop('equipo_id'))
+        if 'reportado_por_id' in clean_data:
+            clean_data['reportado_por'] = self._resolver_reportante(
+                clean_data.pop('reportado_por_id'),
+                actor,
+            )
         clean_data['updated_by'] = actor
         self.repository.update(instance, **clean_data)
         tecnicos_cambiaron = False
@@ -130,6 +145,24 @@ class MantenimientoService(AuditableMixin, BaseService):
                 'equipo_id': 'El equipo no existe o fue retirado.'
             })
         return equipo
+
+    def _resolver_reportante(
+        self,
+        reportado_por_id: int | None,
+        actor: Usuario | None,
+    ) -> Usuario:
+        """Resuelve un reportante activo o usa al actor autenticado por defecto."""
+        usuario_id = (
+            reportado_por_id
+            if reportado_por_id is not None
+            else getattr(actor, 'id', None)
+        )
+        reportante = self.repository.get_usuario_activo_by_id(usuario_id)
+        if reportante is None:
+            raise ValidationError({
+                'reportado_por_id': 'El usuario reportante no existe o está inactivo.'
+            })
+        return reportante
 
     def _validar_tecnicos(self, tecnico_ids: list[int]) -> None:
         """Valida que los tecnicos elegidos existan y esten vigentes."""

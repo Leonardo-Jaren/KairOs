@@ -3,6 +3,45 @@ from django.db import models
 from shared.models import BaseModel
 
 
+class Edificio(BaseModel):
+    """Representa un bloque físico que agrupa espacios por piso."""
+
+    codigo = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Código del edificio',
+        help_text='Ej: EDIF-01',
+    )
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name='Nombre del edificio',
+        help_text='Ej: Edificio 1',
+    )
+    descripcion = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Descripción',
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name='Edificio activo',
+    )
+
+    class Meta:
+        db_table = 'edificios'
+        verbose_name = 'Edificio'
+        verbose_name_plural = 'Edificios'
+        ordering = ['nombre', 'codigo']
+        indexes = [
+            models.Index(fields=['codigo'], name='idx_edificio_codigo'),
+            models.Index(fields=['nombre'], name='idx_edificio_nombre'),
+            models.Index(fields=['activo'], name='idx_edificio_activo'),
+        ]
+
+    def __str__(self):
+        return f'{self.codigo} - {self.nombre}'
+
+
 class Espacio(BaseModel):
     """
     Espacios físicos: laboratorios, oficinas, aulas, etc.
@@ -32,6 +71,15 @@ class Espacio(BaseModel):
         max_length=100,
         verbose_name='Pabellón',
         help_text='Ej: Pabellón 1',
+    )
+    edificio = models.ForeignKey(
+        Edificio,
+        on_delete=models.SET_NULL,
+        related_name='espacios',
+        null=True,
+        blank=True,
+        verbose_name='Edificio',
+        help_text='Bloque físico al que pertenece el espacio.',
     )
     piso = models.CharField(
         max_length=20,

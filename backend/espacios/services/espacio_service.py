@@ -24,18 +24,23 @@ class EspacioService(AuditableMixin, BaseService):
         tipo: str = '',
         activo: bool | None = None,
         pabellon: str = '',
+        edificio: str = '',
+        edificio_id: int | None = None,
     ):
         return self.repository.listar(
             busqueda=busqueda.strip(),
             tipo=tipo.strip(),
             activo=activo,
             pabellon=pabellon.strip(),
+            edificio=edificio.strip(),
+            edificio_id=edificio_id,
         )
 
     # ── Hooks de lógica de negocio ─────────────────────────────────────────────
 
     def _do_create(self, data: dict, actor: Usuario = None):
         clean_data = self._normalizar(data)
+        self._sincronizar_pabellon(clean_data)
         existing = self.repository.get_by_codigo(clean_data['codigo_espacio'])
         if existing and existing.is_deleted:
             instance = self.repository.restore(existing, clean_data, actor)
@@ -48,6 +53,7 @@ class EspacioService(AuditableMixin, BaseService):
     def _do_update(self, id: int, data: dict, actor: Usuario = None) -> Espacio:
         instance = self.get_by_id(id)
         clean_data = self._normalizar(data, partial=True)
+        self._sincronizar_pabellon(clean_data, edificio_actual=instance.edificio)
         codigo = clean_data.get('codigo_espacio', instance.codigo_espacio)
         self._validar_codigo(codigo, exclude_id=instance.id)
         clean_data['updated_by'] = actor
@@ -148,6 +154,13 @@ class EspacioService(AuditableMixin, BaseService):
             if field in clean_data:
                 clean_data[field] = clean_data[field].strip()
         return clean_data
+
+    @staticmethod
+    def _sincronizar_pabellon(clean_data: dict, edificio_actual=None) -> None:
+        """Completa el campo histórico cuando el espacio pertenece a un edificio."""
+        edificio = clean_data.get('edificio', edificio_actual)
+        if edificio is not None and not clean_data.get('pabellon'):
+            clean_data['pabellon'] = edificio.nombre
 
     def _validar_codigo(self, codigo: str, exclude_id: int | None = None) -> None:
         if self.repository.get_by_codigo(codigo, exclude_id):

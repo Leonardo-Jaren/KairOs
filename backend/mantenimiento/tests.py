@@ -4,8 +4,9 @@ from django.test import TestCase
 
 from equipos.models import Equipo
 from espacios.models import Espacio
+from mantenimiento.serializers import MantenimientoSerializer
 from mantenimiento.services import MantenimientoService
-from usuarios.models import Usuario
+from usuarios.models import PerfilTecnico, Usuario
 
 
 class MantenimientoEstadoEquipoTests(TestCase):
@@ -35,6 +36,89 @@ class MantenimientoEstadoEquipoTests(TestCase):
             fecha_adquisicion=date(2026, 1, 1),
         )
         self.service = MantenimientoService()
+
+    def _ticket_data(self, **overrides):
+        data = {
+            'equipo_id': self.equipo.id,
+            'fecha': date(2026, 8, 14),
+            'tipo_mantenimiento': 'correctivo',
+            'estado': 'pendiente',
+            'descripcion': 'Revisión solicitada.',
+            'tecnicos_ids': [],
+        }
+        data.update(overrides)
+        return data
+
+    def test_ticket_uses_authenticated_actor_as_default_reporter(self):
+        ticket = self.service.create(self._ticket_data(), actor=self.admin)
+
+        self.assertEqual(ticket.reportado_por, self.admin)
+        self.assertEqual(
+            MantenimientoSerializer(ticket).data['reportado_por'],
+            {
+                'id': self.admin.id,
+                'nombre_completo': 'Ada',
+                'correo': 'admin.maintenance@example.com',
+                'rol': 'admin',
+            },
+        )
+
+    def test_ticket_accepts_an_explicit_active_reporter(self):
+        reportante = Usuario.objects.create_user(
+            correo='reportante.maintenance@example.com',
+            username='reportantemaintenance',
+            nombre='Grace',
+            apellido='Hopper',
+            rol='docente',
+        )
+
+        ticket = self.service.create(
+            self._ticket_data(reportado_por_id=reportante.id),
+            actor=self.admin,
+        )
+
+        self.assertEqual(ticket.reportado_por, reportante)
+        self.assertEqual(ticket.created_by, self.admin)
+
+    def test_ticket_reporter_can_be_changed_to_an_active_user(self):
+        ticket = self.service.create(self._ticket_data(), actor=self.admin)
+        reportante = Usuario.objects.create_user(
+            correo='nuevo.reportante@example.com',
+            username='nuevoreportante',
+            nombre='Katherine',
+            apellido='Johnson',
+            rol='usuario',
+        )
+
+        updated = self.service.update(
+            ticket.id,
+            {'reportado_por_id': reportante.id},
+            actor=self.admin,
+        )
+
+        self.assertEqual(updated.reportado_por, reportante)
+
+    def test_available_technicians_include_linked_user_id(self):
+        tecnico = Usuario.objects.create_user(
+            correo='tecnico.maintenance@example.com',
+            username='tecnicomantenimiento',
+            nombre='Margaret',
+            apellido='Hamilton',
+            rol='tecnico',
+        )
+        perfil = PerfilTecnico.objects.create(usuario=tecnico, area='Soporte')
+
+        opciones = self.service.get_tecnicos_disponibles()
+
+        self.assertIn(
+            {
+                'id': perfil.id,
+                'usuario_id': tecnico.id,
+                'nombre_completo': 'Margaret Hamilton',
+                'area': 'Soporte',
+            },
+            opciones,
+        )
 
     def test_ticket_in_progress_sends_equipment_to_maintenance(self):
         self.service.create(

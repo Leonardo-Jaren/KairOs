@@ -36,6 +36,7 @@ const createServices = () => {
   };
   const maintenanceService = {
     obtenerTecnicosDisponibles: vi.fn().mockResolvedValue([]),
+    listar: vi.fn().mockResolvedValue({ results: [] }),
     crear: vi.fn().mockResolvedValue({ id: 10 }),
   };
   return { spaceService, maintenanceService };
@@ -70,6 +71,7 @@ describe('usePlanoEspacio', () => {
     const keys = occupied.map((cell) => `${cell.row}-${cell.column}`);
     expect(occupied).toHaveLength(3);
     expect(new Set(keys).size).toBe(3);
+    expect(occupied.every((cell) => cell.column !== 3)).toBe(true);
   });
 
   it('guarda una posición movida y limita la edición al administrador', async () => {
@@ -107,6 +109,7 @@ describe('usePlanoEspacio', () => {
       equipo_id: 1,
       tipo_mantenimiento: 'correctivo',
       estado: 'en_proceso',
+      reportado_por_id: 99,
     }));
     expect(state.equipos.value[0].estado).toBe('en_mantenimiento');
   });

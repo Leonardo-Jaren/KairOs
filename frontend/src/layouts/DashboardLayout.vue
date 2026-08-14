@@ -5,6 +5,7 @@ import {
   Clock3,
   Gauge,
   LogOut,
+  MapPinned,
   Menu,
   MonitorCog,
   PanelLeftClose,
@@ -34,6 +35,7 @@ const initials = computed(() => {
 const menuItems = computed(() => [
   { name: 'Dashboard', path: '/dashboard', icon: Gauge },
   { name: 'Usuarios', path: '/usuarios', icon: UsersRound, roles: ['admin', 'tecnico'] },
+  { name: 'Campus', path: '/espacios/mapa', icon: MapPinned, roles: ['admin', 'tecnico'] },
   { name: 'Espacios', path: '/espacios', icon: Building2, roles: ['admin', 'tecnico'] },
   { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, roles: ['admin', 'tecnico'] },
   { name: 'Equipos', path: '/equipos', icon: MonitorCog, roles: ['admin', 'tecnico'] },

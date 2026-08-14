@@ -133,8 +133,8 @@
           :error="formErrors.codigo_espacio" />
         <BaseSelect id="space-type-form" v-model="form.tipo" label="Tipo" :options="typeOptions"
           :error="formErrors.tipo" />
-        <BaseInput id="space-building" v-model="form.pabellon" appearance="light" label="Pabellón o edificio"
-          placeholder="Pabellón 2" :error="formErrors.pabellon" />
+        <BaseSelect id="space-building" v-model="form.edificio_id" label="Edificio"
+          :options="buildingOptions" placeholder="Seleccionar edificio" :error="formErrors.edificio_id" />
         <BaseInput id="space-floor" v-model="form.piso" appearance="light" label="Piso" placeholder="2"
           :error="formErrors.piso" />
         <label
@@ -261,7 +261,7 @@ const columns = [
 const {
   espacios, loading, saving, modalOpen, deleteModalOpen, pendingDelete,
   form, formErrors, filters, pagination, stats, toast, canEdit, isEditing,
-  typeOptions, openCreate, openEdit, closeModal, submit, askDelete,
+  typeOptions, buildingOptions, openCreate, openEdit, closeModal, submit, askDelete,
   cancelDelete, confirmDelete, applyFilters, clearFilters, changePage,
   closeToast,
 } = useEspacios();

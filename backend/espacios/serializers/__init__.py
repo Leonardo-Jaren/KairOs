@@ -1,3 +1,8 @@
+from .edificio_serializers import (
+    EdificioCreateUpdateSerializer,
+    EdificioResumenSerializer,
+    EdificioSerializer,
+)
 from .espacio_serializers import (
     DisposicionEspacioSerializer,
     EspacioCreateUpdateSerializer,
@@ -10,6 +15,9 @@ from .espacio_usuario_serializers import (
 )
 
 __all__ = [
+    'EdificioSerializer',
+    'EdificioResumenSerializer',
+    'EdificioCreateUpdateSerializer',
     'EspacioSerializer',
     'EspacioDetailSerializer',
     'EspacioCreateUpdateSerializer',

@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from equipos.models import Equipo
-from espacios.models import Espacio
+from espacios.models import Edificio, Espacio
+from espacios.serializers.edificio_serializers import EdificioResumenSerializer
 from usuarios.models import Usuario
 
 
@@ -55,6 +56,8 @@ class EspacioSerializer(serializers.ModelSerializer):
     responsable = serializers.SerializerMethodField()
     cantidad_equipos = serializers.SerializerMethodField()
     resumen_equipos = serializers.SerializerMethodField()
+    edificio = EdificioResumenSerializer(read_only=True)
+    edificio_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Espacio
@@ -64,6 +67,8 @@ class EspacioSerializer(serializers.ModelSerializer):
             'tipo',
             'tipo_display',
             'pabellon',
+            'edificio',
+            'edificio_id',
             'piso',
             'activo',
             'responsable',
@@ -121,12 +126,39 @@ class EspacioDetailSerializer(EspacioSerializer):
 class EspacioCreateUpdateSerializer(serializers.ModelSerializer):
     """Valida los datos de creación y edición del espacio."""
 
+    edificio_id = serializers.PrimaryKeyRelatedField(
+        source='edificio',
+        queryset=Edificio.objects.filter(is_deleted=False, activo=True),
+        allow_null=True,
+        required=False,
+    )
+
     class Meta:
         model = Espacio
-        fields = ['codigo_espacio', 'tipo', 'pabellon', 'piso', 'activo']
+        fields = [
+            'codigo_espacio',
+            'tipo',
+            'pabellon',
+            'edificio_id',
+            'piso',
+            'activo',
+        ]
         extra_kwargs = {
             'codigo_espacio': {'validators': []},
+            'pabellon': {'required': False, 'allow_blank': True},
         }
+
+    def validate(self, attrs):
+        """Acepta edificio o pabellón para mantener clientes anteriores."""
+        edificio_actual = self.instance.edificio if self.instance else None
+        pabellon_actual = self.instance.pabellon if self.instance else ''
+        edificio = attrs.get('edificio', edificio_actual)
+        pabellon = attrs.get('pabellon', pabellon_actual).strip()
+        if edificio is None and not pabellon:
+            raise serializers.ValidationError({
+                'pabellon': 'Indique un pabellón o seleccione un edificio.'
+            })
+        return attrs
 
 
 class PuestoPlanoSerializer(serializers.Serializer):
