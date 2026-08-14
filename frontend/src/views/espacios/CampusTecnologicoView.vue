@@ -1,21 +1,18 @@
 <script setup>
 import {
   AlertTriangle,
-  ArrowRight,
   Building2,
-  DoorOpen,
-  FlaskConical,
   Layers3,
   MapPin,
   MonitorCog,
   Pencil,
   Plus,
-  Presentation,
   Search,
   Trash2,
 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import CroquisPiso from '@/components/espacios/CroquisPiso.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseTextarea from '@/components/inputs/BaseTextarea.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
@@ -32,16 +29,14 @@ const {
   closeBuildingModal, submitBuilding, askDeleteBuilding, cancelDeleteBuilding,
   confirmDeleteBuilding, openCreateSpace, openEditSpace, closeSpaceModal, submitSpace,
   askDeleteSpace, cancelDeleteSpace, confirmDeleteSpace, closeToast,
+  editingFloor, floorTool, selectedFloorSpaceId, floorSaving, startFloorEditing,
+  cancelFloorEditing, selectFloorSpace, handleFloorCell, setFloorTool,
+  resizeSelectedFloorSpace, updateFloorColumns, addFloorRow, removeFloorRow,
+  saveFloorLayout,
 } = useCampusTecnologico();
 
 const floorLabel = (count) => `${count} ${count === 1 ? 'piso' : 'pisos'}`;
 const environmentLabel = (count) => `${count} ${count === 1 ? 'ambiente' : 'ambientes'}`;
-const iconForType = (type) => ({
-  laboratorio: FlaskConical,
-  sala_computo: MonitorCog,
-  aula: Presentation,
-  oficina: DoorOpen,
-}[type] ?? MapPin);
 </script>
 
 <template>
@@ -124,24 +119,29 @@ const iconForType = (type) => ({
           </div>
 
           <div v-if="pisosVisibles.length" class="mt-3 flex flex-col gap-3 sm:mt-6 sm:gap-5">
-            <section v-for="floor in pisosVisibles" :key="floor.key" class="overflow-hidden rounded-2xl border border-slate-200">
-              <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
-                <div class="flex items-center gap-3"><span class="grid size-9 place-items-center rounded-xl bg-secondary-950 text-xs font-black text-primary-300">{{ floor.key }}</span><div><h3 class="text-sm font-extrabold text-slate-900">{{ floor.label }}</h3><p class="text-[10px] text-slate-400">{{ environmentLabel(floor.spaces.length) }} · {{ floor.labs }} tecnológicos · {{ floor.aulas }} aulas</p></div></div>
-                <BaseButton v-if="canEdit" size="sm" variant="secondary" :full-width="false" @click="openCreateSpace(floor.key)"><template #icon><Plus :size="15" /></template><span class="hidden sm:inline">Agregar aquí</span><span class="sm:hidden">Agregar</span></BaseButton>
-              </header>
-              <div class="grid gap-3 p-3 sm:grid-cols-2 2xl:grid-cols-3">
-                <article v-for="space in floor.spaces" :key="space.id" class="group relative rounded-xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/30 hover:shadow-sm">
-                  <RouterLink :to="`/espacios/${space.id}`" class="block pr-12">
-                    <div class="flex items-start gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary-950 text-primary-300"><component :is="iconForType(space.tipo)" :size="19" /></span><div class="min-w-0"><p class="truncate font-mono text-sm font-extrabold text-slate-900">{{ space.codigo_espacio }}</p><p class="mt-0.5 text-xs text-slate-500">{{ space.tipo_display }}</p></div></div>
-                    <div class="mt-4 flex items-center justify-between text-xs"><span class="text-slate-400">{{ space.cantidad_equipos }} equipos</span><span class="inline-flex items-center gap-1 font-bold text-primary-600">Abrir <ArrowRight :size="14" /></span></div>
-                  </RouterLink>
-                  <div v-if="canEdit" class="absolute right-2 top-2 flex gap-0.5 rounded-lg bg-white/95 p-0.5 shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                    <button type="button" class="rounded-md p-1.5 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar ambiente" @click="openEditSpace(space)"><Pencil :size="14" /></button>
-                    <button type="button" class="rounded-md p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Desactivar ambiente" @click="askDeleteSpace(space)"><Trash2 :size="14" /></button>
-                  </div>
-                </article>
-              </div>
-            </section>
+            <CroquisPiso
+              v-for="floor in pisosVisibles"
+              :key="floor.key"
+              :floor="floor"
+              :editing="editingFloor === floor.key"
+              :can-edit="canEdit && (!editingFloor || editingFloor === floor.key)"
+              :saving="floorSaving"
+              :selected-space-id="selectedFloorSpaceId"
+              :tool="floorTool"
+              @start-edit="startFloorEditing(floor)"
+              @save="saveFloorLayout"
+              @cancel="cancelFloorEditing"
+              @select-space="selectFloorSpace"
+              @cell-click="handleFloorCell"
+              @set-tool="setFloorTool"
+              @resize="resizeSelectedFloorSpace"
+              @update-columns="updateFloorColumns"
+              @add-row="addFloorRow"
+              @remove-row="removeFloorRow"
+              @create-space="openCreateSpace(floor.key)"
+              @edit-space="openEditSpace"
+              @delete-space="askDeleteSpace"
+            />
           </div>
           <div v-else class="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center"><MapPin :size="30" class="mx-auto text-slate-300" /><p class="mt-3 text-sm font-semibold text-slate-600">{{ search ? 'No hay ambientes que coincidan con la búsqueda.' : 'Este edificio todavía no tiene ambientes.' }}</p><BaseButton v-if="canEdit && !search" class="mt-4" variant="accent" :full-width="false" @click="openCreateSpace()">Agregar ambiente</BaseButton></div>
         </div>

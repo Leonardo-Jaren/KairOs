@@ -13,6 +13,7 @@ class EdificioService(AuditableMixin, BaseService):
     ALTA = 'edificio.alta'
     ACTUALIZACION = 'edificio.actualizacion'
     DESACTIVACION = 'edificio.desactivacion'
+    CROQUIS = 'edificio.croquis'
 
     def __init__(self):
         self.repository = EdificioRepository()
@@ -27,6 +28,85 @@ class EdificioService(AuditableMixin, BaseService):
     def get_estadisticas(self) -> dict:
         """Entrega los indicadores generales de edificios."""
         return self.repository.get_estadisticas()
+
+    def guardar_croquis_piso(
+        self,
+        id: int,
+        data: dict,
+        actor: Usuario = None,
+    ) -> Edificio:
+        """Guarda el croquis validando pertenencia, límites y superposiciones."""
+        instance = self.get_by_id(id)
+        floor = data['piso'].strip()
+        valid_space_ids = self.repository.get_space_ids_for_floor(instance.id, floor)
+        requested_space_ids = {item['espacio_id'] for item in data['ambientes']}
+
+        if requested_space_ids - valid_space_ids:
+            raise ValidationError({
+                'ambientes': 'El croquis contiene ambientes ajenos a este edificio o piso.'
+            })
+        if valid_space_ids - requested_space_ids:
+            raise ValidationError({
+                'ambientes': 'Todos los ambientes activos del piso deben estar ubicados.'
+            })
+
+        occupied = set()
+        normalized_rooms = []
+        for room in data['ambientes']:
+            last_row = room['fila'] + room['alto'] - 1
+            last_column = room['columna'] + room['ancho'] - 1
+            if last_row > data['filas'] or last_column > data['columnas']:
+                raise ValidationError({
+                    'ambientes': 'Un ambiente excede los límites del croquis.'
+                })
+            room_cells = {
+                (row, column)
+                for row in range(room['fila'], last_row + 1)
+                for column in range(room['columna'], last_column + 1)
+            }
+            if occupied & room_cells:
+                raise ValidationError({
+                    'ambientes': 'Los ambientes del croquis no pueden superponerse.'
+                })
+            occupied.update(room_cells)
+            normalized_rooms.append(dict(room))
+
+        normalized_corridors = []
+        for corridor in data['pasillos']:
+            cell = (corridor['fila'], corridor['columna'])
+            if cell[0] > data['filas'] or cell[1] > data['columnas']:
+                raise ValidationError({'pasillos': 'Un pasillo excede los límites del croquis.'})
+            if cell in occupied:
+                raise ValidationError({'pasillos': 'Un pasillo no puede atravesar un ambiente.'})
+            normalized_corridors.append(dict(corridor))
+
+        configuration = dict(instance.configuracion_croquis or {})
+        floors = dict(configuration.get('pisos') or {})
+        floors[floor] = {
+            'filas': data['filas'],
+            'columnas': data['columnas'],
+            'ambientes': normalized_rooms,
+            'pasillos': normalized_corridors,
+        }
+        configuration = {'version': 1, 'pisos': floors}
+        self.repository.update(
+            instance,
+            configuracion_croquis=configuration,
+            updated_by=actor,
+        )
+        updated = self.repository.get_by_id(instance.id)
+        self._audit_registrar(
+            updated,
+            self.CROQUIS,
+            actor,
+            f'Croquis del piso {floor} de {updated.codigo} actualizado.',
+            datos_extra={
+                'piso': floor,
+                'ambientes': len(normalized_rooms),
+                'pasillos': len(normalized_corridors),
+            },
+        )
+        return updated
 
     def _do_create(self, data: dict, actor: Usuario = None):
         clean_data = self._normalizar(data)

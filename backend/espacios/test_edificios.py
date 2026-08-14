@@ -150,6 +150,102 @@ class EdificioAPITests(APITestCase):
         self.assertEqual(response.data['laboratorios'], 1)
         self.assertEqual(response.data['aulas'], 1)
 
+    def test_admin_saves_floor_sketch_with_rooms_and_corridor(self):
+        """Persiste un croquis por piso con todos sus ambientes activos."""
+        edificio = Edificio.objects.create(codigo='EDIF-01', nombre='Edificio 1')
+        laboratorio = Espacio.objects.create(
+            codigo_espacio='LAB-101',
+            tipo='laboratorio',
+            pabellon=edificio.nombre,
+            edificio=edificio,
+            piso='1',
+        )
+        aula = Espacio.objects.create(
+            codigo_espacio='AUL-102',
+            tipo='aula',
+            pabellon=edificio.nombre,
+            edificio=edificio,
+            piso='1',
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            reverse('edificio-croquis-piso', args=[edificio.id]),
+            {
+                'piso': '1',
+                'filas': 5,
+                'columnas': 8,
+                'ambientes': [
+                    {'espacio_id': laboratorio.id, 'fila': 1, 'columna': 1, 'ancho': 3, 'alto': 2},
+                    {'espacio_id': aula.id, 'fila': 4, 'columna': 1, 'ancho': 2, 'alto': 1},
+                ],
+                'pasillos': [
+                    {'fila': 3, 'columna': column} for column in range(1, 9)
+                ],
+            },
+            format='json',
+        )
+        edificio.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(edificio.configuracion_croquis['version'], 1)
+        self.assertEqual(
+            len(edificio.configuracion_croquis['pisos']['1']['ambientes']),
+            2,
+        )
+
+    def test_floor_sketch_rejects_overlapping_rooms(self):
+        """Impide guardar dos ambientes sobre las mismas celdas."""
+        edificio = Edificio.objects.create(codigo='EDIF-01', nombre='Edificio 1')
+        espacios = [
+            Espacio.objects.create(
+                codigo_espacio=f'LAB-10{index}',
+                tipo='laboratorio',
+                pabellon=edificio.nombre,
+                edificio=edificio,
+                piso='1',
+            )
+            for index in range(1, 3)
+        ]
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            reverse('edificio-croquis-piso', args=[edificio.id]),
+            {
+                'piso': '1',
+                'filas': 5,
+                'columnas': 8,
+                'ambientes': [
+                    {'espacio_id': espacios[0].id, 'fila': 1, 'columna': 1, 'ancho': 3, 'alto': 2},
+                    {'espacio_id': espacios[1].id, 'fila': 2, 'columna': 2, 'ancho': 2, 'alto': 2},
+                ],
+                'pasillos': [],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('ambientes', response.data['errores'])
+
+    def test_tecnico_cannot_edit_floor_sketch(self):
+        """Mantiene la edición del croquis reservada al administrador."""
+        edificio = Edificio.objects.create(codigo='EDIF-01', nombre='Edificio 1')
+        self.client.force_authenticate(self.tecnico)
+
+        response = self.client.patch(
+            reverse('edificio-croquis-piso', args=[edificio.id]),
+            {
+                'piso': '1',
+                'filas': 5,
+                'columnas': 8,
+                'ambientes': [],
+                'pasillos': [],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+
     def test_space_accepts_building_and_derives_legacy_pavilion(self):
         """Crea un espacio nuevo con edificio y mantiene pabellón en la salida."""
         edificio = Edificio.objects.create(codigo='EDIF-01', nombre='Edificio 1')

@@ -12,18 +12,20 @@
 
 **Como** administrador o técnico de soporte
 
-**Quiero** recorrer los edificios y operar sobre las estaciones de cada laboratorio desde un plano visual
+**Quiero** recorrer los edificios mediante croquis por piso y operar sobre las estaciones de cada laboratorio desde un plano visual
 
 **Para** localizar rápidamente los equipos, entender su estado y atender fallas sin buscar manualmente en varias tablas.
 
 ## Descripcion
 
-El mapa tecnológico complementa el inventario tradicional con una vista espacial. La distribución de cada laboratorio puede adaptarse a diferentes cantidades de equipos, filas, columnas y pasillos, manteniendo las acciones operativas conectadas con Equipos y Mantenimiento.
+El mapa tecnológico complementa el inventario tradicional con dos escalas espaciales: el croquis del piso organiza aulas, laboratorios y pasillos; el plano interno distribuye las PCs del ambiente. Ambas escalas mantienen las acciones operativas conectadas con Equipos y Mantenimiento.
 
 ## Criterios de aceptacion
 
 - [x] **Dado** que existen espacios activos, **cuando** se abre Campus, **entonces** se muestran agrupados por edificio y piso, incluyendo laboratorios, aulas y oficinas.
 - [x] **Dado** un administrador, **cuando** gestiona Campus, **entonces** puede crear, editar o desactivar edificios y ambientes sin abandonar la vista.
+- [x] **Dado** un piso con ambientes, **cuando** se abre Campus, **entonces** se muestra un croquis que diferencia aulas, laboratorios y pasillos.
+- [x] **Dado** un administrador, **cuando** diseña un piso, **entonces** puede mover y redimensionar ambientes o dibujar pasillos sin superponerlos.
 - [x] **Dado** un laboratorio con equipos, **cuando** se abre su plano, **entonces** cada estación presenta un color según su estado.
 - [x] **Dado** un administrador en modo edición, **cuando** mueve una estación y guarda, **entonces** la nueva posición persiste en la base de datos.
 - [x] **Dado** un equipo seleccionado, **cuando** se abre su ficha, **entonces** se muestran sus características principales.
@@ -35,8 +37,8 @@ El mapa tecnológico complementa el inventario tradicional con una vista espacia
 
 | Capa | Archivos / endpoints |
 |------|----------------------|
-| API | `PATCH /api/v1/espacios/{id}/disposicion/` y `POST /api/v1/mantenimiento/` |
-| Service | `backend/espacios/services/espacio_service.py` y `backend/mantenimiento/services/mantenimiento_service.py` |
+| API | `PATCH /api/v1/espacios/edificios/{id}/croquis-piso/`, `PATCH /api/v1/espacios/{id}/disposicion/` y `POST /api/v1/mantenimiento/` |
+| Service | `backend/espacios/services/edificio_service.py`, `espacio_service.py` y `backend/mantenimiento/services/mantenimiento_service.py` |
 | Repository | `backend/espacios/repositories/` y `backend/mantenimiento/repositories/` |
 | Frontend | `frontend/src/composables/espacios/useCampusTecnologico.js` y `usePlanoEspacio.js` |
 
@@ -47,7 +49,7 @@ El mapa tecnológico complementa el inventario tradicional con una vista espacia
 
 ## Notas de implementacion
 
-La configuración del plano se almacena como JSON validado dentro del espacio. La interfaz genera una distribución inicial automática con pasillo central para equipos que todavía no tienen posición guardada, interpreta como pasillo cualquier columna interna completamente vacía y mantiene fija la barra de guardado mientras se edita.
+El edificio almacena un JSON validado con el croquis independiente de cada piso. El espacio mantiene su propio JSON para el plano interno de equipos. La interfaz genera inicialmente bloques proporcionados a la cantidad de PCs, los distribuye alrededor de pasillos y mantiene fija la barra de guardado mientras se edita.
 
 ## Enlaces
 

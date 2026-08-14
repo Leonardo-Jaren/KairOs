@@ -5,6 +5,7 @@ import espaciosService from '@/services/espacios.service';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 import { formatFloor } from '@/utils/formatters';
+import { normalizeFloorLayout, useCroquisPiso } from '@/composables/espacios/useCroquisPiso';
 
 const naturalCompare = (left, right) => String(left).localeCompare(String(right), 'es', {
   numeric: true,
@@ -45,6 +46,7 @@ export function useCampusTecnologico(
   const spaceForm = reactive(emptySpace());
   const spaceErrors = reactive({});
   const toast = reactive({ show: false, message: '', type: 'success' });
+  const showToast = (message, type = 'success') => Object.assign(toast, { show: true, message, type });
 
   const canEdit = computed(() => authStore.user?.rol === 'admin');
   const isEditingBuilding = computed(() => Boolean(editingBuilding.value));
@@ -81,6 +83,18 @@ export function useCampusTecnologico(
     ?? null
   ));
 
+  const {
+    editingFloor, floorDraft, floorTool, selectedFloorSpaceId, floorSaving,
+    startFloorEditing, cancelFloorEditing, selectFloorSpace, setFloorTool,
+    handleFloorCell, resizeSelectedFloorSpace, updateFloorColumns, addFloorRow,
+    removeFloorRow, saveFloorLayout,
+  } = useCroquisPiso({
+    buildingRecords,
+    activeBuilding: edificioActivo,
+    buildingService,
+    showToast,
+  });
+
   const pisosVisibles = computed(() => {
     const query = search.value.trim().toLocaleLowerCase('es');
     const filtered = (edificioActivo.value?.spaces ?? []).filter((space) => (
@@ -92,19 +106,29 @@ export function useCampusTecnologico(
       ].some((value) => String(value ?? '').toLocaleLowerCase('es').includes(query))
     ));
     const groups = new Map();
-    filtered.forEach((space) => {
+    (edificioActivo.value?.spaces ?? []).forEach((space) => {
       if (!groups.has(space.piso)) groups.set(space.piso, []);
       groups.get(space.piso).push(space);
     });
     return [...groups.entries()]
       .sort(([left], [right]) => naturalCompare(left, right))
-      .map(([floor, floorSpaces]) => ({
-        key: floor,
-        label: formatFloor(floor),
-        spaces: floorSpaces.sort((left, right) => naturalCompare(left.codigo_espacio, right.codigo_espacio)),
-        labs: floorSpaces.filter((space) => ['laboratorio', 'sala_computo'].includes(space.tipo)).length,
-        aulas: floorSpaces.filter((space) => space.tipo === 'aula').length,
-      }));
+      .map(([floor, allFloorSpaces]) => {
+        const sortedSpaces = allFloorSpaces.sort((left, right) => naturalCompare(left.codigo_espacio, right.codigo_espacio));
+        const visibleSpaces = sortedSpaces.filter((space) => filtered.includes(space));
+        const storedLayout = edificioActivo.value?.configuracion_croquis?.pisos?.[floor];
+        return {
+          key: floor,
+          label: formatFloor(floor),
+          spaces: visibleSpaces,
+          allSpaces: sortedSpaces,
+          layout: editingFloor.value === floor && floorDraft.value
+            ? floorDraft.value
+            : normalizeFloorLayout(storedLayout, sortedSpaces),
+          labs: sortedSpaces.filter((space) => ['laboratorio', 'sala_computo'].includes(space.tipo)).length,
+          aulas: sortedSpaces.filter((space) => space.tipo === 'aula').length,
+        };
+      })
+      .filter((floor) => !query || floor.spaces.length);
   });
 
   const stats = computed(() => ({
@@ -120,8 +144,6 @@ export function useCampusTecnologico(
     value: building.id,
     label: `${building.codigo} · ${building.nombre}`,
   })));
-
-  const showToast = (message, type = 'success') => Object.assign(toast, { show: true, message, type });
 
   const loadCampus = async ({ silent = false } = {}) => {
     const showInitialLoader = !silent || buildingRecords.value.length === 0;
@@ -295,6 +317,8 @@ export function useCampusTecnologico(
     }
   }, { immediate: true });
 
+  watch(selectedBuildingId, cancelFloorEditing);
+
   onMounted(loadCampus);
 
   return {
@@ -303,9 +327,14 @@ export function useCampusTecnologico(
     buildingDeleteOpen, editingBuilding, pendingBuildingDelete, buildingForm,
     buildingErrors, isEditingBuilding, spaceModalOpen, spaceDeleteOpen, editingSpace,
     pendingSpaceDelete, spaceForm, spaceErrors, isEditingSpace, toast, loadCampus,
+    editingFloor, floorDraft, floorTool, selectedFloorSpaceId, floorSaving,
     openCreateBuilding, openEditBuilding, closeBuildingModal, submitBuilding,
     askDeleteBuilding, cancelDeleteBuilding, confirmDeleteBuilding, openCreateSpace,
     openEditSpace, closeSpaceModal, submitSpace, askDeleteSpace, cancelDeleteSpace,
     confirmDeleteSpace, closeToast: () => { toast.show = false; },
+    startFloorEditing, cancelFloorEditing, selectFloorSpace, handleFloorCell,
+    setFloorTool,
+    resizeSelectedFloorSpace, updateFloorColumns, addFloorRow, removeFloorRow,
+    saveFloorLayout,
   };
 }

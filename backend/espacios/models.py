@@ -26,6 +26,12 @@ class Edificio(BaseModel):
         default=True,
         verbose_name='Edificio activo',
     )
+    configuracion_croquis = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Configuración de croquis por piso',
+        help_text='Dimensiones, ambientes y pasillos dibujados en cada piso.',
+    )
 
     class Meta:
         db_table = 'edificios'

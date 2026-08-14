@@ -1,4 +1,5 @@
 from .edificio_serializers import (
+    CroquisPisoSerializer,
     EdificioCreateUpdateSerializer,
     EdificioResumenSerializer,
     EdificioSerializer,
@@ -15,6 +16,7 @@ from .espacio_usuario_serializers import (
 )
 
 __all__ = [
+    'CroquisPisoSerializer',
     'EdificioSerializer',
     'EdificioResumenSerializer',
     'EdificioCreateUpdateSerializer',

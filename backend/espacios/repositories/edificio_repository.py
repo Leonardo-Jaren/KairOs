@@ -89,6 +89,15 @@ class EdificioRepository(BaseRepository):
             'aulas': espacios.filter(tipo='aula').count(),
         }
 
+    def get_space_ids_for_floor(self, building_id: int, floor: str) -> set[int]:
+        """Obtiene los ambientes activos que deben aparecer en el croquis del piso."""
+        return set(Espacio.objects.filter(
+            edificio_id=building_id,
+            piso=floor,
+            activo=True,
+            is_deleted=False,
+        ).values_list('id', flat=True))
+
     @transaction.atomic
     def update_with_spaces(self, instance: Edificio, **kwargs) -> Edificio:
         """Actualiza el edificio y sincroniza su nombre con el pabellón histórico."""

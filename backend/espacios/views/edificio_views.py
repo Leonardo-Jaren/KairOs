@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from espacios.permissions import CanManageEdificio
 from espacios.serializers import (
+    CroquisPisoSerializer,
     EdificioCreateUpdateSerializer,
     EdificioSerializer,
 )
@@ -77,3 +78,15 @@ class EdificioViewSet(BaseViewSet):
     def estadisticas(self, request: Request) -> Response:
         """Entrega indicadores agregados del campus."""
         return Response(self.service.get_estadisticas())
+
+    @action(detail=True, methods=['patch'], url_path='croquis-piso')
+    def croquis_piso(self, request: Request, *args, **kwargs) -> Response:
+        """Actualiza la distribución visual de ambientes y pasillos de un piso."""
+        serializer = CroquisPisoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated = self.service.guardar_croquis_piso(
+            kwargs['pk'],
+            serializer.validated_data,
+            actor=request.user,
+        )
+        return Response(EdificioSerializer(updated).data)

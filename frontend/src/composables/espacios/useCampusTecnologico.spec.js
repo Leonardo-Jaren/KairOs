@@ -28,6 +28,10 @@ const createServices = () => ({
     crear: vi.fn().mockResolvedValue({ id: 3, codigo: 'EDIF-03', nombre: 'Edificio 3', activo: true }),
     actualizar: vi.fn().mockResolvedValue(buildings[0]),
     desactivar: vi.fn().mockResolvedValue(undefined),
+    guardarCroquisPiso: vi.fn().mockImplementation(async (_id, payload) => ({
+      ...buildings[0],
+      configuracion_croquis: { version: 1, pisos: { [payload.piso]: payload } },
+    })),
   },
 });
 
@@ -116,5 +120,37 @@ describe('useCampusTecnologico', () => {
     resolveBuildings({ results: structuredClone(buildings) });
     resolveSpaces({ results: structuredClone(spaces) });
     await submission;
+  });
+
+  it('genera un croquis inicial que diferencia ambientes y reserva pasillos', async () => {
+    const state = mountComposable(services);
+    await flushPromises();
+
+    const firstFloor = state.pisosVisibles.value.find((floor) => floor.key === '1');
+    const secondFloor = state.pisosVisibles.value.find((floor) => floor.key === '2');
+    const laboratory = firstFloor.layout.ambientes.find((room) => room.espacio_id === 1);
+    const classroom = secondFloor.layout.ambientes.find((room) => room.espacio_id === 2);
+
+    expect(laboratory).toMatchObject({ ancho: 3, alto: 2 });
+    expect(classroom).toMatchObject({ ancho: 1, alto: 1 });
+    expect(firstFloor.layout.pasillos).toHaveLength(firstFloor.layout.columnas);
+  });
+
+  it('guarda el croquis del piso sin recargar toda la vista', async () => {
+    const state = mountComposable(services);
+    await flushPromises();
+    const floor = state.pisosVisibles.value.find((item) => item.key === '1');
+
+    state.startFloorEditing(floor);
+    state.updateFloorColumns(14);
+    await state.saveFloorLayout();
+
+    expect(services.buildingService.guardarCroquisPiso).toHaveBeenCalledWith(1, expect.objectContaining({
+      piso: '1',
+      columnas: 14,
+      ambientes: expect.arrayContaining([expect.objectContaining({ espacio_id: 1 })]),
+    }));
+    expect(state.editingFloor.value).toBe('');
+    expect(state.loading.value).toBe(false);
   });
 });

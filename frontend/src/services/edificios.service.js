@@ -19,6 +19,14 @@ const edificiosService = {
   async desactivar(id) {
     await api.delete(`/api/v1/espacios/edificios/${id}/`);
   },
+
+  async guardarCroquisPiso(id, payload) {
+    const { data } = await api.patch(
+      `/api/v1/espacios/edificios/${id}/croquis-piso/`,
+      payload,
+    );
+    return data;
+  },
 };
 
 export default edificiosService;
