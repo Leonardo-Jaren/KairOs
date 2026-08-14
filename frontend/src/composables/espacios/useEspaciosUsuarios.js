@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import espaciosUsuariosService from '@/services/espacios-usuarios.service';
 import espaciosService from '@/services/espacios.service';
 import usuariosService from '@/services/usuarios.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -202,14 +203,10 @@ export function useEspaciosUsuarios(
     }
   };
 
-  const applyFilters = () => {
-    filters.page = 1;
-    return loadAssignments();
-  };
-  const clearFilters = () => {
-    Object.assign(filters, { search: '', activo: '', page: 1 });
-    return loadAssignments();
-  };
+  const { applyFilters, resetFilters } = useAutoFilters(filters, loadAssignments, {
+    immediateKeys: ['activo'],
+  });
+  const clearFilters = () => resetFilters({ search: '', activo: '' });
   const changePage = (page) => {
     filters.page = page;
     return loadAssignments();

@@ -45,7 +45,7 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <form class="grid gap-3 md:grid-cols-[minmax(240px,1fr)_190px_170px_auto_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 md:grid-cols-[minmax(240px,1fr)_190px_170px_auto]" @submit.prevent="applyFilters">
         <BaseInput id="spaces-search" v-model="filters.search" appearance="light"
           placeholder="Buscar por código, pabellón, piso o responsable">
           <template #icon>
@@ -56,7 +56,6 @@
         <BaseSelect id="spaces-status" v-model="filters.activo"
           :options="[{ value: 'true', label: 'Activos' }, { value: 'false', label: 'Inactivos' }]"
           placeholder="Todos los estados" />
-        <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
         <BaseButton variant="ghost" :full-width="false" @click="clearFilters">Limpiar</BaseButton>
       </form>
     </section>

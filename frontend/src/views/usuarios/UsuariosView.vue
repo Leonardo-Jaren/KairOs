@@ -110,7 +110,7 @@ const roleLabels = {
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_160px_auto_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_160px_auto]" @submit.prevent="applyFilters">
         <BaseInput
           id="users-search"
           v-model="filters.search"
@@ -134,7 +134,6 @@ const roleLabels = {
           ]"
           placeholder="Todos los estados"
         />
-        <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
         <BaseButton variant="ghost" :full-width="false" @click="clearFilters">Limpiar</BaseButton>
       </form>
     </section>

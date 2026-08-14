@@ -130,7 +130,7 @@ const formatFecha = (fecha) => {
       <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <h2 class="text-base font-bold text-slate-900">Mantenimiento de equipos</h2>
       </div>
-      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]" @submit.prevent="applyFilters">
         <BaseInput
           id="mant-search"
           v-model="filters.search"
@@ -151,7 +151,6 @@ const formatFecha = (fecha) => {
           :options="estadoOptions"
           placeholder="Todos los estados"
         />
-        <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
         <BaseButton variant="ghost" :full-width="false" @click="clearFilters">Limpiar</BaseButton>
       </form>
     </section>

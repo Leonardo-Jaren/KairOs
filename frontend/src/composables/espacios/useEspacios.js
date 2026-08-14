@@ -1,6 +1,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import espaciosService from '@/services/espacios.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -139,14 +140,10 @@ export function useEspacios(service = espaciosService) {
       saving.value = false;
     }
   };
-  const applyFilters = () => {
-    filters.page = 1;
-    return loadSpaces();
-  };
-  const clearFilters = () => {
-    Object.assign(filters, { search: '', tipo: '', activo: '', page: 1 });
-    return loadSpaces();
-  };
+  const { applyFilters, resetFilters } = useAutoFilters(filters, loadSpaces, {
+    immediateKeys: ['tipo', 'activo'],
+  });
+  const clearFilters = () => resetFilters({ search: '', tipo: '', activo: '' });
   const changePage = (page) => {
     filters.page = page;
     return loadSpaces();
