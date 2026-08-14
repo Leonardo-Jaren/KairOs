@@ -22,6 +22,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const sidebarOpen = ref(false);
+const menuActiveClasses = 'bg-primary-500! text-white! shadow-lg shadow-primary-950/20';
 
 const user = computed(() => authStore.user);
 const pageTitle = computed(() => route.meta.title ?? 'Panel de control');
@@ -85,7 +86,8 @@ watch(() => route.fullPath, () => {
             :key="item.path"
             :to="item.path"
             class="group flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-white/60 transition-all duration-200 hover:bg-white/6 hover:text-white"
-            active-class="bg-primary-500! text-white! shadow-lg shadow-primary-950/20"
+            :active-class="item.path === '/dashboard' ? '' : menuActiveClasses"
+            :exact-active-class="menuActiveClasses"
           >
             <component :is="item.icon" :size="19" :stroke-width="1.8" class="shrink-0" />
             <span>{{ item.name }}</span>
