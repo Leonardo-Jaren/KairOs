@@ -91,4 +91,30 @@ describe('useCampusTecnologico', () => {
       piso: '2',
     }));
   });
+
+  it('mantiene visible el campus mientras refresca después de editar', async () => {
+    const state = mountComposable(services);
+    await flushPromises();
+
+    let resolveBuildings;
+    let resolveSpaces;
+    services.buildingService.listar.mockReturnValueOnce(new Promise((resolve) => {
+      resolveBuildings = resolve;
+    }));
+    services.spaceService.listar.mockReturnValueOnce(new Promise((resolve) => {
+      resolveSpaces = resolve;
+    }));
+
+    state.openEditBuilding(state.edificios.value[0]);
+    state.buildingForm.nombre = 'Edificio renovado';
+    const submission = state.submitBuilding();
+    await flushPromises();
+
+    expect(state.loading.value).toBe(false);
+    expect(state.edificios.value).toHaveLength(2);
+
+    resolveBuildings({ results: structuredClone(buildings) });
+    resolveSpaces({ results: structuredClone(spaces) });
+    await submission;
+  });
 });

@@ -47,7 +47,7 @@ El mapa tecnológico complementa el inventario tradicional con una vista espacia
 
 ## Notas de implementacion
 
-La configuración del plano se almacena como JSON validado dentro del espacio. La interfaz genera una distribución inicial automática con pasillo central para equipos que todavía no tienen posición guardada, y mantiene fija la barra de guardado mientras se edita.
+La configuración del plano se almacena como JSON validado dentro del espacio. La interfaz genera una distribución inicial automática con pasillo central para equipos que todavía no tienen posición guardada, interpreta como pasillo cualquier columna interna completamente vacía y mantiene fija la barra de guardado mientras se edita.
 
 ## Enlaces
 

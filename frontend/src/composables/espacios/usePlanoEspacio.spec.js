@@ -74,6 +74,29 @@ describe('usePlanoEspacio', () => {
     expect(occupied.every((cell) => cell.column !== 3)).toBe(true);
   });
 
+  it('detecta como pasillo cualquier columna interna completamente vacía', async () => {
+    services.spaceService.obtener.mockResolvedValueOnce({
+      ...structuredClone(space),
+      configuracion_plano: {
+        filas: 2,
+        columnas: 5,
+        puestos: [
+          { equipo_id: 1, fila: 1, columna: 1 },
+          { equipo_id: 2, fila: 1, columna: 3 },
+          { equipo_id: 3, fila: 2, columna: 4 },
+        ],
+      },
+    });
+
+    const state = mountComposable(services);
+    await flushPromises();
+
+    const aisles = [...new Set(
+      state.cells.value.filter((cell) => cell.isAisle).map((cell) => cell.column),
+    )];
+    expect(aisles).toEqual([2]);
+  });
+
   it('guarda una posición movida y limita la edición al administrador', async () => {
     const state = mountComposable(services);
     await flushPromises();

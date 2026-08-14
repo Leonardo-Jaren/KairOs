@@ -84,4 +84,4 @@ El sistema debe ofrecer una navegación visual por edificios, pisos y ambientes,
 
 ## Notas
 
-La representación del campus utiliza una cuadrícula responsive derivada de los datos existentes; no depende de una imagen fija ni de coordenadas geográficas. La distribución automática de equipos reserva un pasillo central cuando hay seis o más columnas.
+La representación del campus utiliza una cuadrícula responsive derivada de los datos existentes; no depende de una imagen fija ni de coordenadas geográficas. La distribución automática de equipos reserva inicialmente un pasillo central cuando hay seis o más columnas. Después, cualquier columna interna completamente vacía se representa como pasillo para que el plano responda a la distribución real guardada.

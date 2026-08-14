@@ -123,9 +123,10 @@ export function useCampusTecnologico(
 
   const showToast = (message, type = 'success') => Object.assign(toast, { show: true, message, type });
 
-  const loadCampus = async () => {
-    loading.value = true;
-    error.value = '';
+  const loadCampus = async ({ silent = false } = {}) => {
+    const showInitialLoader = !silent || buildingRecords.value.length === 0;
+    if (showInitialLoader) loading.value = true;
+    if (!silent) error.value = '';
     try {
       const [buildingData, spaceData] = await Promise.all([
         buildingService.listar({ activo: true, page_size: 100 }),
@@ -134,9 +135,11 @@ export function useCampusTecnologico(
       buildingRecords.value = buildingData.results ?? buildingData;
       spaces.value = spaceData.results ?? spaceData;
     } catch (requestError) {
-      error.value = getApiErrorMessage(requestError, 'No se pudo cargar el campus.');
+      const message = getApiErrorMessage(requestError, 'No se pudo cargar el campus.');
+      if (silent) showToast(message, 'error');
+      else error.value = message;
     } finally {
-      loading.value = false;
+      if (showInitialLoader) loading.value = false;
     }
   };
 
@@ -182,7 +185,7 @@ export function useCampusTecnologico(
         ? await buildingService.crear(payload)
         : await buildingService.actualizar(editingBuilding.value.id, payload);
       closeBuildingModal();
-      await loadCampus();
+      await loadCampus({ silent: true });
       selectedBuildingId.value = saved.id;
       showToast(wasCreating ? 'Edificio agregado al campus.' : 'Edificio actualizado.');
     } catch (requestError) {
@@ -206,7 +209,7 @@ export function useCampusTecnologico(
     try {
       await buildingService.desactivar(pendingBuildingDelete.value.id);
       cancelDeleteBuilding();
-      await loadCampus();
+      await loadCampus({ silent: true });
       showToast('Edificio desactivado. Sus espacios conservaron el historial.');
     } catch (requestError) {
       showToast(getApiErrorMessage(requestError, 'No se pudo desactivar el edificio.'), 'error');
@@ -255,7 +258,7 @@ export function useCampusTecnologico(
       if (wasCreating) await spaceService.crear(payload);
       else await spaceService.actualizar(editingSpace.value.id, payload);
       closeSpaceModal();
-      await loadCampus();
+      await loadCampus({ silent: true });
       showToast(wasCreating ? 'Ambiente agregado al piso.' : 'Ambiente actualizado.');
     } catch (requestError) {
       showToast(getApiErrorMessage(requestError, 'No se pudo guardar el ambiente.'), 'error');
@@ -277,7 +280,7 @@ export function useCampusTecnologico(
     try {
       await spaceService.desactivar(pendingSpaceDelete.value.id);
       cancelDeleteSpace();
-      await loadCampus();
+      await loadCampus({ silent: true });
       showToast('Ambiente desactivado correctamente.');
     } catch (requestError) {
       showToast(getApiErrorMessage(requestError, 'No se pudo desactivar el ambiente.'), 'error');

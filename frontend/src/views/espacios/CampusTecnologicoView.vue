@@ -49,7 +49,7 @@ const iconForType = (type) => ({
     <header class="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
       <div>
         <p class="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-600">Infraestructura del campus</p>
-        <h1 class="text-3xl font-extrabold tracking-tight text-slate-950">Campus tecnológico</h1>
+        <h1 class="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Campus tecnológico</h1>
         <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">Ubica edificios, pisos y ambientes; desde cada espacio puedes abrir su distribución y trabajar con los equipos.</p>
       </div>
       <BaseButton v-if="canEdit" variant="accent" :full-width="false" @click="openCreateBuilding">
@@ -58,7 +58,7 @@ const iconForType = (type) => ({
       </BaseButton>
     </header>
 
-    <section class="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:grid-cols-3 xl:grid-cols-6">
+    <section class="scrollbar-hidden -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-0 sm:overflow-hidden sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white sm:px-0 sm:pb-0 sm:shadow-sm xl:grid-cols-6">
       <div v-for="metric in [
         ['Edificios', stats.edificios],
         ['Pisos activos', edificios.reduce((total, item) => total + item.pisos.length, 0)],
@@ -66,7 +66,7 @@ const iconForType = (type) => ({
         ['Laboratorios', stats.laboratorios],
         ['Aulas', stats.aulas],
         ['Por revisar', stats.alertas],
-      ]" :key="metric[0]" class="border-b border-slate-100 px-4 py-3 last:border-b-0 sm:border-r sm:last:border-r-0 xl:border-b-0">
+      ]" :key="metric[0]" class="min-w-32 snap-start rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:min-w-0 sm:rounded-none sm:border-0 sm:border-r sm:border-slate-100 sm:shadow-none sm:last:border-r-0">
         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ metric[0] }}</p>
         <p class="mt-1 text-xl font-extrabold" :class="metric[0] === 'Por revisar' && metric[1] ? 'text-warning-700' : 'text-slate-900'">{{ metric[1] }}</p>
       </div>
@@ -81,8 +81,8 @@ const iconForType = (type) => ({
           <p class="text-xs text-slate-400">El diseño se adapta automáticamente a {{ edificios.length }} edificio{{ edificios.length === 1 ? '' : 's' }}</p>
         </div>
 
-        <div v-if="edificios.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          <article v-for="(building, index) in edificios" :key="building.id" class="group relative overflow-hidden rounded-2xl border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md" :class="String(selectedBuildingId) === String(building.id) ? 'border-primary-400 bg-primary-50 ring-2 ring-primary-100' : 'border-slate-200 bg-white hover:border-primary-200'">
+        <div v-if="edificios.length" class="scrollbar-hidden -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3 2xl:grid-cols-4">
+          <article v-for="(building, index) in edificios" :key="building.id" class="group relative w-[82vw] max-w-80 shrink-0 snap-start overflow-hidden rounded-2xl border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:w-auto sm:max-w-none" :class="String(selectedBuildingId) === String(building.id) ? 'border-primary-400 bg-primary-50 ring-2 ring-primary-100' : 'border-slate-200 bg-white hover:border-primary-200'">
             <button type="button" class="block w-full p-4 text-left" @click="selectedBuildingId = building.id">
               <span class="absolute right-3 top-2 font-mono text-5xl font-black text-slate-100 group-hover:text-primary-100">{{ String(index + 1).padStart(2, '0') }}</span>
               <span class="relative grid size-11 place-items-center rounded-xl" :class="String(selectedBuildingId) === String(building.id) ? 'bg-primary-500 text-white' : 'bg-secondary-950 text-primary-300'"><Building2 :size="22" /></span>
@@ -91,7 +91,7 @@ const iconForType = (type) => ({
               <div class="relative mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500"><span>{{ floorLabel(building.pisos.length) }}</span><span>{{ environmentLabel(building.spaces.length) }}</span><span>{{ building.equipos }} equipos</span></div>
               <span v-if="building.alertas" class="relative mt-3 inline-flex items-center gap-1 rounded-full bg-warning-100 px-2 py-1 text-[10px] font-bold text-warning-700"><AlertTriangle :size="12" />{{ building.alertas }} por revisar</span>
             </button>
-            <div v-if="canEdit" class="absolute bottom-3 right-3 flex gap-1 rounded-xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+            <div v-if="canEdit && String(selectedBuildingId) === String(building.id)" class="absolute bottom-3 right-3 flex gap-1 rounded-xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
               <button type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar edificio" @click.stop="openEditBuilding(building)"><Pencil :size="15" /></button>
               <button type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Desactivar edificio" @click.stop="askDeleteBuilding(building)"><Trash2 :size="15" /></button>
             </div>
@@ -101,8 +101,8 @@ const iconForType = (type) => ({
       </section>
 
       <section v-if="edificioActivo" class="grid min-w-0 gap-5 xl:grid-cols-[270px_minmax(0,1fr)]">
-        <aside class="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-24">
-          <div class="flex items-start justify-between gap-3"><span class="grid size-12 place-items-center rounded-2xl bg-primary-50 text-primary-600"><Building2 :size="24" /></span><button v-if="canEdit" type="button" class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar edificio seleccionado" @click="openEditBuilding(edificioActivo)"><Pencil :size="16" /></button></div>
+        <aside class="hidden h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-24 xl:block">
+          <span class="grid size-12 place-items-center rounded-2xl bg-primary-50 text-primary-600"><Building2 :size="24" /></span>
           <p class="mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Edificio seleccionado</p>
           <h2 class="mt-1 text-xl font-extrabold text-slate-950">{{ edificioActivo.nombre }}</h2>
           <p v-if="edificioActivo.descripcion" class="mt-2 text-xs leading-5 text-slate-500">{{ edificioActivo.descripcion }}</p>
@@ -114,17 +114,20 @@ const iconForType = (type) => ({
           <BaseButton v-if="canEdit" class="mt-4" variant="accent" @click="openCreateSpace()"><template #icon><Plus :size="16" /></template>Agregar ambiente</BaseButton>
         </aside>
 
-        <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-            <div><p class="text-xs font-bold uppercase tracking-[0.18em] text-primary-600">Distribución vertical</p><h2 class="mt-1 text-xl font-extrabold text-slate-950">Pisos y ambientes</h2><p class="mt-1 text-xs text-slate-500">Cada piso puede contener varios laboratorios, aulas u oficinas.</p></div>
-            <div class="w-full lg:max-w-xs"><BaseInput id="campus-search" v-model="search" appearance="light" placeholder="Buscar ambiente, tipo o piso"><template #icon><Search :size="16" /></template></BaseInput></div>
+        <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6">
+          <div class="flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
+            <div class="flex items-end justify-between gap-3">
+              <div><p class="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-600 sm:text-xs">{{ edificioActivo.nombre }}</p><h2 class="mt-1 text-lg font-extrabold text-slate-950 sm:text-xl">Pisos y ambientes</h2><p class="mt-1 hidden text-xs text-slate-500 sm:block">Cada piso puede contener varios laboratorios, aulas u oficinas.</p></div>
+              <BaseButton v-if="canEdit" class="xl:hidden" size="sm" variant="accent" :full-width="false" @click="openCreateSpace()"><template #icon><Plus :size="15" /></template>Ambiente</BaseButton>
+            </div>
+            <div class="sticky top-20 z-10 -mx-3 border-y border-slate-100 bg-white/95 px-3 py-3 backdrop-blur lg:static lg:mx-0 lg:w-full lg:max-w-xs lg:border-0 lg:bg-transparent lg:p-0"><BaseInput id="campus-search" v-model="search" appearance="light" placeholder="Buscar ambiente, tipo o piso"><template #icon><Search :size="16" /></template></BaseInput></div>
           </div>
 
-          <div v-if="pisosVisibles.length" class="mt-6 flex flex-col gap-5">
+          <div v-if="pisosVisibles.length" class="mt-3 flex flex-col gap-3 sm:mt-6 sm:gap-5">
             <section v-for="floor in pisosVisibles" :key="floor.key" class="overflow-hidden rounded-2xl border border-slate-200">
               <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
                 <div class="flex items-center gap-3"><span class="grid size-9 place-items-center rounded-xl bg-secondary-950 text-xs font-black text-primary-300">{{ floor.key }}</span><div><h3 class="text-sm font-extrabold text-slate-900">{{ floor.label }}</h3><p class="text-[10px] text-slate-400">{{ environmentLabel(floor.spaces.length) }} · {{ floor.labs }} tecnológicos · {{ floor.aulas }} aulas</p></div></div>
-                <BaseButton v-if="canEdit" size="sm" variant="secondary" :full-width="false" @click="openCreateSpace(floor.key)"><template #icon><Plus :size="15" /></template>Agregar aquí</BaseButton>
+                <BaseButton v-if="canEdit" size="sm" variant="secondary" :full-width="false" @click="openCreateSpace(floor.key)"><template #icon><Plus :size="15" /></template><span class="hidden sm:inline">Agregar aquí</span><span class="sm:hidden">Agregar</span></BaseButton>
               </header>
               <div class="grid gap-3 p-3 sm:grid-cols-2 2xl:grid-cols-3">
                 <article v-for="space in floor.spaces" :key="space.id" class="group relative rounded-xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/30 hover:shadow-sm">
@@ -132,7 +135,7 @@ const iconForType = (type) => ({
                     <div class="flex items-start gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary-950 text-primary-300"><component :is="iconForType(space.tipo)" :size="19" /></span><div class="min-w-0"><p class="truncate font-mono text-sm font-extrabold text-slate-900">{{ space.codigo_espacio }}</p><p class="mt-0.5 text-xs text-slate-500">{{ space.tipo_display }}</p></div></div>
                     <div class="mt-4 flex items-center justify-between text-xs"><span class="text-slate-400">{{ space.cantidad_equipos }} equipos</span><span class="inline-flex items-center gap-1 font-bold text-primary-600">Abrir <ArrowRight :size="14" /></span></div>
                   </RouterLink>
-                  <div v-if="canEdit" class="absolute right-2 top-2 flex gap-0.5 rounded-lg bg-white/95 p-0.5 shadow-sm">
+                  <div v-if="canEdit" class="absolute right-2 top-2 flex gap-0.5 rounded-lg bg-white/95 p-0.5 shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                     <button type="button" class="rounded-md p-1.5 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar ambiente" @click="openEditSpace(space)"><Pencil :size="14" /></button>
                     <button type="button" class="rounded-md p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Desactivar ambiente" @click="askDeleteSpace(space)"><Trash2 :size="14" /></button>
                   </div>

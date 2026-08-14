@@ -71,10 +71,6 @@ export function usePlanoEspacio(
   const equipos = computed(() => espacio.value?.equipos ?? []);
   const canEdit = computed(() => authStore.user?.rol === 'admin');
   const isEditingEquipment = computed(() => Boolean(editingEquipment.value));
-  const aisleColumn = computed(() => (columns.value >= 6 ? Math.ceil(columns.value / 2) : null));
-  const centralAisleEnabled = computed(() => Boolean(aisleColumn.value) && !positions.value.some((position) => (
-    position.columna === aisleColumn.value
-  )));
   const selectedPosition = computed(() => (
     positions.value.find((item) => item.equipo_id === selectedPositionId.value) ?? null
   ));
@@ -84,6 +80,19 @@ export function usePlanoEspacio(
   const equipmentMap = computed(() => new Map(
     equipos.value.map((equipment) => [equipment.id, equipment]),
   ));
+  const selectedLayoutEquipment = computed(() => (
+    equipmentMap.value.get(selectedPositionId.value) ?? null
+  ));
+  const aisleColumns = computed(() => {
+    const occupied = [...new Set(positions.value.map((position) => position.columna))];
+    if (occupied.length < 2) return new Set();
+    const firstOccupied = Math.min(...occupied);
+    const lastOccupied = Math.max(...occupied);
+    return new Set(Array.from({ length: columns.value }, (_, index) => index + 1)
+      .filter((column) => (
+        column > firstOccupied && column < lastOccupied && !occupied.includes(column)
+      )));
+  });
   const cells = computed(() => {
     const result = [];
     for (let row = 1; row <= rows.value; row += 1) {
@@ -94,7 +103,7 @@ export function usePlanoEspacio(
           column,
           position,
           equipment: position ? equipmentMap.value.get(position.equipo_id) : null,
-          isAisle: centralAisleEnabled.value && !position && column === aisleColumn.value,
+          isAisle: !position && aisleColumns.value.has(column),
         });
       }
     }
@@ -211,16 +220,19 @@ export function usePlanoEspacio(
     positions.value = normalized;
   };
 
-  const loadSpace = async () => {
-    loading.value = true;
-    error.value = '';
+  const loadSpace = async ({ silent = false } = {}) => {
+    const showInitialLoader = !silent || !espacio.value;
+    if (showInitialLoader) loading.value = true;
+    if (!silent) error.value = '';
     try {
       espacio.value = await spaceService.obtener(id);
       hydrateLayout();
     } catch (requestError) {
-      error.value = getApiErrorMessage(requestError, 'No se pudo cargar el plano del espacio.');
+      const message = getApiErrorMessage(requestError, 'No se pudo cargar el plano del espacio.');
+      if (silent) showToast(message, 'error');
+      else error.value = message;
     } finally {
-      loading.value = false;
+      if (showInitialLoader) loading.value = false;
     }
   };
 
@@ -261,6 +273,12 @@ export function usePlanoEspacio(
     selectedEquipo.value = equipment;
     equipmentDetailOpen.value = false;
     if (equipment) loadEquipmentMaintenance(equipment.id);
+  };
+
+  const manageSelectedEquipment = () => {
+    if (!selectedLayoutEquipment.value) return;
+    selectEquipment(selectedLayoutEquipment.value);
+    equipmentDetailOpen.value = true;
   };
 
   const startEditing = () => {
@@ -525,7 +543,7 @@ export function usePlanoEspacio(
         : await equiposService.crear(payload);
       const wasCreating = !isEditingEquipment.value;
       closeEquipmentModal();
-      await loadSpace();
+      await loadSpace({ silent: true });
       const refreshed = equipos.value.find((equipment) => equipment.id === savedEquipment.id);
       selectEquipment(refreshed ?? savedEquipment);
       equipmentDetailOpen.value = wasCreating;
@@ -556,7 +574,7 @@ export function usePlanoEspacio(
       cancelDeleteEquipment();
       selectedEquipo.value = null;
       equipmentDetailOpen.value = false;
-      await loadSpace();
+      await loadSpace({ silent: true });
       showToast('Equipo retirado del espacio correctamente.');
     } catch (requestError) {
       showToast(getApiErrorMessage(requestError, 'No se pudo retirar el equipo.'), 'error');
@@ -585,6 +603,7 @@ export function usePlanoEspacio(
     statusSummary,
     teacherEquipment,
     selectedPosition,
+    selectedLayoutEquipment,
     selectedPositionId,
     selectedEquipo,
     equipmentDetailOpen,
@@ -621,6 +640,7 @@ export function usePlanoEspacio(
     closeReport,
     submitReport,
     selectEquipment,
+    manageSelectedEquipment,
     openCreateEquipment,
     openEditEquipment,
     closeEquipmentModal,
