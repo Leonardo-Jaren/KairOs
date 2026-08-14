@@ -12,6 +12,7 @@ describe('navegacion de modulos', () => {
     const resolved = router.resolve('/espacios');
 
     expect(resolved.name).toBe('Espacios');
+    expect(router.resolve('/espacios/mapa').name).toBe('CampusTecnologico');
     expect(router.resolve('/espacios/12').name).toBe('EspacioDetalle');
   });
 });

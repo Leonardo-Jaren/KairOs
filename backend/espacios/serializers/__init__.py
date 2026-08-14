@@ -1,4 +1,5 @@
 from .espacio_serializers import (
+    DisposicionEspacioSerializer,
     EspacioCreateUpdateSerializer,
     EspacioDetailSerializer,
     EspacioSerializer,
@@ -12,6 +13,7 @@ __all__ = [
     'EspacioSerializer',
     'EspacioDetailSerializer',
     'EspacioCreateUpdateSerializer',
+    'DisposicionEspacioSerializer',
     'EspacioUsuarioSerializer',
     'EspacioUsuarioCreateUpdateSerializer',
 ]

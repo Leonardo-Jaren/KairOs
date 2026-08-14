@@ -13,6 +13,7 @@ class EspacioService(AuditableMixin, BaseService):
     ALTA          = 'espacio.alta'
     ACTUALIZACION = 'espacio.actualizacion'
     DESACTIVACION = 'espacio.desactivacion'
+    DISPOSICION    = 'espacio.disposicion'
 
     def __init__(self):
         self.repository = EspacioRepository()
@@ -86,6 +87,56 @@ class EspacioService(AuditableMixin, BaseService):
 
     def get_estadisticas(self) -> dict:
         return self.repository.get_estadisticas()
+
+    def actualizar_disposicion(
+        self,
+        id: int,
+        data: dict,
+        actor: Usuario = None,
+    ) -> Espacio:
+        """Guarda un plano validando que sus equipos pertenezcan al espacio."""
+        instance = self.get_by_id(id)
+        equipos_validos = {
+            equipo.id for equipo in getattr(instance, 'equipos_vigentes', [])
+        }
+        equipos_solicitados = {puesto['equipo_id'] for puesto in data['puestos']}
+        equipos_ajenos = equipos_solicitados - equipos_validos
+        if equipos_ajenos:
+            raise ValidationError({
+                'puestos': 'El plano contiene equipos que no pertenecen a este espacio.'
+            })
+
+        configuracion = {
+            'columnas': data['columnas'],
+            'filas': data['filas'],
+            'puestos': [
+                {
+                    'equipo_id': puesto['equipo_id'],
+                    'fila': puesto['fila'],
+                    'columna': puesto['columna'],
+                    'es_docente': puesto.get('es_docente', False),
+                }
+                for puesto in data['puestos']
+            ],
+        }
+        self.repository.update(
+            instance,
+            configuracion_plano=configuracion,
+            updated_by=actor,
+        )
+        updated = self.repository.get_by_id(instance.id)
+        self._audit_registrar(
+            updated,
+            self.DISPOSICION,
+            actor,
+            f'Plano de {updated.codigo_espacio} actualizado.',
+            datos_extra={
+                'columnas': configuracion['columnas'],
+                'filas': configuracion['filas'],
+                'equipos_ubicados': len(configuracion['puestos']),
+            },
+        )
+        return updated
 
     def _normalizar(self, data: dict, partial: bool = False) -> dict:
         clean_data = data.copy()

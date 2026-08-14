@@ -9,6 +9,10 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <BaseButton variant="secondary" :full-width="false" @click="$router.push('/espacios/mapa')">
+          <template #icon><Map :size="18" /></template>
+          Mapa de campus
+        </BaseButton>
         <BaseButton variant="secondary" :full-width="false" @click="$router.push('/espacios/usuarios')">
           Usuarios por espacio
         </BaseButton>
@@ -79,7 +83,7 @@
       </template>
       <template #cell-ubicacion="{ item }">
         <p class="font-medium text-slate-700">{{ item.pabellon }}</p>
-        <p class="text-xs text-slate-400">Piso {{ item.piso }}</p>
+        <p class="text-xs text-slate-400">{{ formatFloor(item.piso) }}</p>
       </template>
       <template #cell-responsable="{ item }">
         <div v-if="item.responsable">
@@ -228,7 +232,7 @@
 
 <script setup>
 import { shallowRef } from 'vue';
-import { Building2, Eye, FlaskConical, Monitor, Pencil, Plus, Search, Trash2 } from '@lucide/vue';
+import { Building2, Eye, FlaskConical, Map, Monitor, Pencil, Plus, Search, Trash2 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
@@ -240,6 +244,7 @@ import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTable from '@/components/tables/BaseTable.vue';
 import BaseToast from '@/components/toasts/BaseToast.vue';
 import { useEspacios } from '@/composables/espacios/useEspacios';
+import { formatFloor } from '@/utils/formatters';
 
 const detailEspacio = shallowRef(null);
 

@@ -44,6 +44,10 @@ const menuItems = computed(() => [
   { name: 'Historial', path: '/historial', icon: Clock3 },
 ].filter((item) => !item.roles || item.roles.includes(user.value?.rol)));
 
+const activeMenuPath = computed(() => menuItems.value
+  .filter((item) => route.path === item.path || route.path.startsWith(`${item.path}/`))
+  .sort((left, right) => right.path.length - left.path.length)[0]?.path ?? '');
+
 const handleLogout = async () => {
   authStore.logout();
   await router.push('/auth/login');
@@ -86,8 +90,9 @@ watch(() => route.fullPath, () => {
             :key="item.path"
             :to="item.path"
             class="group flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-white/60 transition-all duration-200 hover:bg-white/6 hover:text-white"
-            :active-class="item.path === '/dashboard' ? '' : menuActiveClasses"
-            :exact-active-class="menuActiveClasses"
+            active-class=""
+            exact-active-class=""
+            :class="activeMenuPath === item.path ? menuActiveClasses : ''"
           >
             <component :is="item.icon" :size="19" :stroke-width="1.8" class="shrink-0" />
             <span>{{ item.name }}</span>

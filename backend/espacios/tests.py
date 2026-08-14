@@ -157,6 +157,117 @@ class EspacioAPITests(APITestCase):
         self.assertEqual(response.data['total'], 1)
         self.assertEqual(response.data['activos'], 1)
 
+    def test_admin_saves_interactive_layout(self):
+        espacio = Espacio.objects.create(**self.payload)
+        equipo = Equipo.objects.create(
+            espacio=espacio,
+            codigo='PC-PLANO-01',
+            numero_serie='SERIE-PLANO-01',
+            tipo_equipo='desktop',
+            marca='Lenovo',
+            modelo='ThinkCentre',
+            modo_adquisicion='comprado',
+            fecha_adquisicion=date(2026, 1, 1),
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            reverse('espacio-disposicion', args=[espacio.id]),
+            {
+                'columnas': 4,
+                'filas': 3,
+                'puestos': [{
+                    'equipo_id': equipo.id,
+                    'fila': 1,
+                    'columna': 2,
+                    'es_docente': True,
+                }],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        espacio.refresh_from_db()
+        self.assertEqual(espacio.configuracion_plano['columnas'], 4)
+        self.assertEqual(
+            espacio.configuracion_plano['puestos'][0]['equipo_id'],
+            equipo.id,
+        )
+        self.assertTrue(response.data['configuracion_plano']['puestos'][0]['es_docente'])
+
+    def test_layout_rejects_equipment_from_another_space(self):
+        espacio = Espacio.objects.create(**self.payload)
+        otro_espacio = Espacio.objects.create(
+            **{**self.payload, 'codigo_espacio': 'LAB-OTRO'}
+        )
+        equipo_ajeno = Equipo.objects.create(
+            espacio=otro_espacio,
+            codigo='PC-AJENA-01',
+            numero_serie='SERIE-AJENA-01',
+            tipo_equipo='desktop',
+            marca='HP',
+            modelo='ProDesk',
+            modo_adquisicion='comprado',
+            fecha_adquisicion=date(2026, 1, 1),
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            reverse('espacio-disposicion', args=[espacio.id]),
+            {
+                'columnas': 4,
+                'filas': 2,
+                'puestos': [{
+                    'equipo_id': equipo_ajeno.id,
+                    'fila': 1,
+                    'columna': 1,
+                    'es_docente': False,
+                }],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        espacio.refresh_from_db()
+        self.assertEqual(espacio.configuracion_plano, {})
+
+    def test_layout_rejects_multiple_teacher_stations(self):
+        espacio = Espacio.objects.create(**self.payload)
+        equipos = [
+            Equipo.objects.create(
+                espacio=espacio,
+                codigo=f'PC-DOCENTE-{index}',
+                numero_serie=f'SERIE-DOCENTE-{index}',
+                tipo_equipo='desktop',
+                marca='HP',
+                modelo='ProDesk',
+                modo_adquisicion='comprado',
+                fecha_adquisicion=date(2026, 1, 1),
+            )
+            for index in range(1, 3)
+        ]
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            reverse('espacio-disposicion', args=[espacio.id]),
+            {
+                'columnas': 4,
+                'filas': 2,
+                'puestos': [
+                    {
+                        'equipo_id': equipo.id,
+                        'fila': 1,
+                        'columna': index,
+                        'es_docente': True,
+                    }
+                    for index, equipo in enumerate(equipos, start=1)
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+
     def test_tecnico_has_read_only_access(self):
         Espacio.objects.create(**self.payload)
         self.client.force_authenticate(self.tecnico)

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from espacios.permissions import CanManageEspacio
 from espacios.serializers import (
+    DisposicionEspacioSerializer,
     EspacioCreateUpdateSerializer,
     EspacioDetailSerializer,
     EspacioSerializer,
@@ -76,3 +77,15 @@ class EspacioViewSet(BaseViewSet):
     def estadisticas(self, request: Request) -> Response:
         """Entrega indicadores agregados de espacios."""
         return Response(self.service.get_estadisticas())
+
+    @action(detail=True, methods=['patch'], url_path='disposicion')
+    def disposicion(self, request: Request, *args, **kwargs) -> Response:
+        """Actualiza la cuadrícula y la posición visual de los equipos."""
+        serializer = DisposicionEspacioSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated = self.service.actualizar_disposicion(
+            kwargs['pk'],
+            serializer.validated_data,
+            actor=request.user,
+        )
+        return Response(EspacioDetailSerializer(updated).data)

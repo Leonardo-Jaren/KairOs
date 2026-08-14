@@ -1,5 +1,6 @@
 from rest_framework.exceptions import ValidationError
 
+from equipos.services import EquipoService
 from mantenimiento.models import Mantenimiento
 from mantenimiento.repositories import MantenimientoRepository
 from shared.base import BaseService
@@ -19,6 +20,7 @@ class MantenimientoService(AuditableMixin, BaseService):
 
     def __init__(self):
         self.repository = MantenimientoRepository()
+        self.equipo_service = EquipoService()
 
     def listar(
         self,
@@ -43,6 +45,12 @@ class MantenimientoService(AuditableMixin, BaseService):
         self._validar_tecnicos(tecnico_ids)
         instance = self.repository.create(**clean_data, equipo=equipo, created_by=actor, updated_by=actor)
         self.repository.sync_tecnicos(instance, tecnico_ids)
+        if instance.estado == 'en_proceso' and equipo.estado != 'en_mantenimiento':
+            self.equipo_service.update(
+                equipo.id,
+                {'estado': 'en_mantenimiento'},
+                actor=actor,
+            )
         return self.repository.get_by_id(instance.id)
 
     def _do_update(self, id: int, data: dict, actor: Usuario = None):
@@ -58,7 +66,14 @@ class MantenimientoService(AuditableMixin, BaseService):
             self._validar_tecnicos(tecnico_ids)
             self.repository.sync_tecnicos(instance, tecnico_ids)
             tecnicos_cambiaron = True
-        return self.repository.get_by_id(instance.id), {'tecnicos_cambiaron': tecnicos_cambiaron}
+        updated = self.repository.get_by_id(instance.id)
+        if updated.estado == 'en_proceso' and updated.equipo.estado != 'en_mantenimiento':
+            self.equipo_service.update(
+                updated.equipo.id,
+                {'estado': 'en_mantenimiento'},
+                actor=actor,
+            )
+        return updated, {'tecnicos_cambiaron': tecnicos_cambiaron}
 
     def _do_delete(self, id: int, actor: Usuario = None) -> Mantenimiento:
         instance = self.get_by_id(id)

@@ -41,6 +41,12 @@ class Espacio(BaseModel):
         default=True,
         verbose_name='Espacio activo',
     )
+    configuracion_plano = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Configuración del plano',
+        help_text='Filas, columnas y posiciones de los equipos dentro del espacio.',
+    )
 
     class Meta:
         db_table = 'espacios'
