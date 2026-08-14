@@ -55,7 +55,7 @@ const applyPageInput = () => {
     </p>
 
     <div class="flex flex-col items-center gap-1 sm:items-end">
-      <form class="flex items-center gap-2" @submit.prevent="applyPageInput">
+      <div class="flex items-center gap-2">
         <button
           type="button"
           class="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 transition-colors duration-150 hover:border-slate-300 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-40"
@@ -83,17 +83,10 @@ const applyPageInput = () => {
             :aria-describedby="pageError ? errorId : undefined"
             aria-label="Número de página"
             @input="handlePageInput"
+            @keydown.enter.prevent="applyPageInput"
           />
           <span>de {{ totalPages }}</span>
         </label>
-
-        <button
-          type="submit"
-          class="h-9 rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors duration-150 hover:bg-primary-600 disabled:pointer-events-none disabled:opacity-40"
-          :disabled="loading"
-        >
-          Ir
-        </button>
 
         <button
           type="button"
@@ -104,7 +97,7 @@ const applyPageInput = () => {
         >
           <ChevronRight :size="18" />
         </button>
-      </form>
+      </div>
 
       <p
         v-if="pageError"

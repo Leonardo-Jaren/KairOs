@@ -13,12 +13,12 @@ describe('BasePagination', () => {
     },
   });
 
-  it('permite escribir una página válida y navegar al enviarla', async () => {
+  it('permite escribir una página válida y navegar con Enter', async () => {
     const wrapper = mountPagination();
     const input = wrapper.get('input[aria-label="Número de página"]');
 
     await input.setValue('5');
-    await wrapper.get('form').trigger('submit');
+    await input.trigger('keydown.enter');
 
     expect(wrapper.emitted('change')).toEqual([[5]]);
   });
@@ -35,8 +35,9 @@ describe('BasePagination', () => {
   it('mantiene la página actual cuando el número no existe', async () => {
     const wrapper = mountPagination();
 
-    await wrapper.get('input[aria-label="Número de página"]').setValue('9');
-    await wrapper.get('form').trigger('submit');
+    const input = wrapper.get('input[aria-label="Número de página"]');
+    await input.setValue('9');
+    await input.trigger('keydown.enter');
 
     expect(wrapper.emitted('change')).toBeUndefined();
     expect(wrapper.get('[role="alert"]').text()).toBe('La página debe estar entre 1 y 8.');
