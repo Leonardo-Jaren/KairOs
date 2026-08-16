@@ -1,5 +1,6 @@
 <script setup>
 import {
+  AppWindow,
   Boxes,
   Building2,
   Clock3,
@@ -7,7 +8,7 @@ import {
   LogOut,
   Menu,
   MonitorCog,
-  PanelLeftClose,
+  PackageCheck,
   ShieldAlert,
   UserRoundCog,
   UsersRound,
@@ -37,7 +38,8 @@ const menuItems = computed(() => [
   { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, roles: ['admin', 'tecnico'] },
   { name: 'Equipos', path: '/equipos', icon: MonitorCog, roles: ['admin', 'tecnico'] },
   { name: 'Componentes', path: '/componentes', icon: Boxes },
-  { name: 'Software', path: '/software', icon: PanelLeftClose },
+  { name: 'Software', path: '/software', icon: AppWindow, roles: ['admin', 'tecnico', 'docente'] },
+  { name: 'Instalaciones', path: '/software/instalaciones', icon: PackageCheck, roles: ['admin', 'tecnico', 'docente'] },
   { name: 'Mantenimiento', path: '/mantenimiento', icon: Wrench },
   { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert },
   { name: 'Historial', path: '/historial', icon: Clock3 },

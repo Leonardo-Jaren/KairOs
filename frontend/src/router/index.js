@@ -86,6 +86,18 @@ const routes = [
         meta: { title: 'Componentes', roles: ['admin', 'tecnico'] },
       },
       {
+        path: '/software',
+        name: 'Software',
+        component: () => import('@/views/software/SoftwareView.vue'),
+        meta: { title: 'Software', roles: ['admin', 'tecnico', 'docente'] },
+      },
+      {
+        path: '/software/instalaciones',
+        name: 'SoftwareInstalaciones',
+        component: () => import('@/views/software/InstalacionesView.vue'),
+        meta: { title: 'Instalaciones de software', roles: ['admin', 'tecnico', 'docente'] },
+      },
+      {
         path: '/mantenimiento',
         name: 'Mantenimiento',
         component: () => import('@/views/mantenimiento/MantenimientoView.vue'),
