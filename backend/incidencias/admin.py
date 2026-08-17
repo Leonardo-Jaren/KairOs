@@ -5,15 +5,15 @@ from .models import Incidencia
 @admin.register(Incidencia)
 class IncidenciaAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'tecnico', 'docente', 'espacio', 'equipo',
-        'fecha_generado', 'descripcion_corta',
+        'id', 'created_by', 'espacio', 'equipo', 'tipo_incidencia',
+        'estado', 'created_at', 'fecha_resolucion', 'descripcion_corta',
     )
-    list_filter = ('fecha_generado', 'espacio')
+    list_filter = ('estado', 'tipo_incidencia', 'espacio')
     search_fields = (
-        'descripcion', 'tecnico__nombre', 'docente__nombre',
+        'descripcion', 'created_by__nombre',
         'equipo__codigo', 'espacio__codigo_espacio',
     )
-    ordering = ('-fecha_generado',)
+    ordering = ('-created_at',)
 
     @admin.display(description='Descripción')
     def descripcion_corta(self, obj):
