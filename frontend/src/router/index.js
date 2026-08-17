@@ -91,6 +91,12 @@ const routes = [
         component: () => import('@/views/mantenimiento/MantenimientoView.vue'),
         meta: { title: 'Mantenimiento', roles: ['admin', 'tecnico'] },
       },
+      {
+        path: '/incidencias',
+        name: 'Incidencias',
+        component: () => import('@/views/incidencias/IncidenciasView.vue'),
+        meta: { title: 'Incidencias', roles: ['admin', 'tecnico', 'docente'] },
+      },
     ],
   },
   // Ruta comodin para redirigir paginas no encontradas

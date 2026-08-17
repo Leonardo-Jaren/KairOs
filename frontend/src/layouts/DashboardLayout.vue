@@ -39,7 +39,7 @@ const menuItems = computed(() => [
   { name: 'Componentes', path: '/componentes', icon: Boxes },
   { name: 'Software', path: '/software', icon: PanelLeftClose },
   { name: 'Mantenimiento', path: '/mantenimiento', icon: Wrench },
-  { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert },
+  { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert, roles: ['admin', 'tecnico', 'docente'] },
   { name: 'Historial', path: '/historial', icon: Clock3 },
 ].filter((item) => !item.roles || item.roles.includes(user.value?.rol)));
 
