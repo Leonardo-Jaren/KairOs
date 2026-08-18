@@ -10,18 +10,18 @@
 
 ## Historia
 
-**Como** usuario autenticado  
-**Quiero** cerrar y restaurar la barra lateral  
+**Como** usuario autenticado
+**Quiero** reducir y restaurar la barra lateral
 **Para** disponer de mas espacio para el contenido cuando lo necesite
 
 ## Descripcion
 
-El control se integra en la zona superior de la barra y mantiene disponible una forma visible de restaurarla.
+El control se integra en la zona superior de la barra, que conserva una columna compacta con los iconos de navegacion.
 
 ## Criterios de aceptacion
 
-- [x] **Dado** que la barra esta visible, **cuando** pulso su control superior, **entonces** se oculta de forma suave.
-- [x] **Dado** que la barra esta oculta en escritorio, **cuando** pulso el control del encabezado principal, **entonces** vuelve a mostrarse.
+- [x] **Dado** que la barra esta expandida, **cuando** pulso su control superior, **entonces** se reduce de forma suave y conserva los iconos.
+- [x] **Dado** que la barra esta reducida en escritorio, **cuando** pulso el mismo control, **entonces** vuelve a su ancho completo.
 - [x] La navegacion movil conserva su comportamiento actual.
 
 ## Alcance tecnico

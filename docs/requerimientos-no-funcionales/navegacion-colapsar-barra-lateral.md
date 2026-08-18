@@ -14,7 +14,7 @@ La interaccion para ocultar la navegacion debe ser clara, accesible y visualment
 
 ## Justificacion
 
-Permitir que el contenido use todo el ancho mejora la lectura sin introducir controles que compitan con la jerarquia actual.
+Reducir el ancho disponible para la navegacion mejora el espacio de lectura sin perder el acceso inmediato a los modulos.
 
 ## Metrica / umbral
 
@@ -22,6 +22,7 @@ Permitir que el contenido use todo el ancho mejora la lectura sin introducir con
 |---------|----------------|
 | Duracion de la transicion | 300 ms |
 | Accesibilidad del control | Nombre accesible, titulo y foco visible |
+| Ancho del estado compacto | 80 px |
 
 ## Implementacion esperada
 

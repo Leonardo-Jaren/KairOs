@@ -21,18 +21,19 @@ const createWrapper = async () => {
 };
 
 describe('DashboardLayout', () => {
-  it('permite cerrar y volver a abrir la barra lateral desde su encabezado', async () => {
+  it('permite contraer y expandir la barra lateral desde su encabezado', async () => {
     const wrapper = await createWrapper();
     const sidebar = wrapper.get('aside');
 
-    await wrapper.get('[aria-label="Cerrar barra lateral"]').trigger('click');
+    await wrapper.get('[aria-label="Contraer barra lateral"]').trigger('click');
 
-    expect(sidebar.classes()).toContain('lg:w-0');
-    expect(wrapper.find('[aria-label="Abrir barra lateral"]').exists()).toBe(true);
+    expect(sidebar.classes()).toContain('lg:w-20');
+    expect(wrapper.find('[aria-label="Expandir barra lateral"]').exists()).toBe(true);
+    expect(wrapper.get('nav').classes()).toContain('lg:px-3');
 
-    await wrapper.get('[aria-label="Abrir barra lateral"]').trigger('click');
+    await wrapper.get('[aria-label="Expandir barra lateral"]').trigger('click');
 
     expect(sidebar.classes()).toContain('lg:w-72');
-    expect(wrapper.find('[aria-label="Abrir barra lateral"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="Expandir barra lateral"]').exists()).toBe(false);
   });
 });

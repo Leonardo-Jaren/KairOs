@@ -10,7 +10,7 @@
 
 ## Descripcion
 
-El usuario puede ocultar y restaurar la barra lateral desde controles ubicados en la parte superior de la interfaz.
+El usuario puede reducir y restaurar la barra lateral desde el control ubicado en su parte superior.
 
 ## Actores
 
@@ -22,26 +22,28 @@ El usuario puede ocultar y restaurar la barra lateral desde controles ubicados e
 
 ## Flujo principal
 
-1. El usuario pulsa el control de cierre en el encabezado de la barra lateral.
-2. La barra se oculta con una transicion breve y el contenido aprovecha el espacio disponible.
-3. El usuario pulsa el control de apertura del encabezado principal para restaurarla.
+1. El usuario pulsa el control de contraccion en el encabezado de la barra lateral.
+2. La barra reduce su ancho con una transicion breve y conserva visibles los iconos de los modulos.
+3. El usuario pulsa el mismo control para restaurar la barra completa.
 
 ## Flujos alternos / excepciones
 
 | Caso | Comportamiento esperado |
 |------|-------------------------|
-| Vista movil | La barra se cierra y puede abrirse nuevamente con el boton de menu existente. |
+| Vista movil | La barra se oculta y puede abrirse nuevamente con el boton de menu existente. |
 | Cambio de ruta en movil | La barra se cierra automaticamente. |
 
 ## Reglas de negocio
 
 - El cierre no modifica la sesion ni la ruta activa.
-- Siempre debe existir un control accesible para restaurar la barra.
+- La barra compacta debe conservar los accesos mediante iconos y ayudas de texto.
+- Siempre debe existir un control accesible para restaurar su ancho completo.
 
 ## Criterios de aceptacion
 
-- [x] La barra lateral se puede cerrar desde su encabezado.
-- [x] La barra lateral se puede restaurar desde el encabezado principal.
+- [x] La barra lateral se puede reducir desde su encabezado sin desaparecer.
+- [x] Los iconos de navegacion permanecen disponibles en el estado compacto.
+- [x] La barra lateral se puede restaurar desde el mismo control superior.
 - [x] Los controles cuentan con nombre accesible y estado de foco visible.
 
 ## Endpoints / componentes relacionados
