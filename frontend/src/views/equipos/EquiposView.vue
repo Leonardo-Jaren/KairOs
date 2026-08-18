@@ -1,87 +1,3 @@
-<script setup>
-import {
-  AlertTriangle,
-  Boxes,
-  Eye,
-  MonitorCog,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-  Wrench,
-} from '@lucide/vue';
-import { shallowRef } from 'vue';
-
-import BaseButton from '@/components/buttons/BaseButton.vue';
-import StatCard from '@/components/cards/StatCard.vue';
-import EquipoDetailModal from '@/components/equipos/EquipoDetailModal.vue';
-import BaseInput from '@/components/inputs/BaseInput.vue';
-import BaseModal from '@/components/modals/BaseModal.vue';
-import BasePagination from '@/components/pagination/BasePagination.vue';
-import BaseSelect from '@/components/selects/BaseSelect.vue';
-import BaseTable from '@/components/tables/BaseTable.vue';
-import BaseToast from '@/components/toasts/BaseToast.vue';
-import { useEquipos } from '@/composables/equipos/useEquipos';
-
-const columns = [
-  { key: 'codigo', label: 'Código' },
-  { key: 'tipo', label: 'Tipo' },
-  { key: 'marca_modelo', label: 'Marca y modelo' },
-  { key: 'numero_serie', label: 'N° de serie' },
-  { key: 'espacio', label: 'Espacio' },
-  { key: 'estado', label: 'Estado' },
-  { key: 'acciones', label: 'Acciones', class: 'text-right' },
-];
-
-const {
-  equipos,
-  loading,
-  saving,
-  modalOpen,
-  deleteModalOpen,
-  pendingDelete,
-  form,
-  formErrors,
-  filters,
-  pagination,
-  stats,
-  toast,
-  isEditing,
-  canManageAll,
-  tipoEquipoOptions,
-  modoAdquisicionOptions,
-  estadoOptions,
-  espacioSelectOptions,
-  openCreate,
-  openEdit,
-  closeModal,
-  submit,
-  askDelete,
-  cancelDelete,
-  confirmDelete,
-  applyFilters,
-  clearFilters,
-  changePage,
-  closeToast,
-} = useEquipos();
-
-const detailEquipo = shallowRef(null);
-
-const estadoClasses = {
-  en_uso: 'bg-success-50 text-success-700',
-  en_mantenimiento: 'bg-warning-50 text-warning-700',
-  dañado: 'bg-danger-50 text-danger-700',
-  de_baja: 'bg-slate-100 text-slate-600',
-};
-
-const estadoDotClasses = {
-  en_uso: 'bg-success-500',
-  en_mantenimiento: 'bg-warning-500',
-  dañado: 'bg-danger-500',
-  de_baja: 'bg-slate-400',
-};
-</script>
-
 <template>
   <div class="flex flex-col gap-6">
     <header class="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -98,7 +14,7 @@ const estadoDotClasses = {
       </BaseButton>
     </header>
 
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
       <StatCard label="Equipos registrados" :value="stats.total" tone="blue">
         <template #icon><MonitorCog :size="20" /></template>
       </StatCard>
@@ -251,3 +167,86 @@ const estadoDotClasses = {
     />
   </div>
 </template>
+<script setup>
+import {
+  AlertTriangle,
+  Boxes,
+  Eye,
+  MonitorCog,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Wrench,
+} from '@lucide/vue';
+import { shallowRef } from 'vue';
+
+import BaseButton from '@/components/buttons/BaseButton.vue';
+import StatCard from '@/components/cards/StatCard.vue';
+import EquipoDetailModal from '@/components/equipos/EquipoDetailModal.vue';
+import BaseInput from '@/components/inputs/BaseInput.vue';
+import BaseModal from '@/components/modals/BaseModal.vue';
+import BasePagination from '@/components/pagination/BasePagination.vue';
+import BaseSelect from '@/components/selects/BaseSelect.vue';
+import BaseTable from '@/components/tables/BaseTable.vue';
+import BaseToast from '@/components/toasts/BaseToast.vue';
+import { useEquipos } from '@/composables/equipos/useEquipos';
+
+const columns = [
+  { key: 'codigo', label: 'Código' },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'marca_modelo', label: 'Marca y modelo' },
+  { key: 'numero_serie', label: 'N° de serie' },
+  { key: 'espacio', label: 'Espacio' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'acciones', label: 'Acciones', class: 'text-right' },
+];
+
+const {
+  equipos,
+  loading,
+  saving,
+  modalOpen,
+  deleteModalOpen,
+  pendingDelete,
+  form,
+  formErrors,
+  filters,
+  pagination,
+  stats,
+  toast,
+  isEditing,
+  canManageAll,
+  tipoEquipoOptions,
+  modoAdquisicionOptions,
+  estadoOptions,
+  espacioSelectOptions,
+  openCreate,
+  openEdit,
+  closeModal,
+  submit,
+  askDelete,
+  cancelDelete,
+  confirmDelete,
+  applyFilters,
+  clearFilters,
+  changePage,
+  closeToast,
+} = useEquipos();
+
+const detailEquipo = shallowRef(null);
+
+const estadoClasses = {
+  en_uso: 'bg-success-50 text-success-700',
+  en_mantenimiento: 'bg-warning-50 text-warning-700',
+  dañado: 'bg-danger-50 text-danger-700',
+  de_baja: 'bg-slate-100 text-slate-600',
+};
+
+const estadoDotClasses = {
+  en_uso: 'bg-success-500',
+  en_mantenimiento: 'bg-warning-500',
+  dañado: 'bg-danger-500',
+  de_baja: 'bg-slate-400',
+};
+</script>

@@ -16,8 +16,8 @@
       </BaseButton>
     </header>
 
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <StatCard label="Asignaciones encontradas" :value="pagination.total"
+    <section class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
+      <StatCard class="col-span-2 sm:col-span-1" label="Asignaciones encontradas" :value="pagination.total"
         :helper="`${activeCount} activas en esta página`" tone="blue">
         <template #icon>
           <Link2 :size="20" />

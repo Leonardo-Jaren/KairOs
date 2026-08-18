@@ -111,7 +111,7 @@ const formatFecha = (fecha) => {
       </BaseButton>
     </header>
 
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
       <StatCard label="Técnicos registrados" :value="stats.total_tecnicos" tone="blue" helper="Personal activo">
         <template #icon><Wrench :size="20" /></template>
       </StatCard>
