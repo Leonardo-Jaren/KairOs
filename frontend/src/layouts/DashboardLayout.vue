@@ -9,6 +9,7 @@ import {
   Menu,
   MonitorCog,
   PanelLeftClose,
+  PanelLeftOpen,
   ShieldAlert,
   UserRoundCog,
   UsersRound,
@@ -23,6 +24,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const sidebarOpen = ref(false);
+const sidebarCollapsed = ref(false);
 const menuActiveClasses = 'bg-primary-500! text-white! shadow-lg shadow-primary-950/20';
 
 const user = computed(() => authStore.user);
@@ -55,6 +57,16 @@ const handleLogout = async () => {
   await router.push('/auth/login');
 };
 
+const openSidebar = () => {
+  sidebarOpen.value = true;
+  sidebarCollapsed.value = false;
+};
+
+const closeSidebar = () => {
+  sidebarOpen.value = false;
+  sidebarCollapsed.value = true;
+};
+
 watch(() => route.fullPath, () => {
   sidebarOpen.value = false;
 });
@@ -73,15 +85,31 @@ watch(() => route.fullPath, () => {
     </Transition>
 
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-secondary-950 text-white shadow-2xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:shadow-none"
-      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+      class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col bg-secondary-950 text-white shadow-2xl transition-[width,transform] duration-300 ease-out lg:sticky lg:top-0 lg:h-screen lg:shadow-none"
+      :class="[
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        sidebarCollapsed
+          ? 'lg:w-0 lg:-translate-x-full lg:overflow-hidden'
+          : 'lg:w-72 lg:translate-x-0',
+      ]"
     >
-      <div class="flex h-20 items-center justify-between border-b border-white/8 px-6">
+      <div class="flex h-20 shrink-0 items-center justify-between border-b border-white/8 px-6">
         <div>
           <p class="text-xl font-extrabold tracking-[0.16em] text-white">KairOs</p>
           <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-300">Gestión tecnológica</p>
         </div>
-        <span class="rounded-md bg-primary-500/15 px-2 py-1 text-[10px] font-bold text-primary-300">v1.0</span>
+        <div class="flex items-center gap-2">
+          <span class="rounded-md bg-primary-500/15 px-2 py-1 text-[10px] font-bold text-primary-300">v1.0</span>
+          <button
+            type="button"
+            class="grid size-8 place-items-center rounded-lg text-white/50 transition-colors duration-200 hover:bg-white/8 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
+            title="Cerrar barra lateral"
+            aria-label="Cerrar barra lateral"
+            @click="closeSidebar"
+          >
+            <PanelLeftClose :size="18" :stroke-width="1.8" />
+          </button>
+        </div>
       </div>
 
       <nav class="flex-1 overflow-y-auto px-4 py-6" aria-label="Navegación principal">
@@ -121,8 +149,18 @@ watch(() => route.fullPath, () => {
     <div class="flex min-w-0 flex-1 flex-col">
       <header class="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
         <div class="flex items-center gap-3">
-          <button type="button" class="rounded-xl border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50 lg:hidden" aria-label="Abrir menú" @click="sidebarOpen = true">
+          <button type="button" class="rounded-xl border border-slate-200 p-2.5 text-slate-600 transition-colors duration-200 hover:bg-slate-50 lg:hidden" aria-label="Abrir menú" @click="openSidebar">
             <Menu :size="20" />
+          </button>
+          <button
+            v-if="sidebarCollapsed"
+            type="button"
+            class="hidden size-10 place-items-center rounded-xl border border-slate-200 text-slate-600 transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 lg:grid"
+            title="Abrir barra lateral"
+            aria-label="Abrir barra lateral"
+            @click="openSidebar"
+          >
+            <PanelLeftOpen :size="20" :stroke-width="1.8" />
           </button>
           <div>
             <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">KairOs / Administración</p>
