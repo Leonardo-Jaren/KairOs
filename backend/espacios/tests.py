@@ -30,7 +30,7 @@ class EspacioRepositoryServiceTests(TestCase):
                 'codigo_espacio': ' lab-301 ',
                 'tipo': 'laboratorio',
                 'pabellon': 'Pabellón 3',
-                'piso': ' Piso 3 ',
+                'piso': ' 3 ',
                 'activo': True,
             },
             actor=self.admin,
@@ -56,14 +56,14 @@ class EspacioRepositoryServiceTests(TestCase):
                 actor=self.admin,
             )
 
-    def test_rejects_floor_empty_after_normalization(self):
-        with self.assertRaisesMessage(Exception, 'Ingrese el número o nombre corto del piso'):
+    def test_rejects_non_numeric_floor(self):
+        with self.assertRaisesMessage(Exception, 'El piso debe contener únicamente números'):
             self.service.create(
                 {
                     'codigo_espacio': 'LAB-EMPTY',
                     'tipo': 'laboratorio',
                     'pabellon': 'Pabellón 3',
-                    'piso': ' Piso ',
+                    'piso': 'Piso 3',
                 },
                 actor=self.admin,
             )
@@ -159,6 +159,18 @@ class EspacioAPITests(APITestCase):
         self.assertEqual(listed.data['count'], 1)
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.data['equipos'], [])
+
+    def test_api_rejects_non_numeric_floor(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            self.list_url,
+            {**self.payload, 'piso': 'Piso 4'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('piso', response.data['errores'])
 
     def test_statistics_endpoint_returns_module_totals(self):
         self.client.force_authenticate(self.admin)

@@ -1,5 +1,3 @@
-import re
-
 from rest_framework.exceptions import ValidationError
 
 from espacios.models import Espacio
@@ -156,10 +154,9 @@ class EspacioService(AuditableMixin, BaseService):
             if field in clean_data:
                 clean_data[field] = clean_data[field].strip()
         if 'piso' in clean_data:
-            clean_data['piso'] = re.sub(r'^piso\s*', '', clean_data['piso'], flags=re.IGNORECASE).strip()
-            if not clean_data['piso']:
+            if not clean_data['piso'].isdigit():
                 raise ValidationError({
-                    'piso': 'Ingrese el número o nombre corto del piso.'
+                    'piso': 'El piso debe contener únicamente números.'
                 })
         return clean_data
 

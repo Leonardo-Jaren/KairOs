@@ -227,6 +227,26 @@ class EdificioAPITests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('ambientes', response.data['errores'])
 
+    def test_floor_sketch_rejects_non_numeric_floor(self):
+        """Exige un identificador numérico al guardar el croquis del piso."""
+        edificio = Edificio.objects.create(codigo='EDIF-01', nombre='Edificio 1')
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            reverse('edificio-croquis-piso', args=[edificio.id]),
+            {
+                'piso': 'Primero',
+                'filas': 5,
+                'columnas': 8,
+                'ambientes': [],
+                'pasillos': [],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('piso', response.data['errores'])
+
     def test_tecnico_cannot_edit_floor_sketch(self):
         """Mantiene la edición del croquis reservada al administrador."""
         edificio = Edificio.objects.create(codigo='EDIF-01', nombre='Edificio 1')

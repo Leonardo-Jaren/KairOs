@@ -126,6 +126,13 @@ class EspacioDetailSerializer(EspacioSerializer):
 class EspacioCreateUpdateSerializer(serializers.ModelSerializer):
     """Valida los datos de creación y edición del espacio."""
 
+    piso = serializers.RegexField(
+        regex=r'^\d+$',
+        max_length=20,
+        error_messages={
+            'invalid': 'El piso debe contener únicamente números.',
+        },
+    )
     edificio_id = serializers.PrimaryKeyRelatedField(
         source='edificio',
         queryset=Edificio.objects.filter(is_deleted=False, activo=True),

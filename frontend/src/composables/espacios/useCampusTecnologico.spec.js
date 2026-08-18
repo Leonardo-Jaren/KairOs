@@ -136,6 +136,23 @@ describe('useCampusTecnologico', () => {
     }));
   });
 
+  it('rechaza un piso que no contiene únicamente números', async () => {
+    const state = mountComposable(services);
+    await flushPromises();
+    state.openCreateSpace();
+    Object.assign(state.spaceForm, {
+      codigo_espacio: 'LAB-202',
+      tipo: 'laboratorio',
+      edificio_id: 1,
+      piso: 'Piso 2',
+    });
+
+    await state.submitSpace();
+
+    expect(state.spaceErrors.piso).toBe('El piso debe contener únicamente números.');
+    expect(services.spaceService.crear).not.toHaveBeenCalled();
+  });
+
   it('mantiene visible el campus mientras refresca después de editar', async () => {
     const state = mountComposable(services);
     await flushPromises();

@@ -316,8 +316,10 @@ export function useCampusTecnologico(
     Object.keys(spaceErrors).forEach((key) => delete spaceErrors[key]);
     if (!spaceForm.codigo_espacio.trim()) spaceErrors.codigo_espacio = 'Ingresa el código.';
     if (!spaceForm.edificio_id) spaceErrors.edificio_id = 'Selecciona el edificio.';
-    const normalizedFloor = normalizeFloorValue(spaceForm.piso);
-    if (!normalizedFloor) spaceErrors.piso = 'Ingresa el número o nombre corto del piso.';
+    const normalizedFloor = String(spaceForm.piso ?? '').trim();
+    if (!/^\d+$/.test(normalizedFloor)) {
+      spaceErrors.piso = 'El piso debe contener únicamente números.';
+    }
     if (Object.keys(spaceErrors).length) return;
     saving.value = true;
     try {

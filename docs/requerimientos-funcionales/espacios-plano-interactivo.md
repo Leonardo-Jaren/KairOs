@@ -58,6 +58,7 @@ El sistema debe ofrecer una navegación visual por edificios, pisos y ambientes,
 - El usuario autenticado se propone como reportante de la falla y puede reemplazarse por otro usuario activo.
 - Los edificios son entidades independientes; desactivarlos conserva sus espacios e historial.
 - Cada ambiente activo debe aparecer una sola vez en el croquis de su piso.
+- El piso de cada ambiente se registra únicamente con números, sin prefijos ni nombres.
 - Los ambientes pueden ocupar varias celdas para representar laboratorios de mayor tamaño.
 - Un pasillo no puede ocupar una celda cubierta por un aula, laboratorio u oficina.
 - El croquis del piso admite entre 6 y 16 columnas y entre 3 y 12 filas.

@@ -107,13 +107,15 @@ export function useEspacios(service = espaciosService, buildingService = edifici
     if (!form.codigo_espacio.trim()) formErrors.codigo_espacio = 'Ingresa el código del espacio.';
     if (!form.tipo) formErrors.tipo = 'Selecciona el tipo de espacio.';
     if (!form.edificio_id) formErrors.edificio_id = 'Selecciona un edificio.';
-    if (!form.piso.trim()) formErrors.piso = 'Ingresa el piso.';
+    if (!/^\d+$/.test(String(form.piso ?? '').trim())) {
+      formErrors.piso = 'El piso debe contener únicamente números.';
+    }
     return Object.keys(formErrors).length === 0;
   };
   const submit = async () => {
     if (!validateForm()) return false;
     saving.value = true;
-    const payload = { ...form };
+    const payload = { ...form, piso: String(form.piso).trim() };
     try {
       if (isEditing.value) {
         await service.actualizar(editingSpace.value.id, payload);

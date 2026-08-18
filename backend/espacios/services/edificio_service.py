@@ -1,5 +1,3 @@
-import re
-
 from rest_framework.exceptions import ValidationError
 
 from espacios.models import Edificio
@@ -39,7 +37,11 @@ class EdificioService(AuditableMixin, BaseService):
     ) -> Edificio:
         """Guarda el croquis validando pertenencia, límites y superposiciones."""
         instance = self.get_by_id(id)
-        floor = re.sub(r'^piso\s*', '', data['piso'], flags=re.IGNORECASE).strip()
+        floor = str(data['piso']).strip()
+        if not floor.isdigit():
+            raise ValidationError({
+                'piso': 'El piso debe contener únicamente números.'
+            })
         valid_space_ids = self.repository.get_space_ids_for_floor(instance.id, floor)
         requested_space_ids = {item['espacio_id'] for item in data['ambientes']}
 

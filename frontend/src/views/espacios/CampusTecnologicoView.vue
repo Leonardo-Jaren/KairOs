@@ -262,8 +262,8 @@
           :error="spaceErrors.tipo" />
         <BaseSelect id="campus-space-building" v-model="spaceForm.edificio_id" label="Edificio"
           :options="buildingOptions" :error="spaceErrors.edificio_id" />
-        <BaseInput id="campus-space-floor" v-model="spaceForm.piso" appearance="light"
-          label="Número o nombre corto del piso" placeholder="Ej. 2" :error="spaceErrors.piso" />
+        <BaseInput id="campus-space-floor" v-model="spaceForm.piso" appearance="light" type="number"
+          label="Número de piso" placeholder="Ej. 2" :error="spaceErrors.piso" />
         <label
           class="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"><input
             v-model="spaceForm.activo" type="checkbox" class="size-4 accent-primary-500" /><span><span

@@ -110,6 +110,24 @@ describe('useEspacios', () => {
     expect(state.toast.type).toBe('success');
   });
 
+  it('rechaza pisos con texto', async () => {
+    const state = mountComposable(service);
+    await flushPromises();
+    state.openCreate();
+    Object.assign(state.form, {
+      codigo_espacio: 'LAB-301',
+      tipo: 'laboratorio',
+      edificio_id: 3,
+      piso: 'Primero',
+    });
+
+    const result = await state.submit();
+
+    expect(result).toBe(false);
+    expect(state.formErrors.piso).toBe('El piso debe contener únicamente números.');
+    expect(service.crear).not.toHaveBeenCalled();
+  });
+
   it('desactiva el espacio seleccionado', async () => {
     const state = mountComposable(service);
     await flushPromises();

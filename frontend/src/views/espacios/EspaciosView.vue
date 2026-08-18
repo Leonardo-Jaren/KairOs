@@ -135,7 +135,7 @@
           :error="formErrors.tipo" />
         <BaseSelect id="space-building" v-model="form.edificio_id" label="Edificio"
           :options="buildingOptions" placeholder="Seleccionar edificio" :error="formErrors.edificio_id" />
-        <BaseInput id="space-floor" v-model="form.piso" appearance="light" label="Piso" placeholder="2"
+        <BaseInput id="space-floor" v-model="form.piso" appearance="light" type="number" label="Número de piso" placeholder="2"
           :error="formErrors.piso" />
         <label
           class="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">

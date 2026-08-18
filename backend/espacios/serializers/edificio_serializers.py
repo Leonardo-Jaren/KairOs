@@ -68,7 +68,13 @@ class CeldaPasilloSerializer(serializers.Serializer):
 class CroquisPisoSerializer(serializers.Serializer):
     """Valida la cuadrícula editable de un piso del edificio."""
 
-    piso = serializers.CharField(max_length=20, allow_blank=False, trim_whitespace=True)
+    piso = serializers.RegexField(
+        regex=r'^\d+$',
+        max_length=20,
+        error_messages={
+            'invalid': 'El piso debe contener únicamente números.',
+        },
+    )
     filas = serializers.IntegerField(min_value=3, max_value=12)
     columnas = serializers.IntegerField(min_value=6, max_value=16)
     ambientes = CroquisAmbienteSerializer(many=True, allow_empty=True)
