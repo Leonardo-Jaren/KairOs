@@ -3,7 +3,11 @@ import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent, h } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useCampusTecnologico } from '@/composables/espacios/useCampusTecnologico';
+import {
+  formatCountLabel,
+  useCampusTecnologico,
+} from '@/composables/espacios/useCampusTecnologico';
+import { normalizeFloorLayout } from '@/composables/espacios/useCroquisPiso';
 import { useAuthStore } from '@/stores/auth';
 
 const buildings = [
@@ -56,6 +60,13 @@ describe('useCampusTecnologico', () => {
     services = createServices();
   });
 
+  it('formatea métricas en singular y plural', () => {
+    expect(formatCountLabel(1, 'piso', 'pisos')).toBe('piso');
+    expect(formatCountLabel(2, 'piso', 'pisos')).toBe('pisos');
+    expect(formatCountLabel(1, 'ambiente', 'ambientes')).toBe('ambiente');
+    expect(formatCountLabel(1, 'equipo', 'equipos')).toBe('equipo');
+  });
+
   it('agrupa laboratorios, aulas y oficinas por edificio y piso', async () => {
     const state = mountComposable(services);
     await flushPromises();
@@ -63,7 +74,34 @@ describe('useCampusTecnologico', () => {
     expect(state.edificios.value).toHaveLength(2);
     expect(state.edificioActivo.value.spaces).toHaveLength(2);
     expect(state.pisosVisibles.value.map((floor) => floor.key)).toEqual(['1', '2']);
+    expect(state.activeFloor.value.key).toBe('2');
     expect(state.stats.value).toMatchObject({ laboratorios: 1, aulas: 1, ambientes: 3 });
+  });
+
+  it('navega un piso a la vez empezando por el piso 2', async () => {
+    const state = mountComposable(services);
+    await flushPromises();
+
+    expect(state.activeFloor.value.key).toBe('2');
+    state.showPreviousFloor();
+    expect(state.activeFloor.value.key).toBe('1');
+    state.showNextFloor();
+    expect(state.activeFloor.value.key).toBe('2');
+  });
+
+  it('balancea la cuadrícula según la cantidad de edificios', async () => {
+    services.buildingService.listar.mockResolvedValue({
+      results: Array.from({ length: 6 }, (_, index) => ({
+        id: index + 1,
+        codigo: `EDIF-0${index + 1}`,
+        nombre: `Edificio ${index + 1}`,
+        activo: true,
+      })),
+    });
+    const state = mountComposable(services);
+    await flushPromises();
+
+    expect(state.buildingColumnCount.value).toBe(6);
   });
 
   it('crea edificios desde la vista de campus', async () => {
@@ -84,8 +122,10 @@ describe('useCampusTecnologico', () => {
   it('crea un ambiente en el piso seleccionado', async () => {
     const state = mountComposable(services);
     await flushPromises();
-    state.openCreateSpace('2');
+    state.openCreateSpace('Piso 2');
     Object.assign(state.spaceForm, { codigo_espacio: 'LAB-202', tipo: 'laboratorio' });
+
+    expect(state.spaceForm.piso).toBe('2');
 
     await state.submitSpace();
 
@@ -134,6 +174,34 @@ describe('useCampusTecnologico', () => {
     expect(laboratory).toMatchObject({ ancho: 3, alto: 2 });
     expect(classroom).toMatchObject({ ancho: 1, alto: 1 });
     expect(firstFloor.layout.pasillos).toHaveLength(firstFloor.layout.columnas);
+  });
+
+  it('agrega ambientes nuevos sin reiniciar las posiciones guardadas del piso', () => {
+    const storedLayout = {
+      filas: 5,
+      columnas: 12,
+      ambientes: [
+        { espacio_id: 1, fila: 3, columna: 7, ancho: 3, alto: 2 },
+        { espacio_id: 2, fila: 1, columna: 5, ancho: 1, alto: 1 },
+      ],
+      pasillos: [{ fila: 2, columna: 1 }, { fila: 2, columna: 2 }],
+    };
+    const floorSpaces = [
+      spaces[0],
+      spaces[1],
+      { id: 4, codigo_espacio: 'LAB-202', tipo: 'laboratorio', cantidad_equipos: 4 },
+    ];
+
+    const layout = normalizeFloorLayout(storedLayout, floorSpaces);
+
+    expect(layout.ambientes.find((room) => room.espacio_id === 1)).toEqual(
+      storedLayout.ambientes[0],
+    );
+    expect(layout.ambientes.find((room) => room.espacio_id === 2)).toEqual(
+      storedLayout.ambientes[1],
+    );
+    expect(layout.pasillos).toEqual(storedLayout.pasillos);
+    expect(layout.ambientes.find((room) => room.espacio_id === 4)).toBeDefined();
   });
 
   it('guarda el croquis del piso sin recargar toda la vista', async () => {

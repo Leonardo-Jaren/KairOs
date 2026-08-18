@@ -11,6 +11,14 @@ const naturalCompare = (left, right) => String(left).localeCompare(String(right)
   numeric: true,
   sensitivity: 'base',
 });
+const normalizeFloorValue = (value) => String(value ?? '')
+  .trim()
+  .replace(/^piso\s*/i, '')
+  .trim();
+
+export const formatCountLabel = (count, singular, plural) => (
+  count === 1 ? singular : plural
+);
 
 const emptyBuilding = () => ({ codigo: '', nombre: '', descripcion: '', activo: true });
 const emptySpace = () => ({
@@ -33,6 +41,7 @@ export function useCampusTecnologico(
   const error = ref('');
   const search = ref('');
   const selectedBuildingId = ref('');
+  const activeFloorKey = ref('');
   const buildingModalOpen = ref(false);
   const buildingDeleteOpen = ref(false);
   const editingBuilding = ref(null);
@@ -63,7 +72,7 @@ export function useCampusTecnologico(
     const buildingSpaces = spaces.value.filter((space) => (
       Number(space.edificio_id ?? space.edificio?.id) === building.id
     ));
-    const floors = [...new Set(buildingSpaces.map((space) => space.piso))].sort(naturalCompare);
+    const floors = [...new Set(buildingSpaces.map((space) => normalizeFloorValue(space.piso)))].sort(naturalCompare);
     return {
       ...building,
       spaces: buildingSpaces,
@@ -76,6 +85,18 @@ export function useCampusTecnologico(
       ), 0),
     };
   }));
+  const buildingColumnCount = computed(() => {
+    const count = edificios.value.length;
+    if (count <= 1) return 1;
+    const candidates = Array.from({ length: Math.min(6, count) - 1 }, (_, index) => index + 2);
+    return candidates.reduce((best, columns) => {
+      const emptyCells = Math.ceil(count / columns) * columns - count;
+      const bestEmptyCells = Math.ceil(count / best) * best - count;
+      return emptyCells < bestEmptyCells || (emptyCells === bestEmptyCells && columns > best)
+        ? columns
+        : best;
+    }, 2);
+  });
 
   const edificioActivo = computed(() => (
     edificios.value.find((building) => String(building.id) === String(selectedBuildingId.value))
@@ -107,15 +128,18 @@ export function useCampusTecnologico(
     ));
     const groups = new Map();
     (edificioActivo.value?.spaces ?? []).forEach((space) => {
-      if (!groups.has(space.piso)) groups.set(space.piso, []);
-      groups.get(space.piso).push(space);
+      const floor = normalizeFloorValue(space.piso);
+      if (!groups.has(floor)) groups.set(floor, []);
+      groups.get(floor).push(space);
     });
     return [...groups.entries()]
       .sort(([left], [right]) => naturalCompare(left, right))
       .map(([floor, allFloorSpaces]) => {
         const sortedSpaces = allFloorSpaces.sort((left, right) => naturalCompare(left.codigo_espacio, right.codigo_espacio));
         const visibleSpaces = sortedSpaces.filter((space) => filtered.includes(space));
-        const storedLayout = edificioActivo.value?.configuracion_croquis?.pisos?.[floor];
+        const storedFloors = edificioActivo.value?.configuracion_croquis?.pisos ?? {};
+        const storedLayout = storedFloors[floor] ?? Object.entries(storedFloors)
+          .find(([key]) => normalizeFloorValue(key) === floor)?.[1];
         return {
           key: floor,
           label: formatFloor(floor),
@@ -130,6 +154,27 @@ export function useCampusTecnologico(
       })
       .filter((floor) => !query || floor.spaces.length);
   });
+
+  const activeFloorIndex = computed(() => pisosVisibles.value.findIndex(
+    (floor) => String(floor.key) === String(activeFloorKey.value),
+  ));
+  const activeFloor = computed(() => (
+    pisosVisibles.value[activeFloorIndex.value] ?? null
+  ));
+  const selectDefaultFloor = () => {
+    const preferred = pisosVisibles.value.find(
+      (floor) => normalizeFloorValue(floor.key) === '2',
+    ) ?? pisosVisibles.value[1] ?? pisosVisibles.value[0];
+    activeFloorKey.value = preferred?.key ?? '';
+  };
+  const showPreviousFloor = () => {
+    if (editingFloor.value || activeFloorIndex.value <= 0) return;
+    activeFloorKey.value = pisosVisibles.value[activeFloorIndex.value - 1].key;
+  };
+  const showNextFloor = () => {
+    if (editingFloor.value || activeFloorIndex.value >= pisosVisibles.value.length - 1) return;
+    activeFloorKey.value = pisosVisibles.value[activeFloorIndex.value + 1].key;
+  };
 
   const stats = computed(() => ({
     edificios: edificios.value.length,
@@ -247,7 +292,7 @@ export function useCampusTecnologico(
   const openCreateSpace = (floor = '') => {
     editingSpace.value = null;
     resetSpaceForm();
-    spaceForm.piso = floor;
+    spaceForm.piso = normalizeFloorValue(floor);
     spaceModalOpen.value = true;
   };
   const openEditSpace = (space) => {
@@ -257,7 +302,7 @@ export function useCampusTecnologico(
       codigo_espacio: space.codigo_espacio,
       tipo: space.tipo,
       edificio_id: space.edificio_id ?? space.edificio?.id ?? edificioActivo.value?.id,
-      piso: space.piso,
+      piso: normalizeFloorValue(space.piso),
       activo: space.activo,
     });
     spaceModalOpen.value = true;
@@ -271,12 +316,17 @@ export function useCampusTecnologico(
     Object.keys(spaceErrors).forEach((key) => delete spaceErrors[key]);
     if (!spaceForm.codigo_espacio.trim()) spaceErrors.codigo_espacio = 'Ingresa el código.';
     if (!spaceForm.edificio_id) spaceErrors.edificio_id = 'Selecciona el edificio.';
-    if (!spaceForm.piso.trim()) spaceErrors.piso = 'Ingresa el piso.';
+    const normalizedFloor = normalizeFloorValue(spaceForm.piso);
+    if (!normalizedFloor) spaceErrors.piso = 'Ingresa el número o nombre corto del piso.';
     if (Object.keys(spaceErrors).length) return;
     saving.value = true;
     try {
       const wasCreating = !isEditingSpace.value;
-      const payload = { ...spaceForm, edificio_id: Number(spaceForm.edificio_id) };
+      const payload = {
+        ...spaceForm,
+        piso: normalizedFloor,
+        edificio_id: Number(spaceForm.edificio_id),
+      };
       if (wasCreating) await spaceService.crear(payload);
       else await spaceService.actualizar(editingSpace.value.id, payload);
       closeSpaceModal();
@@ -318,12 +368,25 @@ export function useCampusTecnologico(
   }, { immediate: true });
 
   watch(selectedBuildingId, cancelFloorEditing);
+  watch(
+    [selectedBuildingId, () => pisosVisibles.value.map((floor) => floor.key).join('|')],
+    ([buildingId], [previousBuildingId] = []) => {
+      const floorStillExists = pisosVisibles.value.some(
+        (floor) => String(floor.key) === String(activeFloorKey.value),
+      );
+      if (String(buildingId) !== String(previousBuildingId) || !floorStillExists) {
+        selectDefaultFloor();
+      }
+    },
+    { immediate: true },
+  );
 
   onMounted(loadCampus);
 
   return {
     loading, saving, error, search, edificios, selectedBuildingId, edificioActivo,
-    pisosVisibles, stats, canEdit, buildingOptions, typeOptions, buildingModalOpen,
+    pisosVisibles, activeFloor, activeFloorIndex, activeFloorKey, stats, canEdit,
+    buildingColumnCount, buildingOptions, typeOptions, buildingModalOpen,
     buildingDeleteOpen, editingBuilding, pendingBuildingDelete, buildingForm,
     buildingErrors, isEditingBuilding, spaceModalOpen, spaceDeleteOpen, editingSpace,
     pendingSpaceDelete, spaceForm, spaceErrors, isEditingSpace, toast, loadCampus,
@@ -335,6 +398,6 @@ export function useCampusTecnologico(
     startFloorEditing, cancelFloorEditing, selectFloorSpace, handleFloorCell,
     setFloorTool,
     resizeSelectedFloorSpace, updateFloorColumns, addFloorRow, removeFloorRow,
-    saveFloorLayout,
+    saveFloorLayout, showPreviousFloor, showNextFloor,
   };
 }

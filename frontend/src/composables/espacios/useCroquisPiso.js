@@ -59,22 +59,64 @@ const createDefaultFloorLayout = (floorSpaces) => {
   return { filas, columnas, ambientes, pasillos };
 };
 
+const cellsForRoom = (room) => {
+  const cells = [];
+  for (let row = room.fila; row < room.fila + room.alto; row += 1) {
+    for (let column = room.columna; column < room.columna + room.ancho; column += 1) {
+      cells.push(`${row}-${column}`);
+    }
+  }
+  return cells;
+};
+
+const findFreeRoomPosition = (layout, size) => {
+  const occupied = new Set(layout.ambientes.flatMap(cellsForRoom));
+  const corridors = new Set(layout.pasillos.map((cell) => `${cell.fila}-${cell.columna}`));
+
+  for (let row = 1; row <= layout.filas - size.alto + 1; row += 1) {
+    for (let column = 1; column <= layout.columnas - size.ancho + 1; column += 1) {
+      const candidate = { fila: row, columna: column, ...size };
+      const cells = cellsForRoom(candidate);
+      if (cells.every((cell) => !occupied.has(cell) && !corridors.has(cell))) return candidate;
+    }
+  }
+  return null;
+};
+
+const appendMissingRooms = (layout, missingSpaces) => {
+  missingSpaces.forEach((space) => {
+    const size = roomSize(space);
+    let position = findFreeRoomPosition(layout, size);
+
+    while (!position && layout.filas < 12) {
+      layout.filas += 1;
+      position = findFreeRoomPosition(layout, size);
+    }
+    while (!position && layout.columnas < 16) {
+      layout.columnas += 1;
+      position = findFreeRoomPosition(layout, size);
+    }
+
+    if (position) layout.ambientes.push({ espacio_id: Number(space.id), ...position });
+  });
+};
+
 export const normalizeFloorLayout = (storedLayout, floorSpaces) => {
   if (!storedLayout?.ambientes?.length) return createDefaultFloorLayout(floorSpaces);
   const activeIds = new Set(floorSpaces.map((space) => Number(space.id)));
   const ambientes = storedLayout.ambientes
     .filter((room) => activeIds.has(Number(room.espacio_id)))
     .map((room) => ({ ...room, espacio_id: Number(room.espacio_id) }));
-  const missingIds = new Set(
-    [...activeIds].filter((id) => !ambientes.some((room) => room.espacio_id === id)),
-  );
-  if (missingIds.size) return createDefaultFloorLayout(floorSpaces);
-  return {
+  const layout = {
     filas: Number(storedLayout.filas) || 3,
     columnas: Number(storedLayout.columnas) || 12,
     ambientes,
     pasillos: (storedLayout.pasillos ?? []).map((cell) => ({ ...cell })),
   };
+  const placedIds = new Set(ambientes.map((room) => room.espacio_id));
+  const missingSpaces = floorSpaces.filter((space) => !placedIds.has(Number(space.id)));
+  appendMissingRooms(layout, missingSpaces);
+  return layout;
 };
 
 export function useCroquisPiso({
