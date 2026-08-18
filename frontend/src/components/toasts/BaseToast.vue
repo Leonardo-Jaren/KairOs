@@ -1,13 +1,43 @@
 <script setup>
 import { CircleCheck, CircleX, X } from '@lucide/vue';
+import { onBeforeUnmount, watch } from 'vue';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   message: { type: String, default: '' },
   type: { type: String, default: 'success' },
+  duration: { type: Number, default: 5000 },
 });
 
-defineEmits(['close']);
+const emit = defineEmits(['close']);
+
+let closeTimer;
+
+const clearCloseTimer = () => {
+  if (closeTimer) {
+    window.clearTimeout(closeTimer);
+    closeTimer = undefined;
+  }
+};
+
+const scheduleClose = () => {
+  clearCloseTimer();
+
+  if (!props.show || props.duration <= 0) return;
+
+  closeTimer = window.setTimeout(() => {
+    closeTimer = undefined;
+    emit('close');
+  }, props.duration);
+};
+
+watch(
+  () => [props.show, props.message, props.duration],
+  scheduleClose,
+  { immediate: true },
+);
+
+onBeforeUnmount(clearCloseTimer);
 </script>
 
 <template>

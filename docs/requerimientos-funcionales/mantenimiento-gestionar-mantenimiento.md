@@ -12,6 +12,9 @@ responsable y llevando seguimiento de su estado.
 - Solo administradores pueden eliminar tickets (borrado lógico).
 - Cada ticket se asocia a un equipo vigente y, opcionalmente, a uno o más
   técnicos mediante la relación existente `TecnicoMantenimiento`.
+- Cada ticket conserva el usuario que reportó la falla. Al crear desde el plano
+  se usa por defecto el usuario autenticado, con opción de seleccionar otro
+  usuario activo.
 - El listado permite filtrar por texto (equipo, descripción, técnico), tipo
   de mantenimiento y estado, con paginación.
 - El estado del ticket se presenta como Pendiente, En mantenimiento,

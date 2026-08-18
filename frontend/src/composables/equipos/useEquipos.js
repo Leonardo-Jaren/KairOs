@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import equiposService from '@/services/equipos.service';
 import espaciosService from '@/services/espacios.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -205,15 +206,11 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
     }
   };
 
-  const applyFilters = () => {
-    filters.page = 1;
-    return loadEquipos();
-  };
+  const { applyFilters, resetFilters } = useAutoFilters(filters, loadEquipos, {
+    immediateKeys: ['tipo_equipo', 'estado'],
+  });
 
-  const clearFilters = () => {
-    Object.assign(filters, { search: '', tipo_equipo: '', estado: '', page: 1 });
-    return loadEquipos();
-  };
+  const clearFilters = () => resetFilters({ search: '', tipo_equipo: '', estado: '' });
 
   const changePage = (page) => {
     filters.page = page;

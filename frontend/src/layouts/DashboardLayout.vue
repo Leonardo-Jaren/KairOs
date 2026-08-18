@@ -5,6 +5,7 @@ import {
   Clock3,
   Gauge,
   LogOut,
+  MapPinned,
   Menu,
   MonitorCog,
   PanelLeftClose,
@@ -22,6 +23,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const sidebarOpen = ref(false);
+const menuActiveClasses = 'bg-primary-500! text-white! shadow-lg shadow-primary-950/20';
 
 const user = computed(() => authStore.user);
 const pageTitle = computed(() => route.meta.title ?? 'Panel de control');
@@ -33,6 +35,7 @@ const initials = computed(() => {
 const menuItems = computed(() => [
   { name: 'Dashboard', path: '/dashboard', icon: Gauge },
   { name: 'Usuarios', path: '/usuarios', icon: UsersRound, roles: ['admin', 'tecnico'] },
+  { name: 'Campus', path: '/espacios/mapa', icon: MapPinned, roles: ['admin', 'tecnico'] },
   { name: 'Espacios', path: '/espacios', icon: Building2, roles: ['admin', 'tecnico'] },
   { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, roles: ['admin', 'tecnico'] },
   { name: 'Equipos', path: '/equipos', icon: MonitorCog, roles: ['admin', 'tecnico'] },
@@ -42,6 +45,10 @@ const menuItems = computed(() => [
   { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert },
   { name: 'Historial', path: '/historial', icon: Clock3 },
 ].filter((item) => !item.roles || item.roles.includes(user.value?.rol)));
+
+const activeMenuPath = computed(() => menuItems.value
+  .filter((item) => route.path === item.path || route.path.startsWith(`${item.path}/`))
+  .sort((left, right) => right.path.length - left.path.length)[0]?.path ?? '');
 
 const handleLogout = async () => {
   authStore.logout();
@@ -85,7 +92,9 @@ watch(() => route.fullPath, () => {
             :key="item.path"
             :to="item.path"
             class="group flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-white/60 transition-all duration-200 hover:bg-white/6 hover:text-white"
-            active-class="bg-primary-500! text-white! shadow-lg shadow-primary-950/20"
+            active-class=""
+            exact-active-class=""
+            :class="activeMenuPath === item.path ? menuActiveClasses : ''"
           >
             <component :is="item.icon" :size="19" :stroke-width="1.8" class="shrink-0" />
             <span>{{ item.name }}</span>

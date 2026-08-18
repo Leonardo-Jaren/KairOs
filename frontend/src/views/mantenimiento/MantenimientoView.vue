@@ -111,7 +111,7 @@ const formatFecha = (fecha) => {
       </BaseButton>
     </header>
 
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
       <StatCard label="Técnicos registrados" :value="stats.total_tecnicos" tone="blue" helper="Personal activo">
         <template #icon><Wrench :size="20" /></template>
       </StatCard>
@@ -130,7 +130,7 @@ const formatFecha = (fecha) => {
       <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <h2 class="text-base font-bold text-slate-900">Mantenimiento de equipos</h2>
       </div>
-      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]" @submit.prevent="applyFilters">
         <BaseInput
           id="mant-search"
           v-model="filters.search"
@@ -151,7 +151,6 @@ const formatFecha = (fecha) => {
           :options="estadoOptions"
           placeholder="Todos los estados"
         />
-        <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
         <BaseButton variant="ghost" :full-width="false" @click="clearFilters">Limpiar</BaseButton>
       </form>
     </section>
@@ -213,6 +212,7 @@ const formatFecha = (fecha) => {
       :page="filters.page"
       :total-pages="pagination.totalPages"
       :total="pagination.total"
+      :loading="loading"
       @change="changePage"
     />
 

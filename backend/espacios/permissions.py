@@ -8,6 +8,10 @@ class CanManageEspacio(IsAdminOrTecnicoReadOnly):
     """Permite CRUD a administradores y lectura a técnicos."""
 
 
+class CanManageEdificio(IsAdminOrTecnicoReadOnly):
+    """Permite CRUD de edificios a administradores y lectura a técnicos."""
+
+
 class CanManageEspacioUsuario(BasePermission):
     """Permite escritura a administradores y lectura a técnicos. Bloquea opciones para técnicos."""
 

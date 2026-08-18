@@ -114,6 +114,15 @@ select {
   background: var(--color-primary-500);
 }
 
+/* Oculta la barra visual sin deshabilitar el desplazamiento horizontal. */
+.scrollbar-hidden {
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 /* Solucion global para corregir el bug de autofill de Chrome/Edge */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 

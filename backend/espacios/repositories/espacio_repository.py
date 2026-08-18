@@ -18,7 +18,9 @@ class EspacioRepository(BaseRepository):
             activo=True,
         ).select_related('usuario').order_by('tipo_responsabilidad', 'usuario__nombre')
         equipos = Equipo.objects.filter(is_deleted=False).order_by('codigo')
-        return self.model.objects.filter(is_deleted=False).prefetch_related(
+        return self.model.objects.filter(is_deleted=False).select_related(
+            'edificio',
+        ).prefetch_related(
             Prefetch(
                 'asignaciones_usuario',
                 queryset=asignaciones,
@@ -44,6 +46,8 @@ class EspacioRepository(BaseRepository):
         tipo: str = '',
         activo: bool | None = None,
         pabellon: str = '',
+        edificio: str = '',
+        edificio_id: int | None = None,
     ):
         """Aplica los filtros disponibles en la pantalla de espacios."""
         queryset = self.get_all()
@@ -51,6 +55,8 @@ class EspacioRepository(BaseRepository):
             queryset = queryset.filter(
                 Q(codigo_espacio__icontains=busqueda)
                 | Q(pabellon__icontains=busqueda)
+                | Q(edificio__codigo__icontains=busqueda)
+                | Q(edificio__nombre__icontains=busqueda)
                 | Q(piso__icontains=busqueda)
                 | Q(asignaciones_usuario__usuario__nombre__icontains=busqueda)
                 | Q(asignaciones_usuario__usuario__apellido__icontains=busqueda)
@@ -61,6 +67,13 @@ class EspacioRepository(BaseRepository):
             queryset = queryset.filter(activo=activo)
         if pabellon:
             queryset = queryset.filter(pabellon__icontains=pabellon)
+        if edificio:
+            queryset = queryset.filter(
+                Q(edificio__codigo__icontains=edificio)
+                | Q(edificio__nombre__icontains=edificio)
+            )
+        if edificio_id is not None:
+            queryset = queryset.filter(edificio_id=edificio_id)
         return queryset
 
     def get_by_codigo(

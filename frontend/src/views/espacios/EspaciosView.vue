@@ -9,6 +9,10 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <BaseButton variant="secondary" :full-width="false" @click="$router.push('/espacios/mapa')">
+          <template #icon><Map :size="18" /></template>
+          Mapa de campus
+        </BaseButton>
         <BaseButton variant="secondary" :full-width="false" @click="$router.push('/espacios/usuarios')">
           Usuarios por espacio
         </BaseButton>
@@ -21,7 +25,7 @@
       </div>
     </header>
 
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
       <StatCard label="Espacios registrados" :value="stats.total" tone="blue">
         <template #icon>
           <Building2 :size="20" />
@@ -45,7 +49,7 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <form class="grid gap-3 md:grid-cols-[minmax(240px,1fr)_190px_170px_auto_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 md:grid-cols-[minmax(240px,1fr)_190px_170px_auto]" @submit.prevent="applyFilters">
         <BaseInput id="spaces-search" v-model="filters.search" appearance="light"
           placeholder="Buscar por código, pabellón, piso o responsable">
           <template #icon>
@@ -56,7 +60,6 @@
         <BaseSelect id="spaces-status" v-model="filters.activo"
           :options="[{ value: 'true', label: 'Activos' }, { value: 'false', label: 'Inactivos' }]"
           placeholder="Todos los estados" />
-        <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
         <BaseButton variant="ghost" :full-width="false" @click="clearFilters">Limpiar</BaseButton>
       </form>
     </section>
@@ -80,7 +83,7 @@
       </template>
       <template #cell-ubicacion="{ item }">
         <p class="font-medium text-slate-700">{{ item.pabellon }}</p>
-        <p class="text-xs text-slate-400">Piso {{ item.piso }}</p>
+        <p class="text-xs text-slate-400">{{ formatFloor(item.piso) }}</p>
       </template>
       <template #cell-responsable="{ item }">
         <div v-if="item.responsable">
@@ -120,7 +123,7 @@
       </template>
     </BaseTable>
 
-    <BasePagination :page="filters.page" :total-pages="pagination.totalPages" :total="pagination.total"
+    <BasePagination :page="filters.page" :total-pages="pagination.totalPages" :total="pagination.total" :loading="loading"
       @change="changePage" />
 
     <BaseModal :open="modalOpen" :title="isEditing ? 'Editar espacio' : 'Nuevo espacio'"
@@ -130,9 +133,9 @@
           :error="formErrors.codigo_espacio" />
         <BaseSelect id="space-type-form" v-model="form.tipo" label="Tipo" :options="typeOptions"
           :error="formErrors.tipo" />
-        <BaseInput id="space-building" v-model="form.pabellon" appearance="light" label="Pabellón o edificio"
-          placeholder="Pabellón 2" :error="formErrors.pabellon" />
-        <BaseInput id="space-floor" v-model="form.piso" appearance="light" label="Piso" placeholder="2"
+        <BaseSelect id="space-building" v-model="form.edificio_id" label="Edificio"
+          :options="buildingOptions" placeholder="Seleccionar edificio" :error="formErrors.edificio_id" />
+        <BaseInput id="space-floor" v-model="form.piso" appearance="light" type="number" label="Número de piso" placeholder="2"
           :error="formErrors.piso" />
         <label
           class="sm:col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -229,7 +232,7 @@
 
 <script setup>
 import { shallowRef } from 'vue';
-import { Building2, Eye, FlaskConical, Monitor, Pencil, Plus, Search, Trash2 } from '@lucide/vue';
+import { Building2, Eye, FlaskConical, Map, Monitor, Pencil, Plus, Search, Trash2 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
@@ -241,6 +244,7 @@ import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTable from '@/components/tables/BaseTable.vue';
 import BaseToast from '@/components/toasts/BaseToast.vue';
 import { useEspacios } from '@/composables/espacios/useEspacios';
+import { formatFloor } from '@/utils/formatters';
 
 const detailEspacio = shallowRef(null);
 
@@ -257,7 +261,7 @@ const columns = [
 const {
   espacios, loading, saving, modalOpen, deleteModalOpen, pendingDelete,
   form, formErrors, filters, pagination, stats, toast, canEdit, isEditing,
-  typeOptions, openCreate, openEdit, closeModal, submit, askDelete,
+  typeOptions, buildingOptions, openCreate, openEdit, closeModal, submit, askDelete,
   cancelDelete, confirmDelete, applyFilters, clearFilters, changePage,
   closeToast,
 } = useEspacios();

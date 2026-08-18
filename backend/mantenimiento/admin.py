@@ -11,7 +11,7 @@ class TecnicoMantenimientoInline(admin.TabularInline):
 class MantenimientoAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'equipo', 'fecha', 'tipo_mantenimiento',
-        'estado', 'descripcion_corta',
+        'estado', 'reportado_por', 'descripcion_corta',
     )
     list_filter = ('tipo_mantenimiento', 'estado', 'fecha')
     search_fields = ('equipo__codigo', 'descripcion')
