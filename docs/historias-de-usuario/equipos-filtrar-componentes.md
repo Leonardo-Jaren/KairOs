@@ -44,5 +44,5 @@ Se agregaron filtros server-side, paginacion visible y actualizacion local con l
 
 ## Enlaces
 
-- PR: Pendiente de creacion
-- Issue GitHub: Pendiente de creacion
+- PR: https://github.com/Leonardo-Jaren/KairOs/pull/21
+- Issue GitHub: https://github.com/Leonardo-Jaren/KairOs/issues/22
