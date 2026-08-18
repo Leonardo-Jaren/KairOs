@@ -91,9 +91,13 @@ class EdificioRepository(BaseRepository):
 
     def get_space_ids_for_floor(self, building_id: int, floor: str) -> set[int]:
         """Obtiene los ambientes activos que deben aparecer en el croquis del piso."""
+        normalized_floor = floor.strip()
+        floor_query = Q(piso__iexact=normalized_floor) | Q(
+            piso__iexact=f'Piso {normalized_floor}'
+        )
         return set(Espacio.objects.filter(
+            floor_query,
             edificio_id=building_id,
-            piso=floor,
             activo=True,
             is_deleted=False,
         ).values_list('id', flat=True))

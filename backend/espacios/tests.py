@@ -30,13 +30,14 @@ class EspacioRepositoryServiceTests(TestCase):
                 'codigo_espacio': ' lab-301 ',
                 'tipo': 'laboratorio',
                 'pabellon': 'Pabellón 3',
-                'piso': '3',
+                'piso': ' Piso 3 ',
                 'activo': True,
             },
             actor=self.admin,
         )
 
         self.assertEqual(espacio.codigo_espacio, 'LAB-301')
+        self.assertEqual(espacio.piso, '3')
         self.assertEqual(espacio.created_by, self.admin)
         self.assertTrue(espacio.activo)
 
@@ -52,6 +53,18 @@ class EspacioRepositoryServiceTests(TestCase):
         with self.assertRaisesMessage(Exception, 'Ya existe un espacio'):
             self.service.create(
                 {**payload, 'codigo_espacio': 'lab-301'},
+                actor=self.admin,
+            )
+
+    def test_rejects_floor_empty_after_normalization(self):
+        with self.assertRaisesMessage(Exception, 'Ingrese el número o nombre corto del piso'):
+            self.service.create(
+                {
+                    'codigo_espacio': 'LAB-EMPTY',
+                    'tipo': 'laboratorio',
+                    'pabellon': 'Pabellón 3',
+                    'piso': ' Piso ',
+                },
                 actor=self.admin,
             )
 

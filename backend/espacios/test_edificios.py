@@ -158,14 +158,14 @@ class EdificioAPITests(APITestCase):
             tipo='laboratorio',
             pabellon=edificio.nombre,
             edificio=edificio,
-            piso='1',
+            piso='Piso 1',
         )
         aula = Espacio.objects.create(
             codigo_espacio='AUL-102',
             tipo='aula',
             pabellon=edificio.nombre,
             edificio=edificio,
-            piso='1',
+            piso='Piso 1',
         )
         self.client.force_authenticate(self.admin)
 
