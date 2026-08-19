@@ -16,8 +16,8 @@
       </BaseButton>
     </header>
 
-    <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <StatCard label="Asignaciones encontradas" :value="pagination.total"
+    <section class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
+      <StatCard class="col-span-2 sm:col-span-1" label="Asignaciones encontradas" :value="pagination.total"
         :helper="`${activeCount} activas en esta página`" tone="blue">
         <template #icon>
           <Link2 :size="20" />
@@ -36,7 +36,7 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <form class="grid gap-3 md:grid-cols-[minmax(240px,1fr)_180px_auto_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 md:grid-cols-[minmax(240px,1fr)_180px_auto]" @submit.prevent="applyFilters">
         <BaseInput id="assignments-search" v-model="filters.search" appearance="light"
           placeholder="Buscar por usuario, correo, espacio o pabellón">
           <template #icon>
@@ -47,7 +47,6 @@
           { value: 'true', label: 'Activas' },
           { value: 'false', label: 'Inactivas' },
         ]" placeholder="Todos los estados" />
-        <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
         <BaseButton variant="ghost" :full-width="false" @click="clearFilters">Limpiar</BaseButton>
       </form>
     </section>
@@ -98,7 +97,7 @@
       </template>
     </BaseTable>
 
-    <BasePagination :page="filters.page" :total-pages="pagination.totalPages" :total="pagination.total"
+    <BasePagination :page="filters.page" :total-pages="pagination.totalPages" :total="pagination.total" :loading="loading"
       @change="changePage" />
 
     <BaseModal :open="modalOpen" :title="isEditing ? 'Editar asignación' : 'Nueva asignación'"

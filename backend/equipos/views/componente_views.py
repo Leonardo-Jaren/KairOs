@@ -21,9 +21,13 @@ class ComponenteViewSet(BaseViewSet):
         return ComponenteSerializer
 
     def list(self, request: Request, *args, **kwargs) -> Response:
-        """Lista componentes filtrando por equipo_id."""
+        """Lista componentes filtrando por equipo, texto y tipo."""
         equipo_id = self.parse_integer_query(request.query_params.get('equipo_id'))
-        queryset = self.service.listar(equipo_id=equipo_id)
+        queryset = self.service.listar(
+            equipo_id=equipo_id,
+            busqueda=request.query_params.get('search', ''),
+            tipo=request.query_params.get('tipo', ''),
+        )
         return self.get_collection_response(queryset)
 
     def create(self, request: Request, *args, **kwargs) -> Response:

@@ -12,6 +12,7 @@ const space = {
   tipo: 'laboratorio',
   tipo_display: 'Laboratorio',
   pabellon: 'Pabellón 3',
+  edificio_id: 3,
   piso: '3',
   activo: true,
   responsable: null,
@@ -31,6 +32,12 @@ const createService = () => ({
   desactivar: vi.fn().mockResolvedValue(undefined),
 });
 
+const buildingService = {
+  listar: vi.fn().mockResolvedValue({
+    results: [{ id: 3, codigo: 'EDIF-03', nombre: 'Pabellón 3' }],
+  }),
+};
+
 const mountComposable = (service, role = 'admin') => {
   let state;
   const pinia = createPinia();
@@ -38,7 +45,7 @@ const mountComposable = (service, role = 'admin') => {
   useAuthStore().user = { id: 99, nombre: 'Ada', rol: role };
   mount(defineComponent({
     setup() {
-      state = useEspacios(service);
+      state = useEspacios(service, buildingService);
       return () => h('div');
     },
   }), { global: { plugins: [pinia] } });
@@ -79,7 +86,7 @@ describe('useEspacios', () => {
     expect(result).toBe(false);
     expect(service.crear).not.toHaveBeenCalled();
     expect(state.formErrors.codigo_espacio).toBeTruthy();
-    expect(state.formErrors.pabellon).toBeTruthy();
+    expect(state.formErrors.edificio_id).toBeTruthy();
   });
 
   it('crea un espacio y actualiza los datos', async () => {
@@ -89,7 +96,7 @@ describe('useEspacios', () => {
     Object.assign(state.form, {
       codigo_espacio: 'LAB-301',
       tipo: 'laboratorio',
-      pabellon: 'Pabellón 3',
+      edificio_id: 3,
       piso: '3',
     });
 
@@ -98,8 +105,27 @@ describe('useEspacios', () => {
     expect(result).toBe(true);
     expect(service.crear).toHaveBeenCalledWith(expect.objectContaining({
       codigo_espacio: 'LAB-301',
+      edificio_id: 3,
     }));
     expect(state.toast.type).toBe('success');
+  });
+
+  it('rechaza pisos con texto', async () => {
+    const state = mountComposable(service);
+    await flushPromises();
+    state.openCreate();
+    Object.assign(state.form, {
+      codigo_espacio: 'LAB-301',
+      tipo: 'laboratorio',
+      edificio_id: 3,
+      piso: 'Primero',
+    });
+
+    const result = await state.submit();
+
+    expect(result).toBe(false);
+    expect(state.formErrors.piso).toBe('El piso debe contener únicamente números.');
+    expect(service.crear).not.toHaveBeenCalled();
   });
 
   it('desactiva el espacio seleccionado', async () => {

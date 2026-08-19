@@ -1,3 +1,5 @@
+from django.db.models import Q
+
 from equipos.models import Componente, Equipo
 from shared.base import BaseRepository
 
@@ -16,10 +18,24 @@ class ComponenteRepository(BaseRepository):
         except self.model.DoesNotExist:
             return None
 
-    def listar(self, equipo_id: int | None = None):
+    def listar(
+        self,
+        equipo_id: int | None = None,
+        busqueda: str = '',
+        tipo: str = '',
+    ):
+        """Filtra componentes por equipo, texto y tipo antes de paginar."""
         qs = self.get_all()
         if equipo_id is not None:
             qs = qs.filter(equipo_id=equipo_id)
+        if busqueda:
+            qs = qs.filter(
+                Q(modelo__icontains=busqueda)
+                | Q(descripcion__icontains=busqueda)
+                | Q(equipo__codigo__icontains=busqueda)
+            )
+        if tipo:
+            qs = qs.filter(tipo=tipo)
         return qs.order_by('tipo', 'modelo')
 
     def get_equipo_by_id(self, equipo_id: int) -> Equipo | None:

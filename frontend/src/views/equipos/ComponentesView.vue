@@ -5,6 +5,7 @@ import { onMounted, ref } from 'vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
+import BasePagination from '@/components/pagination/BasePagination.vue';
 import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTable from '@/components/tables/BaseTable.vue';
 import BaseTextarea from '@/components/inputs/BaseTextarea.vue';
@@ -18,12 +19,11 @@ const canManageAll = ['admin', 'tecnico'].includes(authStore.user?.rol);
 
 const {
   componentes, loading, saving, formOpen, deleteOpen, pendingDelete,
-  form, formErrors, toast, isEditing,
+  form, formErrors, filters, pagination, toast, isEditing,
   cargar, openCreate, openEdit, closeForm, submit,
-  askDelete, cancelDelete, confirmDelete, closeToast,
+  askDelete, cancelDelete, confirmDelete, clearFilters, changePage, closeToast,
 } = useComponentes();
 
-const filters = ref({ search: '', tipo: '' });
 const equipoOptions = ref([]);
 
 const columns = [
@@ -34,16 +34,6 @@ const columns = [
   { key: 'acciones', label: 'Acciones', class: 'text-right' },
 ];
 
-const filteredComponentes = () => {
-  const s = filters.value.search.toLowerCase();
-  const t = filters.value.tipo;
-  return componentes.value.filter((c) => {
-    if (t && c.tipo !== t) return false;
-    if (s && !`${c.tipo_display} ${c.modelo} ${c.descripcion ?? ''} ${c.equipo_codigo ?? ''}`.toLowerCase().includes(s)) return false;
-    return true;
-  });
-};
-
 onMounted(async () => {
   cargar();
   try {
@@ -52,9 +42,6 @@ onMounted(async () => {
   } catch { /* no critical */ }
 });
 
-function clearFilters() {
-  filters.value = { search: '', tipo: '' };
-}
 </script>
 
 <template>
@@ -106,7 +93,7 @@ function clearFilters() {
 
     <BaseTable
       :columns="columns"
-      :items="filteredComponentes()"
+      :items="componentes"
       :loading="loading"
       empty-message="No se encontraron componentes con los filtros actuales."
     >
@@ -145,6 +132,14 @@ function clearFilters() {
         <span v-else class="text-xs text-slate-400">Solo lectura</span>
       </template>
     </BaseTable>
+
+    <BasePagination
+      :page="filters.page"
+      :total-pages="pagination.totalPages"
+      :total="pagination.total"
+      :loading="loading"
+      @change="changePage"
+    />
 
     <!-- Modal crear/editar -->
     <BaseModal

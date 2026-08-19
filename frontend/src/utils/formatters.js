@@ -17,6 +17,15 @@ export function formatDate(value) {
   });
 }
 
+export function formatFloor(value) {
+  const floor = String(value ?? '').trim().replace(/^piso\s*/i, '');
+  return floor ? `Piso ${floor}` : 'Piso sin registrar';
+}
+
+export function formatBuildingName(value) {
+  return String(value ?? '').trim().replace(/\s+piso$/i, '') || 'Sin edificio';
+}
+
 export function formatCurrency(value) {
   return new Intl.NumberFormat('es-PE', {
     style: 'currency',

@@ -7,6 +7,9 @@ class SoftwareInstaladoSerializer(serializers.ModelSerializer):
     """Representa una instalacion de software con datos del equipo y producto."""
 
     producto_software_nombre = serializers.SerializerMethodField()
+    producto_software_tipo_licencia_display = serializers.CharField(
+        source='producto_software.get_tipo_licencia_display', read_only=True
+    )
     equipo_codigo = serializers.CharField(source='equipo.codigo', read_only=True)
     espacio_nombre = serializers.SerializerMethodField()
 
@@ -19,6 +22,7 @@ class SoftwareInstaladoSerializer(serializers.ModelSerializer):
             'espacio_nombre',
             'producto_software',
             'producto_software_nombre',
+            'producto_software_tipo_licencia_display',
             'numero_licencia_usado',
             'fecha_instalacion',
             'created_at',

@@ -1,12 +1,30 @@
 from django.contrib import admin
-from .models import Espacio, EspacioUsuario
+from .models import Edificio, Espacio, EspacioUsuario
+
+
+@admin.register(Edificio)
+class EdificioAdmin(admin.ModelAdmin):
+    """Configura la administración de edificios del campus."""
+
+    list_display = ('id', 'codigo', 'nombre', 'activo')
+    list_filter = ('activo',)
+    search_fields = ('codigo', 'nombre', 'descripcion')
+    ordering = ('nombre', 'codigo')
 
 
 @admin.register(Espacio)
 class EspacioAdmin(admin.ModelAdmin):
-    list_display = ('id', 'codigo_espacio', 'tipo', 'pabellon', 'piso', 'activo')
-    list_filter = ('tipo', 'pabellon', 'piso', 'activo')
-    search_fields = ('codigo_espacio', 'pabellon')
+    list_display = (
+        'id',
+        'codigo_espacio',
+        'tipo',
+        'edificio',
+        'pabellon',
+        'piso',
+        'activo',
+    )
+    list_filter = ('tipo', 'edificio', 'pabellon', 'piso', 'activo')
+    search_fields = ('codigo_espacio', 'edificio__nombre', 'pabellon')
     ordering = ('codigo_espacio',)
 
 

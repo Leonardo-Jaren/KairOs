@@ -1,6 +1,6 @@
 <script setup>
 import { shallowRef, watch } from 'vue';
-import { Pencil, Plus, Trash2 } from '@lucide/vue';
+import { AppWindow, CalendarDays, KeyRound, Pencil, Plus, Trash2 } from '@lucide/vue';
 
 import AuditTimelineList from '@/components/historial/AuditTimelineList.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
@@ -10,6 +10,7 @@ import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTextarea from '@/components/inputs/BaseTextarea.vue';
 import BaseToast from '@/components/toasts/BaseToast.vue';
 import { TIPO_OPTIONS, getTipoIcon, useComponentes } from '@/composables/equipos/useComponentes';
+import { useSoftwareEquipo } from '@/composables/equipos/useSoftwareEquipo';
 import historialService from '@/services/historial.service';
 
 const props = defineProps({
@@ -32,6 +33,28 @@ const {
   askDelete, cancelDelete, confirmDelete, closeToast, reset,
 } = useComponentes();
 
+const {
+  installations: softwareInstallations,
+  loading: softwareLoading,
+  saving: softwareSaving,
+  formOpen: softwareFormOpen,
+  deleteOpen: softwareDeleteOpen,
+  pendingDelete: pendingSoftwareDelete,
+  form: softwareForm,
+  errors: softwareErrors,
+  toast: softwareToast,
+  productOptions,
+  load: loadSoftware,
+  openCreate: openSoftwareForm,
+  closeForm: closeSoftwareForm,
+  submit: submitSoftware,
+  askDelete: askDeleteSoftware,
+  cancelDelete: cancelDeleteSoftware,
+  confirmDelete: confirmDeleteSoftware,
+  reset: resetSoftware,
+  closeToast: closeSoftwareToast,
+} = useSoftwareEquipo();
+
 const estadoClasses = {
   en_uso:           'bg-success-50 text-success-700',
   en_mantenimiento: 'bg-warning-50 text-warning-700',
@@ -50,7 +73,11 @@ watch(() => props.equipo, (eq) => {
   timelineEvents.value = [];
   timelineLoaded.value = false;
   reset();
-  if (eq) cargar(eq.id);
+  resetSoftware();
+  if (eq) {
+    cargar(eq.id);
+    loadSoftware(eq.id);
+  }
 }, { immediate: true });
 
 function switchTab(key) {
@@ -79,6 +106,7 @@ async function switchToTimeline() {
 const tabs = [
   { key: 'info',       label: 'Información' },
   { key: 'componentes', label: 'Componentes' },
+  { key: 'software', label: 'Software' },
   { key: 'timeline',   label: 'Línea de Tiempo' },
 ];
 </script>
@@ -94,12 +122,12 @@ const tabs = [
     <div class="flex flex-col">
 
       <!-- Tab bar -->
-      <div class="mb-5 flex border-b border-slate-200">
+      <div class="mb-5 flex overflow-x-auto border-b border-slate-200">
         <button
           v-for="tab in tabs"
           :key="tab.key"
           type="button"
-          class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
+          class="-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
           :class="activeTab === tab.key
             ? 'border-primary-500 text-primary-600'
             : 'border-transparent text-slate-500 hover:text-slate-700'"
@@ -278,6 +306,59 @@ const tabs = [
         </BaseModal>
       </div>
 
+      <!-- Software -->
+      <div v-else-if="activeTab === 'software'" class="flex flex-col gap-4">
+        <Transition enter-from-class="opacity-0 -translate-y-2" enter-active-class="transition-all duration-200" leave-to-class="opacity-0 -translate-y-2" leave-active-class="transition-all duration-200">
+          <div v-if="softwareFormOpen" class="rounded-xl border border-primary-100 bg-primary-50/40 p-4">
+            <p class="mb-3 text-sm font-semibold text-slate-800">Instalar software</p>
+            <form id="software-equipment-form" class="grid gap-3 sm:grid-cols-2" @submit.prevent="submitSoftware">
+              <div class="sm:col-span-2">
+                <BaseSelect id="software-product" v-model="softwareForm.producto_software_id" label="Producto disponible" :options="productOptions" placeholder="Seleccionar producto" :error="softwareErrors.producto_software_id" />
+              </div>
+              <BaseInput id="software-license" v-model="softwareForm.numero_licencia_usado" appearance="light" label="Licencia usada (opcional)" placeholder="Clave o identificador interno" />
+              <BaseInput id="software-date" v-model="softwareForm.fecha_instalacion" type="date" appearance="light" label="Fecha de instalación" :error="softwareErrors.fecha_instalacion" />
+            </form>
+            <div class="mt-3 flex justify-end gap-2">
+              <BaseButton variant="ghost" :full-width="false" @click="closeSoftwareForm">Cancelar</BaseButton>
+              <BaseButton type="submit" form="software-equipment-form" variant="accent" :loading="softwareSaving" :full-width="false">Instalar</BaseButton>
+            </div>
+          </div>
+        </Transition>
+
+        <div v-if="canEdit && !softwareFormOpen" class="flex items-center justify-between gap-3">
+          <p class="text-xs text-slate-400">{{ softwareInstallations.length }} producto{{ softwareInstallations.length === 1 ? '' : 's' }} instalado{{ softwareInstallations.length === 1 ? '' : 's' }}</p>
+          <BaseButton variant="accent" :full-width="false" :disabled="productOptions.length === 0" @click="openSoftwareForm">
+            <template #icon><Plus :size="16" /></template>
+            Instalar software
+          </BaseButton>
+        </div>
+
+        <p v-if="canEdit && !softwareFormOpen && productOptions.length === 0 && !softwareLoading" class="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">No quedan productos disponibles en el catálogo o todos ya están instalados.</p>
+        <div v-if="softwareLoading" class="py-8 text-center text-sm text-slate-400">Cargando software...</div>
+        <div v-else-if="softwareInstallations.length === 0" class="py-8 text-center text-sm text-slate-400">Este equipo no tiene software registrado.</div>
+        <ul v-else class="divide-y divide-slate-100">
+          <li v-for="installation in softwareInstallations" :key="installation.id" class="flex items-start justify-between gap-3 py-3">
+            <div class="flex min-w-0 items-start gap-3">
+              <span class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-primary-50 text-primary-600"><AppWindow :size="17" /></span>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-900">{{ installation.producto_software_nombre }}</p>
+                <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                  <span class="inline-flex items-center gap-1"><KeyRound :size="12" />{{ installation.producto_software_tipo_licencia_display }}</span>
+                  <span class="inline-flex items-center gap-1"><CalendarDays :size="12" />{{ installation.fecha_instalacion }}</span>
+                </p>
+                <p v-if="installation.numero_licencia_usado" class="mt-1 truncate font-mono text-[10px] text-slate-400">{{ installation.numero_licencia_usado }}</p>
+              </div>
+            </div>
+            <button v-if="canEdit" type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Retirar software" @click="askDeleteSoftware(installation)"><Trash2 :size="15" /></button>
+          </li>
+        </ul>
+
+        <BaseModal :open="softwareDeleteOpen" title="Retirar software" size="sm" @close="cancelDeleteSoftware">
+          <p class="text-sm text-slate-600">¿Retirar <strong class="text-slate-900">{{ pendingSoftwareDelete?.producto_software_nombre }}</strong> de este equipo?</p>
+          <template #footer><BaseButton variant="ghost" :full-width="false" @click="cancelDeleteSoftware">Cancelar</BaseButton><BaseButton variant="danger" :loading="softwareSaving" :full-width="false" @click="confirmDeleteSoftware">Retirar</BaseButton></template>
+        </BaseModal>
+      </div>
+
       <!-- Línea de tiempo -->
       <div v-else>
         <AuditTimelineList :events="timelineEvents" :loading="timelineLoading" :inline="true" />
@@ -286,5 +367,6 @@ const tabs = [
     </div>
 
     <BaseToast :show="toast.show" :message="toast.message" :type="toast.type" @close="closeToast" />
+    <BaseToast :show="softwareToast.show" :message="softwareToast.message" :type="softwareToast.type" @close="closeSoftwareToast" />
   </BaseModal>
 </template>

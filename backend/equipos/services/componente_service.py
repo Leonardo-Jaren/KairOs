@@ -17,8 +17,18 @@ class ComponenteService(AuditableMixin, BaseService):
     def __init__(self):
         self.repository = ComponenteRepository()
 
-    def listar(self, equipo_id: int | None = None):
-        return self.repository.listar(equipo_id=equipo_id)
+    def listar(
+        self,
+        equipo_id: int | None = None,
+        busqueda: str = '',
+        tipo: str = '',
+    ):
+        """Lista componentes aplicando los filtros solicitados por la interfaz."""
+        return self.repository.listar(
+            equipo_id=equipo_id,
+            busqueda=busqueda,
+            tipo=tipo,
+        )
 
     # ── Hooks de lógica de negocio ─────────────────────────────────────────────
 

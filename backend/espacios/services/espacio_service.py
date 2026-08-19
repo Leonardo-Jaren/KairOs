@@ -13,6 +13,7 @@ class EspacioService(AuditableMixin, BaseService):
     ALTA          = 'espacio.alta'
     ACTUALIZACION = 'espacio.actualizacion'
     DESACTIVACION = 'espacio.desactivacion'
+    DISPOSICION    = 'espacio.disposicion'
 
     def __init__(self):
         self.repository = EspacioRepository()
@@ -23,18 +24,23 @@ class EspacioService(AuditableMixin, BaseService):
         tipo: str = '',
         activo: bool | None = None,
         pabellon: str = '',
+        edificio: str = '',
+        edificio_id: int | None = None,
     ):
         return self.repository.listar(
             busqueda=busqueda.strip(),
             tipo=tipo.strip(),
             activo=activo,
             pabellon=pabellon.strip(),
+            edificio=edificio.strip(),
+            edificio_id=edificio_id,
         )
 
     # ── Hooks de lógica de negocio ─────────────────────────────────────────────
 
     def _do_create(self, data: dict, actor: Usuario = None):
         clean_data = self._normalizar(data)
+        self._sincronizar_pabellon(clean_data)
         existing = self.repository.get_by_codigo(clean_data['codigo_espacio'])
         if existing and existing.is_deleted:
             instance = self.repository.restore(existing, clean_data, actor)
@@ -47,6 +53,7 @@ class EspacioService(AuditableMixin, BaseService):
     def _do_update(self, id: int, data: dict, actor: Usuario = None) -> Espacio:
         instance = self.get_by_id(id)
         clean_data = self._normalizar(data, partial=True)
+        self._sincronizar_pabellon(clean_data, edificio_actual=instance.edificio)
         codigo = clean_data.get('codigo_espacio', instance.codigo_espacio)
         self._validar_codigo(codigo, exclude_id=instance.id)
         clean_data['updated_by'] = actor
@@ -87,6 +94,56 @@ class EspacioService(AuditableMixin, BaseService):
     def get_estadisticas(self) -> dict:
         return self.repository.get_estadisticas()
 
+    def actualizar_disposicion(
+        self,
+        id: int,
+        data: dict,
+        actor: Usuario = None,
+    ) -> Espacio:
+        """Guarda un plano validando que sus equipos pertenezcan al espacio."""
+        instance = self.get_by_id(id)
+        equipos_validos = {
+            equipo.id for equipo in getattr(instance, 'equipos_vigentes', [])
+        }
+        equipos_solicitados = {puesto['equipo_id'] for puesto in data['puestos']}
+        equipos_ajenos = equipos_solicitados - equipos_validos
+        if equipos_ajenos:
+            raise ValidationError({
+                'puestos': 'El plano contiene equipos que no pertenecen a este espacio.'
+            })
+
+        configuracion = {
+            'columnas': data['columnas'],
+            'filas': data['filas'],
+            'puestos': [
+                {
+                    'equipo_id': puesto['equipo_id'],
+                    'fila': puesto['fila'],
+                    'columna': puesto['columna'],
+                    'es_docente': puesto.get('es_docente', False),
+                }
+                for puesto in data['puestos']
+            ],
+        }
+        self.repository.update(
+            instance,
+            configuracion_plano=configuracion,
+            updated_by=actor,
+        )
+        updated = self.repository.get_by_id(instance.id)
+        self._audit_registrar(
+            updated,
+            self.DISPOSICION,
+            actor,
+            f'Plano de {updated.codigo_espacio} actualizado.',
+            datos_extra={
+                'columnas': configuracion['columnas'],
+                'filas': configuracion['filas'],
+                'equipos_ubicados': len(configuracion['puestos']),
+            },
+        )
+        return updated
+
     def _normalizar(self, data: dict, partial: bool = False) -> dict:
         clean_data = data.copy()
         if 'codigo_espacio' in clean_data:
@@ -96,7 +153,19 @@ class EspacioService(AuditableMixin, BaseService):
         for field in ['pabellon', 'piso']:
             if field in clean_data:
                 clean_data[field] = clean_data[field].strip()
+        if 'piso' in clean_data:
+            if not clean_data['piso'].isdigit():
+                raise ValidationError({
+                    'piso': 'El piso debe contener únicamente números.'
+                })
         return clean_data
+
+    @staticmethod
+    def _sincronizar_pabellon(clean_data: dict, edificio_actual=None) -> None:
+        """Completa el campo histórico cuando el espacio pertenece a un edificio."""
+        edificio = clean_data.get('edificio', edificio_actual)
+        if edificio is not None and not clean_data.get('pabellon'):
+            clean_data['pabellon'] = edificio.nombre
 
     def _validar_codigo(self, codigo: str, exclude_id: int | None = None) -> None:
         if self.repository.get_by_codigo(codigo, exclude_id):

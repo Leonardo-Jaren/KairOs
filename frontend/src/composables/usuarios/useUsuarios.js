@@ -1,6 +1,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import usuariosService from '@/services/usuarios.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -166,15 +167,11 @@ export function useUsuarios(service = usuariosService) {
     }
   };
 
-  const applyFilters = () => {
-    filters.page = 1;
-    return loadUsuarios();
-  };
+  const { applyFilters, resetFilters } = useAutoFilters(filters, loadUsuarios, {
+    immediateKeys: ['rol', 'activo'],
+  });
 
-  const clearFilters = () => {
-    Object.assign(filters, { search: '', rol: '', activo: '', page: 1 });
-    return loadUsuarios();
-  };
+  const clearFilters = () => resetFilters({ search: '', rol: '', activo: '' });
 
   const changePage = (page) => {
     filters.page = page;

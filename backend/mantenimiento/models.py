@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from shared.models import BaseModel
 
@@ -25,6 +26,14 @@ class Mantenimiento(BaseModel):
         on_delete=models.CASCADE,
         related_name='mantenimientos',
         verbose_name='Equipo',
+    )
+    reportado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='mantenimientos_reportados',
+        verbose_name='Reportado por',
     )
     fecha = models.DateField(
         verbose_name='Fecha del ticket',

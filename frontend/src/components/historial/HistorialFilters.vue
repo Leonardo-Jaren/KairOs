@@ -68,7 +68,6 @@ const MODULO_OPTIONS = [
           placeholder=""
         />
       </div>
-      <BaseButton type="submit" variant="accent" :full-width="false">Buscar</BaseButton>
       <BaseButton
         v-if="hasActiveFilters"
         type="button"
