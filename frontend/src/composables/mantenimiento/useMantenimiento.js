@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import equiposService from '@/services/equipos.service';
 import mantenimientoService from '@/services/mantenimiento.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -203,15 +204,11 @@ export function useMantenimiento(
     }
   };
 
-  const applyFilters = () => {
-    filters.page = 1;
-    return loadMantenimientos();
-  };
+  const { applyFilters, resetFilters } = useAutoFilters(filters, loadMantenimientos, {
+    immediateKeys: ['estado', 'tipo_mantenimiento'],
+  });
 
-  const clearFilters = () => {
-    Object.assign(filters, { search: '', estado: '', tipo_mantenimiento: '', page: 1 });
-    return loadMantenimientos();
-  };
+  const clearFilters = () => resetFilters({ search: '', estado: '', tipo_mantenimiento: '' });
 
   const changePage = (page) => {
     filters.page = page;

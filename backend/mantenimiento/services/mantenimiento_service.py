@@ -1,5 +1,6 @@
 from rest_framework.exceptions import ValidationError
 
+from equipos.services import EquipoService
 from mantenimiento.models import Mantenimiento
 from mantenimiento.repositories import MantenimientoRepository
 from shared.base import BaseService
@@ -19,6 +20,7 @@ class MantenimientoService(AuditableMixin, BaseService):
 
     def __init__(self):
         self.repository = MantenimientoRepository()
+        self.equipo_service = EquipoService()
 
     def listar(
         self,
@@ -40,9 +42,25 @@ class MantenimientoService(AuditableMixin, BaseService):
         clean_data = data.copy()
         tecnico_ids = clean_data.pop('tecnicos_ids', [])
         equipo = self._resolver_equipo(clean_data.pop('equipo_id'))
+        reportado_por = self._resolver_reportante(
+            clean_data.pop('reportado_por_id', None),
+            actor,
+        )
         self._validar_tecnicos(tecnico_ids)
-        instance = self.repository.create(**clean_data, equipo=equipo, created_by=actor, updated_by=actor)
+        instance = self.repository.create(
+            **clean_data,
+            equipo=equipo,
+            reportado_por=reportado_por,
+            created_by=actor,
+            updated_by=actor,
+        )
         self.repository.sync_tecnicos(instance, tecnico_ids)
+        if instance.estado == 'en_proceso' and equipo.estado != 'en_mantenimiento':
+            self.equipo_service.update(
+                equipo.id,
+                {'estado': 'en_mantenimiento'},
+                actor=actor,
+            )
         return self.repository.get_by_id(instance.id)
 
     def _do_update(self, id: int, data: dict, actor: Usuario = None):
@@ -51,6 +69,11 @@ class MantenimientoService(AuditableMixin, BaseService):
         tecnico_ids = clean_data.pop('tecnicos_ids', None)
         if 'equipo_id' in clean_data:
             clean_data['equipo'] = self._resolver_equipo(clean_data.pop('equipo_id'))
+        if 'reportado_por_id' in clean_data:
+            clean_data['reportado_por'] = self._resolver_reportante(
+                clean_data.pop('reportado_por_id'),
+                actor,
+            )
         clean_data['updated_by'] = actor
         self.repository.update(instance, **clean_data)
         tecnicos_cambiaron = False
@@ -58,7 +81,14 @@ class MantenimientoService(AuditableMixin, BaseService):
             self._validar_tecnicos(tecnico_ids)
             self.repository.sync_tecnicos(instance, tecnico_ids)
             tecnicos_cambiaron = True
-        return self.repository.get_by_id(instance.id), {'tecnicos_cambiaron': tecnicos_cambiaron}
+        updated = self.repository.get_by_id(instance.id)
+        if updated.estado == 'en_proceso' and updated.equipo.estado != 'en_mantenimiento':
+            self.equipo_service.update(
+                updated.equipo.id,
+                {'estado': 'en_mantenimiento'},
+                actor=actor,
+            )
+        return updated, {'tecnicos_cambiaron': tecnicos_cambiaron}
 
     def _do_delete(self, id: int, actor: Usuario = None) -> Mantenimiento:
         instance = self.get_by_id(id)
@@ -115,6 +145,24 @@ class MantenimientoService(AuditableMixin, BaseService):
                 'equipo_id': 'El equipo no existe o fue retirado.'
             })
         return equipo
+
+    def _resolver_reportante(
+        self,
+        reportado_por_id: int | None,
+        actor: Usuario | None,
+    ) -> Usuario:
+        """Resuelve un reportante activo o usa al actor autenticado por defecto."""
+        usuario_id = (
+            reportado_por_id
+            if reportado_por_id is not None
+            else getattr(actor, 'id', None)
+        )
+        reportante = self.repository.get_usuario_activo_by_id(usuario_id)
+        if reportante is None:
+            raise ValidationError({
+                'reportado_por_id': 'El usuario reportante no existe o está inactivo.'
+            })
+        return reportante
 
     def _validar_tecnicos(self, tecnico_ids: list[int]) -> None:
         """Valida que los tecnicos elegidos existan y esten vigentes."""

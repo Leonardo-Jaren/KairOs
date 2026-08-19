@@ -23,4 +23,18 @@ describe('BaseTable', () => {
 
     expect(wrapper.text()).toContain('Sin usuarios.');
   });
+
+  it('conserva las filas mientras actualiza datos ya cargados', () => {
+    const wrapper = mount(BaseTable, {
+      props: {
+        columns,
+        items: [{ id: 1, nombre: 'Diana' }],
+        loading: true,
+      },
+    });
+
+    expect(wrapper.text()).toContain('Diana');
+    expect(wrapper.text()).toContain('Actualizando registros...');
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+  });
 });

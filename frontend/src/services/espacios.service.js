@@ -26,6 +26,11 @@ const espaciosService = {
     return data;
   },
 
+  async guardarDisposicion(id, payload) {
+    const { data } = await api.patch(`/api/v1/espacios/${id}/disposicion/`, payload);
+    return data;
+  },
+
   async desactivar(id) {
     await api.delete(`/api/v1/espacios/${id}/`);
   },

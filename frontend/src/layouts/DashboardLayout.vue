@@ -5,9 +5,11 @@ import {
   Clock3,
   Gauge,
   LogOut,
+  MapPinned,
   Menu,
   MonitorCog,
   PanelLeftClose,
+  PanelLeftOpen,
   ShieldAlert,
   UserRoundCog,
   UsersRound,
@@ -22,6 +24,8 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const sidebarOpen = ref(false);
+const sidebarCollapsed = ref(false);
+const menuActiveClasses = 'bg-primary-500! text-white! shadow-lg shadow-primary-950/20';
 
 const user = computed(() => authStore.user);
 const pageTitle = computed(() => route.meta.title ?? 'Panel de control');
@@ -33,6 +37,7 @@ const initials = computed(() => {
 const menuItems = computed(() => [
   { name: 'Dashboard', path: '/dashboard', icon: Gauge },
   { name: 'Usuarios', path: '/usuarios', icon: UsersRound, roles: ['admin', 'tecnico'] },
+  { name: 'Campus', path: '/espacios/mapa', icon: MapPinned, roles: ['admin', 'tecnico'] },
   { name: 'Espacios', path: '/espacios', icon: Building2, roles: ['admin', 'tecnico'] },
   { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, roles: ['admin', 'tecnico'] },
   { name: 'Equipos', path: '/equipos', icon: MonitorCog, roles: ['admin', 'tecnico'] },
@@ -43,9 +48,28 @@ const menuItems = computed(() => [
   { name: 'Historial', path: '/historial', icon: Clock3 },
 ].filter((item) => !item.roles || item.roles.includes(user.value?.rol)));
 
+const activeMenuPath = computed(() => menuItems.value
+  .filter((item) => route.path === item.path || route.path.startsWith(`${item.path}/`))
+  .sort((left, right) => right.path.length - left.path.length)[0]?.path ?? '');
+
 const handleLogout = async () => {
   authStore.logout();
   await router.push('/auth/login');
+};
+
+const openSidebar = () => {
+  sidebarOpen.value = true;
+  sidebarCollapsed.value = false;
+};
+
+const toggleSidebar = () => {
+  if (sidebarCollapsed.value) {
+    openSidebar();
+    return;
+  }
+
+  sidebarOpen.value = false;
+  sidebarCollapsed.value = true;
 };
 
 watch(() => route.fullPath, () => {
@@ -66,43 +90,73 @@ watch(() => route.fullPath, () => {
     </Transition>
 
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-secondary-950 text-white shadow-2xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:shadow-none"
-      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+      class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col overflow-x-hidden bg-secondary-950 text-white shadow-2xl transition-[width,transform] duration-300 ease-out lg:sticky lg:top-0 lg:h-screen lg:shadow-none"
+      :class="[
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        sidebarCollapsed
+          ? 'lg:w-20 lg:translate-x-0'
+          : 'lg:w-72 lg:translate-x-0',
+      ]"
     >
-      <div class="flex h-20 items-center justify-between border-b border-white/8 px-6">
-        <div>
+      <div
+        class="flex h-20 shrink-0 items-center justify-between border-b border-white/8 px-6 transition-[padding] duration-300"
+        :class="sidebarCollapsed ? 'lg:justify-center lg:px-3' : 'lg:px-6'"
+      >
+        <div :class="sidebarCollapsed ? 'lg:hidden' : ''">
           <p class="text-xl font-extrabold tracking-[0.16em] text-white">KairOs</p>
           <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-300">Gestión tecnológica</p>
         </div>
-        <span class="rounded-md bg-primary-500/15 px-2 py-1 text-[10px] font-bold text-primary-300">v1.0</span>
+        <div class="flex items-center gap-2">
+          <span class="rounded-md bg-primary-500/15 px-2 py-1 text-[10px] font-bold text-primary-300" :class="sidebarCollapsed ? 'lg:hidden' : ''">v1.0</span>
+          <button
+            type="button"
+            class="grid size-8 place-items-center rounded-lg text-white/50 transition-colors duration-200 hover:bg-white/8 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300"
+            :title="sidebarCollapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'"
+            :aria-label="sidebarCollapsed ? 'Expandir barra lateral' : 'Contraer barra lateral'"
+            @click="toggleSidebar"
+          >
+            <PanelLeftOpen v-if="sidebarCollapsed" :size="18" :stroke-width="1.8" />
+            <PanelLeftClose v-else :size="18" :stroke-width="1.8" />
+          </button>
+        </div>
       </div>
 
-      <nav class="flex-1 overflow-y-auto px-4 py-6" aria-label="Navegación principal">
-        <p class="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">Módulos</p>
+      <nav
+        class="flex-1 overflow-y-auto px-4 py-6 transition-[padding] duration-300"
+        :class="sidebarCollapsed ? 'lg:px-3' : 'lg:px-4'"
+        aria-label="Navegación principal"
+      >
+        <p class="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/35" :class="sidebarCollapsed ? 'lg:hidden' : ''">Módulos</p>
         <div class="flex flex-col gap-1">
           <RouterLink
             v-for="item in menuItems"
             :key="item.path"
             :to="item.path"
             class="group flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-white/60 transition-all duration-200 hover:bg-white/6 hover:text-white"
-            active-class="bg-primary-500! text-white! shadow-lg shadow-primary-950/20"
+            active-class=""
+            exact-active-class=""
+            :class="[
+              activeMenuPath === item.path ? menuActiveClasses : '',
+              sidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-0' : '',
+            ]"
+            :title="sidebarCollapsed ? item.name : undefined"
           >
             <component :is="item.icon" :size="19" :stroke-width="1.8" class="shrink-0" />
-            <span>{{ item.name }}</span>
+            <span :class="sidebarCollapsed ? 'lg:hidden' : ''">{{ item.name }}</span>
           </RouterLink>
         </div>
       </nav>
 
-      <div class="border-t border-white/8 p-4">
-        <div class="flex items-center gap-3 rounded-xl bg-white/5 p-3">
+      <div class="border-t border-white/8 p-4 transition-[padding] duration-300" :class="sidebarCollapsed ? 'lg:p-3' : 'lg:p-4'">
+        <div class="flex items-center gap-3 rounded-xl bg-white/5 p-3" :class="sidebarCollapsed ? 'lg:justify-center lg:gap-0' : ''">
           <div class="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-500 text-sm font-bold text-white">
             {{ initials }}
           </div>
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1" :class="sidebarCollapsed ? 'lg:hidden' : ''">
             <p class="truncate text-sm font-semibold text-white">{{ user?.nombre }} {{ user?.apellido }}</p>
             <p class="truncate text-[11px] font-medium uppercase tracking-wider text-white/40">{{ user?.rol }}</p>
           </div>
-          <button type="button" class="rounded-lg p-2 text-white/40 hover:bg-white/8 hover:text-danger-300" title="Cerrar sesión" aria-label="Cerrar sesión" @click="handleLogout">
+          <button type="button" class="rounded-lg p-2 text-white/40 hover:bg-white/8 hover:text-danger-300" :class="sidebarCollapsed ? 'lg:hidden' : ''" title="Cerrar sesión" aria-label="Cerrar sesión" @click="handleLogout">
             <LogOut :size="18" />
           </button>
         </div>
@@ -112,7 +166,7 @@ watch(() => route.fullPath, () => {
     <div class="flex min-w-0 flex-1 flex-col">
       <header class="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
         <div class="flex items-center gap-3">
-          <button type="button" class="rounded-xl border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50 lg:hidden" aria-label="Abrir menú" @click="sidebarOpen = true">
+          <button type="button" class="rounded-xl border border-slate-200 p-2.5 text-slate-600 transition-colors duration-200 hover:bg-slate-50 lg:hidden" aria-label="Abrir menú" @click="openSidebar">
             <Menu :size="20" />
           </button>
           <div>

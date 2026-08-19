@@ -62,10 +62,16 @@ const routes = [
         meta: { title: 'Usuarios por espacio', roles: ['admin', 'tecnico'] },
       },
       {
+        path: '/espacios/mapa',
+        name: 'CampusTecnologico',
+        component: () => import('@/views/espacios/CampusTecnologicoView.vue'),
+        meta: { title: 'Mapa tecnológico', roles: ['admin', 'tecnico'] },
+      },
+      {
         path: '/espacios/:id',
         name: 'EspacioDetalle',
         component: () => import('@/views/espacios/EspacioDetalleView.vue'),
-        meta: { title: 'Detalle del espacio', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Plano interactivo', roles: ['admin', 'tecnico'] },
       },
       {
         path: '/historial',
@@ -109,6 +115,9 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition ?? { left: 0, top: 0 };
+  },
 });
 
 // Guard de navegacion moderno en Vue Router 4 (retornando la ruta de destino)

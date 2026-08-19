@@ -4,6 +4,7 @@ import {
 } from '@lucide/vue';
 
 import componentesService from '@/services/componentes.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 const emptyForm = () => ({ equipo_id: '', tipo: '', modelo: '', descripcion: '' });
@@ -35,15 +36,23 @@ export function useComponentes(service = componentesService) {
   const form          = reactive(emptyForm());
   const formErrors    = reactive({});
   const toast         = reactive({ show: false, message: '', type: 'success' });
+  const filters       = reactive({ search: '', tipo: '', page: 1, page_size: 10 });
+  const pagination    = reactive({ total: 0, totalPages: 1 });
 
   const isEditing = computed(() => Boolean(editingItem.value));
 
   const cargar = async (equipoId = null) => {
     loading.value = true;
     try {
-      const params = equipoId ? { equipo_id: equipoId } : {};
+      const params = equipoId
+        ? { equipo_id: equipoId, page_size: 100 }
+        : { ...filters };
       const data = await service.listar(params);
       componentes.value = data.results ?? data;
+      if (!equipoId) {
+        pagination.total = data.count ?? componentes.value.length;
+        pagination.totalPages = Math.max(1, Math.ceil(pagination.total / filters.page_size));
+      }
     } catch (error) {
       showToast(getApiErrorMessage(error, 'No se pudieron cargar los componentes.'), 'error');
     } finally {
@@ -89,14 +98,17 @@ export function useComponentes(service = componentesService) {
     saving.value = true;
     try {
       if (isEditing.value) {
-        await service.actualizar(editingItem.value.id, { tipo: form.tipo, modelo: form.modelo, descripcion: form.descripcion });
+        const updated = await service.actualizar(editingItem.value.id, { tipo: form.tipo, modelo: form.modelo, descripcion: form.descripcion });
+        const index = componentes.value.findIndex((item) => item.id === updated.id);
+        if (index !== -1) componentes.value.splice(index, 1, updated);
         showToast('Componente actualizado correctamente.');
       } else {
         await service.crear({ tipo: form.tipo, modelo: form.modelo, descripcion: form.descripcion, equipo_id: resolvedId });
         showToast('Componente agregado correctamente.');
       }
+      const wasEditing = isEditing.value;
       closeForm();
-      await cargar(equipoId);
+      if (!wasEditing) await cargar(equipoId);
       return true;
     } catch (error) {
       showToast(getApiErrorMessage(error, 'No se pudo guardar el componente.'), 'error');
@@ -140,10 +152,22 @@ export function useComponentes(service = componentesService) {
     cancelDelete();
   };
 
+  const { applyFilters, resetFilters } = useAutoFilters(filters, () => cargar(), {
+    immediateKeys: ['tipo'],
+  });
+
+  const clearFilters = () => resetFilters({ search: '', tipo: '' });
+
+  const changePage = (page) => {
+    filters.page = page;
+    return cargar();
+  };
+
   return {
     componentes, loading, saving, formOpen, deleteOpen, pendingDelete,
-    form, formErrors, toast, isEditing,
+    form, formErrors, filters, pagination, toast, isEditing,
     cargar, openCreate, openEdit, closeForm, submit,
-    askDelete, cancelDelete, confirmDelete, closeToast, reset,
+    askDelete, cancelDelete, confirmDelete, applyFilters, clearFilters,
+    changePage, closeToast, reset,
   };
 }

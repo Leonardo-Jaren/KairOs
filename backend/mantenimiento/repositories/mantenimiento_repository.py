@@ -3,7 +3,7 @@ from django.db.models import Count, Q
 from equipos.models import Equipo
 from mantenimiento.models import Mantenimiento, TecnicoMantenimiento
 from shared.base import BaseRepository
-from usuarios.models import PerfilTecnico
+from usuarios.models import PerfilTecnico, Usuario
 
 
 class MantenimientoRepository(BaseRepository):
@@ -15,6 +15,7 @@ class MantenimientoRepository(BaseRepository):
         """Retorna mantenimientos vigentes con equipo y tecnicos precargados."""
         return self.model.objects.filter(is_deleted=False).select_related(
             'equipo',
+            'reportado_por',
         ).prefetch_related(
             'tecnicos_asignados__tecnico__usuario',
         )
@@ -70,6 +71,13 @@ class MantenimientoRepository(BaseRepository):
             is_deleted=False,
         ).select_related('usuario')
 
+    def get_usuario_activo_by_id(self, usuario_id: int) -> Usuario | None:
+        """Obtiene un usuario activo disponible como reportante."""
+        try:
+            return Usuario.objects.get(id=usuario_id, is_active=True)
+        except Usuario.DoesNotExist:
+            return None
+
     def sync_tecnicos(self, instance: Mantenimiento, tecnico_ids: list[int]) -> None:
         """Reemplaza las asignaciones de tecnicos de un ticket."""
         TecnicoMantenimiento.objects.filter(mantenimiento=instance).delete()
@@ -104,6 +112,7 @@ class MantenimientoRepository(BaseRepository):
         return [
             {
                 'id': perfil.id,
+                'usuario_id': perfil.usuario_id,
                 'nombre_completo': f'{perfil.usuario.nombre} {perfil.usuario.apellido}'.strip(),
                 'area': perfil.area,
             }

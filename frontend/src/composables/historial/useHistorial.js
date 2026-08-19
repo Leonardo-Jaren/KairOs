@@ -1,6 +1,7 @@
 import { computed, onMounted, reactive, readonly, shallowRef } from 'vue';
 
 import historialService from '@/services/historial.service';
+import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 export function useHistorial(service = historialService) {
@@ -45,22 +46,18 @@ export function useHistorial(service = historialService) {
     }
   };
 
-  const applyFilters = () => {
-    filters.page = 1;
-    return loadHistorial();
-  };
+  const { applyFilters, resetFilters } = useAutoFilters(filters, loadHistorial, {
+    searchKey: 'tipo_evento',
+    immediateKeys: ['modulo', 'usuario_id', 'fecha_desde', 'fecha_hasta'],
+  });
 
-  const clearFilters = () => {
-    Object.assign(filters, {
+  const clearFilters = () => resetFilters({
       modulo: '',
       tipo_evento: '',
       usuario_id: '',
       fecha_desde: '',
       fecha_hasta: '',
-      page: 1,
     });
-    return loadHistorial();
-  };
 
   const changePage = (page) => {
     filters.page = page;

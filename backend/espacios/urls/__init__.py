@@ -1,10 +1,11 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from espacios.views import EspacioUsuarioViewSet, EspacioViewSet
+from espacios.views import EdificioViewSet, EspacioUsuarioViewSet, EspacioViewSet
 
 router = DefaultRouter()
 router.register('usuarios', EspacioUsuarioViewSet, basename='espacio-usuario')
+router.register('edificios', EdificioViewSet, basename='edificio')
 router.register('', EspacioViewSet, basename='espacio')
 
 urlpatterns = [

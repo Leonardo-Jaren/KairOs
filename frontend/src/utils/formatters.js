@@ -16,3 +16,12 @@ export function formatDate(value) {
     year: 'numeric',
   });
 }
+
+export function formatFloor(value) {
+  const floor = String(value ?? '').trim().replace(/^piso\s*/i, '');
+  return floor ? `Piso ${floor}` : 'Piso sin registrar';
+}
+
+export function formatBuildingName(value) {
+  return String(value ?? '').trim().replace(/\s+piso$/i, '') || 'Sin edificio';
+}
