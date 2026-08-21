@@ -1,15 +1,17 @@
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
 
-from shared.constants import ROL_ADMIN, ROL_TECNICO
+from shared.constants import ROL_ADMIN, ROL_DOCENTE, ROL_TECNICO
 
 
-class CanManageSoftware(BasePermission):
-    """Permite consultar y gestionar instalaciones a administradores y tecnicos."""
+class CanManageSoftware(permissions.BasePermission):
+    """Permite CRUD a administradores y técnicos; docentes solo lectura."""
 
     def has_permission(self, request, view):
-        """Comprueba autenticacion y pertenencia a un rol operativo."""
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.rol in {ROL_ADMIN, ROL_TECNICO}
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.rol in (ROL_ADMIN, ROL_TECNICO):
+            return True
+        return (
+            request.user.rol == ROL_DOCENTE
+            and request.method in permissions.SAFE_METHODS
         )

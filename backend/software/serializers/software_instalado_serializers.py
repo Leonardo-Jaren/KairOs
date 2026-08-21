@@ -1,19 +1,17 @@
 from rest_framework import serializers
 
 from software.models import SoftwareInstalado
-from software.serializers.producto_software_serializers import (
-    ProductoSoftwareResumenSerializer,
-)
 
 
 class SoftwareInstaladoSerializer(serializers.ModelSerializer):
-    """Representa una instalacion con el equipo y producto asociados."""
+    """Representa una instalacion de software con datos del equipo y producto."""
 
-    equipo_codigo = serializers.CharField(source='equipo.codigo', read_only=True)
-    producto = ProductoSoftwareResumenSerializer(
-        source='producto_software',
-        read_only=True,
+    producto_software_nombre = serializers.SerializerMethodField()
+    producto_software_tipo_licencia_display = serializers.CharField(
+        source='producto_software.get_tipo_licencia_display', read_only=True
     )
+    equipo_codigo = serializers.CharField(source='equipo.codigo', read_only=True)
+    espacio_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = SoftwareInstalado
@@ -21,8 +19,10 @@ class SoftwareInstaladoSerializer(serializers.ModelSerializer):
             'id',
             'equipo',
             'equipo_codigo',
+            'espacio_nombre',
             'producto_software',
-            'producto',
+            'producto_software_nombre',
+            'producto_software_tipo_licencia_display',
             'numero_licencia_usado',
             'fecha_instalacion',
             'created_at',
@@ -30,24 +30,39 @@ class SoftwareInstaladoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def get_producto_software_nombre(self, obj: SoftwareInstalado) -> str:
+        """Combina nombre y version del producto de software."""
+        return f'{obj.producto_software.software} v{obj.producto_software.version}'
 
-class SoftwareInstaladoCreateSerializer(serializers.ModelSerializer):
-    """Valida los datos necesarios para instalar software en un equipo."""
+    def get_espacio_nombre(self, obj: SoftwareInstalado) -> str | None:
+        """Combina codigo y pabellon del espacio del equipo."""
+        espacio = obj.equipo.espacio
+        if not espacio:
+            return None
+        return f'{espacio.codigo_espacio} - {espacio.pabellon}'
 
-    equipo_id = serializers.IntegerField(write_only=True)
-    producto_software_id = serializers.IntegerField(write_only=True)
+
+class SoftwareInstaladoCreateUpdateSerializer(serializers.ModelSerializer):
+    """Valida los datos de creacion y edicion de una instalacion de software."""
 
     class Meta:
         model = SoftwareInstalado
         fields = [
-            'equipo_id',
-            'producto_software_id',
+            'equipo',
+            'producto_software',
             'numero_licencia_usado',
             'fecha_instalacion',
         ]
         extra_kwargs = {
-            'numero_licencia_usado': {
-                'required': False,
-                'allow_blank': True,
-            },
+            'equipo': {'required': False},
+            'producto_software': {'required': False},
         }
+
+    def validate(self, attrs):
+        """Exige equipo y producto_software solo en creacion (no en edicion parcial)."""
+        if self.instance is None:
+            if not attrs.get('equipo'):
+                raise serializers.ValidationError({'equipo': 'Este campo es requerido.'})
+            if not attrs.get('producto_software'):
+                raise serializers.ValidationError({'producto_software': 'Este campo es requerido.'})
+        return attrs

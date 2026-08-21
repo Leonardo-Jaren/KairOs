@@ -1,15 +1,15 @@
 from .producto_software_serializers import (
-    ProductoSoftwareResumenSerializer,
+    ProductoSoftwareCreateUpdateSerializer,
     ProductoSoftwareSerializer,
 )
 from .software_instalado_serializers import (
-    SoftwareInstaladoCreateSerializer,
+    SoftwareInstaladoCreateUpdateSerializer,
     SoftwareInstaladoSerializer,
 )
 
 __all__ = [
-    'ProductoSoftwareResumenSerializer',
+    'ProductoSoftwareCreateUpdateSerializer',
     'ProductoSoftwareSerializer',
-    'SoftwareInstaladoCreateSerializer',
+    'SoftwareInstaladoCreateUpdateSerializer',
     'SoftwareInstaladoSerializer',
 ]

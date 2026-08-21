@@ -1,53 +1,47 @@
-# HU-SOFTWARE-001: Administrar software instalado en una computadora
+# HU-SOFT-002: Gestionar instalaciones de software en equipos
 
-| Campo | Valor |
-|-------|-------|
-| Modulo | Software |
-| Prioridad | Alta |
-| Fecha | 2026-08-14 |
-| Autor | Leonardo Jaren |
-| Estado | En revision |
+Como administrador o técnico de KairOs, quiero registrar qué software está
+instalado en cada equipo de cada espacio, para llevar el control de uso de
+licencias y detectar vencimientos o sobre-uso a tiempo.
 
-## Historia
+## Criterios de aceptación
 
-**Como** administrador o tecnico  
-**Quiero** consultar, instalar y retirar software en un equipo  
-**Para** conocer su configuracion y controlar el uso de las licencias institucionales
+1. Puedo ver las instalaciones de software filtrando por espacio, por equipo
+   o por producto de software.
+2. Puedo registrar una instalación indicando equipo, producto de software,
+   número de licencia usado y fecha de instalación.
+3. No puedo registrar una instalación si el producto ya no tiene licencias
+   disponibles; el sistema me muestra un error.
+4. No puedo duplicar la instalación del mismo producto en el mismo equipo.
+5. Puedo editar el número de licencia usado y la fecha de instalación, pero
+   no puedo cambiar el equipo ni el producto de una instalación existente.
+6. Puedo eliminar una instalación (borrado lógico), lo que libera una
+   licencia disponible del producto.
+7. Como docente, puedo consultar las instalaciones pero no veo acciones de
+   crear, editar ni eliminar.
+8. Puedo ver estadísticas generales: total de instalaciones vigentes,
+   productos con licencias próximas a expirar y productos sobre-utilizados.
 
-## Descripcion
-
-La ficha de cada computadora necesita mostrar su software real y permitir que los
-roles operativos actualicen esa informacion sin perder la trazabilidad historica.
-
-## Criterios de aceptacion
-
-- [x] **Dado** un usuario sin rol operativo, **cuando** intenta consultar el modulo, **entonces** recibe una respuesta 403.
-- [x] **Dado** un producto y equipo vigentes con licencia disponible, **cuando** se registra la instalacion, **entonces** aparece en el inventario del equipo.
-- [x] **Dado** un producto ya instalado, **cuando** se intenta repetir la asignacion, **entonces** la API responde 400 sin duplicar registros.
-- [x] **Dada** una instalacion vigente, **cuando** se retira, **entonces** deja de aparecer en las consultas y permanece almacenada como eliminada logicamente.
-- [x] **Dada** una instalacion retirada, **cuando** se vuelve a instalar el mismo producto, **entonces** se reactiva el registro anterior.
-
-## Alcance tecnico
+## Alcance técnico
 
 | Capa | Archivos / endpoints |
 |------|----------------------|
-| API | `GET /api/v1/software/productos/` |
-| API | `GET, POST /api/v1/software/instalaciones/` |
-| API | `DELETE /api/v1/software/instalaciones/{id}/` |
-| Service | `backend/software/services/` |
-| Repository | `backend/software/repositories/` |
+| API | `GET/POST /api/v1/software/instalaciones/`, `PATCH/DELETE /api/v1/software/instalaciones/{id}/` |
+| API | `GET /api/v1/software/productos/estadisticas/` |
+| Service | `backend/software/services/software_instalado_service.py` |
+| Repository | `backend/software/repositories/software_instalado_repository.py` |
+| Auditoría | `backend/shared/mixins/audit.py` (AuditableMixin) |
 
 ## RF / RNF relacionados
 
-- RF: `RF-SOFTWARE-001`
-- RNF: N/A
+- RF: `docs/requerimientos-funcionales/software-gestionar-instalaciones.md`
+- RNF: `docs/requerimientos-no-funcionales/software-gestionar-software.md`
 
-## Notas de implementacion
+## Notas de implementación
 
-Se reutilizan los campos actuales de version, tipo de licencia, cantidad total,
-expiracion, numero de licencia y fecha de instalacion. No se requiere migracion.
+{Pendiente de completar al cerrar el desarrollo.}
 
 ## Enlaces
 
-- PR: N/A
-- Issue GitHub: N/A
+- PR: {URL del pull request}
+- Issue GitHub: {URL del issue}

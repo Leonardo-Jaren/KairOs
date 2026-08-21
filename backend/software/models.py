@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 from shared.models import BaseModel
 
 
@@ -15,6 +18,8 @@ class ProductoSoftware(BaseModel):
         ('volumen', 'Volumen'),
         ('libre', 'Libre / Open Source'),
     ]
+
+    DIAS_ALERTA_EXPIRACION = 30
 
     software = models.CharField(
         max_length=200,
@@ -72,10 +77,22 @@ class ProductoSoftware(BaseModel):
         return f"{self.software} v{self.version}"
 
     @property
+    def licencias_usadas(self):
+        """Cuenta las instalaciones vigentes (no eliminadas logicamente)."""
+        return self.instalaciones.filter(is_deleted=False).count()
+
+    @property
     def licencias_disponibles(self):
         """Calcula cuántas licencias quedan disponibles."""
-        usadas = self.instalaciones.count()
-        return self.licencias_totales - usadas
+        return self.licencias_totales - self.licencias_usadas
+
+    @property
+    def proxima_a_expirar(self):
+        """Indica si fecha_expiracion cae dentro del umbral de alerta (DIAS_ALERTA_EXPIRACION)."""
+        if not self.fecha_expiracion:
+            return False
+        hoy = timezone.localdate()
+        return hoy <= self.fecha_expiracion <= hoy + timedelta(days=self.DIAS_ALERTA_EXPIRACION)
 
 
 class SoftwareInstalado(BaseModel):
@@ -110,6 +127,7 @@ class SoftwareInstalado(BaseModel):
         db_table = 'software_instalado'
         verbose_name = 'Software Instalado'
         verbose_name_plural = 'Software Instalados'
+        ordering = ['-fecha_instalacion', 'id']
         constraints = [
             models.UniqueConstraint(
                 fields=['equipo', 'producto_software'],

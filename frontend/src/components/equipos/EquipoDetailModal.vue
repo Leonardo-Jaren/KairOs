@@ -341,9 +341,9 @@ const tabs = [
             <div class="flex min-w-0 items-start gap-3">
               <span class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-primary-50 text-primary-600"><AppWindow :size="17" /></span>
               <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-slate-900">{{ installation.producto.software }} <span class="font-normal text-slate-500">{{ installation.producto.version }}</span></p>
+                <p class="truncate text-sm font-semibold text-slate-900">{{ installation.producto_software_nombre }}</p>
                 <p class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
-                  <span class="inline-flex items-center gap-1"><KeyRound :size="12" />{{ installation.producto.tipo_licencia_display }}</span>
+                  <span class="inline-flex items-center gap-1"><KeyRound :size="12" />{{ installation.producto_software_tipo_licencia_display }}</span>
                   <span class="inline-flex items-center gap-1"><CalendarDays :size="12" />{{ installation.fecha_instalacion }}</span>
                 </p>
                 <p v-if="installation.numero_licencia_usado" class="mt-1 truncate font-mono text-[10px] text-slate-400">{{ installation.numero_licencia_usado }}</p>
@@ -354,7 +354,7 @@ const tabs = [
         </ul>
 
         <BaseModal :open="softwareDeleteOpen" title="Retirar software" size="sm" @close="cancelDeleteSoftware">
-          <p class="text-sm text-slate-600">¿Retirar <strong class="text-slate-900">{{ pendingSoftwareDelete?.producto?.software }} {{ pendingSoftwareDelete?.producto?.version }}</strong> de este equipo?</p>
+          <p class="text-sm text-slate-600">¿Retirar <strong class="text-slate-900">{{ pendingSoftwareDelete?.producto_software_nombre }}</strong> de este equipo?</p>
           <template #footer><BaseButton variant="ghost" :full-width="false" @click="cancelDeleteSoftware">Cancelar</BaseButton><BaseButton variant="danger" :loading="softwareSaving" :full-width="false" @click="confirmDeleteSoftware">Retirar</BaseButton></template>
         </BaseModal>
       </div>

@@ -1,71 +1,62 @@
-# RF-SOFTWARE-001: Gestionar software instalado por equipo
+# RF-SOFT-002: Gestionar instalaciones de software en equipos
 
-| Campo | Valor |
-|-------|-------|
-| Modulo | Software |
-| Version | 1.0 |
-| Fecha | 2026-08-14 |
-| Autor | Leonardo Jaren |
-| Estado | En revision |
+## Descripción
 
-## Descripcion
+El sistema debe permitir registrar, consultar, editar y eliminar las
+instalaciones de un producto de software en un equipo específico, y consultar
+el software instalado filtrando por espacio o por equipo, con alertas sobre
+licencias próximas a expirar y licencias sobre-utilizadas.
 
-El sistema permite consultar el catalogo vigente y gestionar las instalaciones
-de productos de software en cada equipo institucional.
+## Criterios funcionales
 
-## Actores
-
-- Administrador
-- Tecnico
-
-## Precondiciones
-
-- El actor inicio sesion con rol administrador o tecnico.
-- El equipo y el producto de software se encuentran vigentes.
-
-## Flujo principal
-
-1. El actor consulta el catalogo de productos y su disponibilidad de licencias.
-2. El actor selecciona un equipo, un producto, la fecha de instalacion y, si corresponde, el numero de licencia.
-3. El sistema valida la asignacion, registra la instalacion y la muestra en el inventario del equipo.
-4. El actor puede retirar posteriormente la instalacion sin eliminar su historial.
-
-## Flujos alternos / excepciones
-
-| Caso | Comportamiento esperado |
-|------|-------------------------|
-| Producto duplicado en el equipo | La API rechaza la asignacion con un error asociado al producto. |
-| Licencias agotadas o expiradas | La API no registra la instalacion e informa la causa. |
-| Equipo o producto retirado | La API rechaza la relacion como no vigente. |
-| Reinstalacion previamente retirada | El sistema reactiva el mismo registro conservando su identidad. |
+- Solo administradores y técnicos pueden crear, editar y eliminar
+  instalaciones. Los docentes solo pueden consultar.
+- Cada instalación está asociada obligatoriamente a un equipo y a un producto
+  de software existentes; ninguno de los dos puede cambiarse una vez creada
+  la instalación (solo se editan número de licencia usado y fecha de
+  instalación).
+- No se puede duplicar la instalación del mismo producto en el mismo equipo
+  (`uq_equipo_software`).
+- No se puede registrar una instalación si el producto no tiene licencias
+  disponibles (`licencias_usadas >= licencias_totales`); el sistema rechaza
+  la operación con un error de validación.
+- El listado admite filtros por espacio (`espacio_id`, vía el equipo
+  asignado), por equipo (`equipo_id`) y por producto de software
+  (`producto_software_id`), permitiendo ver el software instalado en cada
+  equipo de cada espacio.
+- El endpoint de estadísticas expone: total de instalaciones vigentes,
+  cantidad de productos con licencias próximas a expirar (dentro de 30 días)
+  y cantidad de productos con licencias sobre-utilizadas (instalaciones
+  vigentes por encima de `licencias_totales`).
+- La eliminación es un borrado lógico (`is_deleted=True`) y libera una
+  licencia disponible del producto asociado.
+- Cada alta, modificación y baja genera un evento de auditoría
+  (`softwareinstalado.alta`, `softwareinstalado.actualizacion`,
+  `softwareinstalado.baja`).
 
 ## Reglas de negocio
 
-- Solo administradores y tecnicos pueden consultar o gestionar instalaciones.
-- Un producto solo puede tener una instalacion vigente por equipo.
-- Los productos con licencia libre no tienen limite de instalaciones.
-- Los demas productos no pueden superar `licencias_totales` ni instalarse luego de su expiracion.
-- La fecha de instalacion no puede ser posterior a la fecha actual.
-- El retiro es logico y conserva la trazabilidad de auditoria.
-
-## Criterios de aceptacion
-
-- [x] El catalogo informa licencias usadas y disponibles sin contar instalaciones retiradas.
-- [x] Las instalaciones pueden consultarse filtrando por `equipo_id`.
-- [x] Una instalacion valida se crea con el usuario autenticado como autor.
-- [x] Los duplicados, relaciones retiradas y licencias no disponibles retornan error 400.
-- [x] El retiro oculta la instalacion y permite reinstalar el producto posteriormente.
+- Bloquear creación de instalación si `licencias_disponibles <= 0` en el
+  producto de software seleccionado.
+- El umbral de "próxima a expirar" es de 30 días desde la fecha actual sobre
+  `fecha_expiracion`.
+- Sobre-uso se define como instalaciones vigentes de un producto mayores a su
+  `licencias_totales` (puede ocurrir si se reduce `licencias_totales`
+  después de tener instalaciones activas).
 
 ## Endpoints / componentes relacionados
 
 | Tipo | Ruta / archivo |
 |------|----------------|
-| API | `GET /api/v1/software/productos/` |
-| API | `GET, POST /api/v1/software/instalaciones/` |
+| API | `GET /api/v1/software/instalaciones/` |
+| API | `POST /api/v1/software/instalaciones/` |
+| API | `PATCH /api/v1/software/instalaciones/{id}/` |
 | API | `DELETE /api/v1/software/instalaciones/{id}/` |
-| Backend | `backend/software/` |
+| Backend | `backend/software/repositories/software_instalado_repository.py` |
+| Backend | `backend/software/services/software_instalado_service.py` |
+| Backend | `backend/software/serializers/software_instalado_serializers.py` |
+| Backend | `backend/software/views/software_instalado_views.py` |
 
 ## Notas
 
-Los eventos de instalacion y retiro se registran sobre el equipo para que formen
-parte de su linea de tiempo operativa.
+Depende del catálogo definido en `RF-SOFT-001`.

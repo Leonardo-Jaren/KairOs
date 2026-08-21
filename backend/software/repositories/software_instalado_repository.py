@@ -1,24 +1,18 @@
-from equipos.models import Equipo
+from django.db.models import Q
+
 from shared.base import BaseRepository
-from software.models import ProductoSoftware, SoftwareInstalado
+from software.models import SoftwareInstalado
 
 
 class SoftwareInstaladoRepository(BaseRepository):
-    """Centraliza la persistencia del software asignado a los equipos."""
+    """Centraliza las consultas y persistencia de instalaciones de software."""
 
     model = SoftwareInstalado
 
     def get_all(self):
-        """Retorna instalaciones vigentes con sus relaciones precargadas."""
-        return (
-            self.model.objects
-            .filter(
-                is_deleted=False,
-                equipo__is_deleted=False,
-                producto_software__is_deleted=False,
-            )
-            .select_related('equipo', 'producto_software')
-            .order_by('producto_software__software', 'producto_software__version')
+        """Retorna instalaciones vigentes con equipo, espacio y producto precargados."""
+        return self.model.objects.filter(is_deleted=False).select_related(
+            'equipo', 'equipo__espacio', 'producto_software'
         )
 
     def get_by_id(self, id: int) -> SoftwareInstalado | None:
@@ -28,78 +22,44 @@ class SoftwareInstaladoRepository(BaseRepository):
         except self.model.DoesNotExist:
             return None
 
-    def listar(self, equipo_id: int | None = None):
-        """Lista instalaciones y permite limitar el resultado a un equipo."""
+    def listar(
+        self,
+        busqueda: str = '',
+        equipo_id: int | None = None,
+        espacio_id: int | None = None,
+        producto_software_id: int | None = None,
+    ):
+        """Aplica los filtros disponibles en la pantalla de instalaciones."""
         queryset = self.get_all()
+
+        if busqueda:
+            queryset = queryset.filter(
+                Q(producto_software__software__icontains=busqueda)
+                | Q(equipo__codigo__icontains=busqueda)
+                | Q(numero_licencia_usado__icontains=busqueda)
+            )
         if equipo_id is not None:
             queryset = queryset.filter(equipo_id=equipo_id)
+        if espacio_id is not None:
+            queryset = queryset.filter(equipo__espacio_id=espacio_id)
+        if producto_software_id is not None:
+            queryset = queryset.filter(producto_software_id=producto_software_id)
+
         return queryset
 
-    def get_equipo_by_id(self, equipo_id: int) -> Equipo | None:
-        """Busca un equipo que aun se encuentre vigente."""
-        try:
-            return Equipo.objects.get(id=equipo_id, is_deleted=False)
-        except Equipo.DoesNotExist:
-            return None
-
-    def get_producto_by_id_for_update(
-        self,
-        producto_id: int,
-    ) -> ProductoSoftware | None:
-        """Bloquea el producto durante la asignacion para evitar sobreuso."""
-        try:
-            return ProductoSoftware.objects.select_for_update().get(
-                id=producto_id,
-                is_deleted=False,
-            )
-        except ProductoSoftware.DoesNotExist:
-            return None
-
-    def get_by_equipo_producto_including_deleted(
-        self,
-        equipo_id: int,
-        producto_id: int,
+    def get_by_equipo_producto(
+        self, equipo_id: int, producto_software_id: int, exclude_id: int | None = None
     ) -> SoftwareInstalado | None:
-        """Busca la relacion incluso si fue retirada previamente."""
-        return self.model.objects.filter(
-            equipo_id=equipo_id,
-            producto_software_id=producto_id,
-        ).first()
-
-    def count_active_by_producto(self, producto_id: int) -> int:
-        """Cuenta las licencias que actualmente estan asignadas."""
-        return self.model.objects.filter(
-            producto_software_id=producto_id,
-            is_deleted=False,
-            equipo__is_deleted=False,
-        ).count()
-
-    def restore(
-        self,
-        instance: SoftwareInstalado,
-        *,
-        numero_licencia_usado: str,
-        fecha_instalacion,
-        actor,
-    ) -> SoftwareInstalado:
-        """Reactiva una asignacion retirada conservando su identidad."""
-        instance.numero_licencia_usado = numero_licencia_usado
-        instance.fecha_instalacion = fecha_instalacion
-        instance.is_deleted = False
-        instance.updated_by = actor
-        instance.save(
-            update_fields=[
-                'numero_licencia_usado',
-                'fecha_instalacion',
-                'is_deleted',
-                'updated_by',
-                'updated_at',
-            ],
+        """Busca una instalacion por equipo+producto incluyendo registros eliminados."""
+        queryset = self.model.objects.filter(
+            equipo_id=equipo_id, producto_software_id=producto_software_id
         )
-        return instance
+        if exclude_id is not None:
+            queryset = queryset.exclude(id=exclude_id)
+        return queryset.first()
 
     def soft_delete(self, instance: SoftwareInstalado, actor) -> None:
-        """Retira logicamente una instalacion para preservar su historial."""
+        """Elimina logicamente la instalacion, liberando una licencia disponible."""
         instance.is_deleted = True
         instance.updated_by = actor
         instance.save(update_fields=['is_deleted', 'updated_by', 'updated_at'])

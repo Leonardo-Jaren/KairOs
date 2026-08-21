@@ -4,49 +4,52 @@ from rest_framework.response import Response
 
 from shared.base import BaseViewSet
 from software.permissions import CanManageSoftware
-from software.serializers import (
-    SoftwareInstaladoCreateSerializer,
-    SoftwareInstaladoSerializer,
-)
+from software.serializers import SoftwareInstaladoCreateUpdateSerializer, SoftwareInstaladoSerializer
 from software.services import SoftwareInstaladoService
 
 
 class SoftwareInstaladoViewSet(BaseViewSet):
-    """Expone la consulta, instalacion y retiro de software por equipo."""
+    """Expone el CRUD y consulta operativa de instalaciones de software."""
 
     service = SoftwareInstaladoService()
     serializer_class = SoftwareInstaladoSerializer
     permission_classes = [CanManageSoftware]
-    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_serializer_class(self):
-        """Separa el contrato de asignacion de la representacion de lectura."""
-        if self.action == 'create':
-            return SoftwareInstaladoCreateSerializer
+        """Selecciona serializers separados para lectura y escritura."""
+        if self.action in ['create', 'update', 'partial_update']:
+            return SoftwareInstaladoCreateUpdateSerializer
         return SoftwareInstaladoSerializer
 
     def list(self, request: Request, *args, **kwargs) -> Response:
-        """Lista instalaciones y permite filtrarlas por equipo_id."""
-        equipo_id = self.parse_integer_query(
-            request.query_params.get('equipo_id'),
+        """Lista instalaciones aplicando busqueda, equipo, espacio y producto."""
+        queryset = self.service.listar(
+            busqueda=request.query_params.get('search', ''),
+            equipo_id=self.parse_integer_query(request.query_params.get('equipo_id')),
+            espacio_id=self.parse_integer_query(request.query_params.get('espacio_id')),
+            producto_software_id=self.parse_integer_query(
+                request.query_params.get('producto_software_id')
+            ),
         )
-        queryset = self.service.listar(equipo_id=equipo_id)
         return self.get_collection_response(queryset)
 
     def create(self, request: Request, *args, **kwargs) -> Response:
-        """Instala un producto disponible en el equipo indicado."""
+        """Crea una instalacion de software validando licencias disponibles."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = self.service.create(
-            serializer.validated_data,
-            actor=request.user,
-        )
-        return Response(
-            SoftwareInstaladoSerializer(instance).data,
-            status=status.HTTP_201_CREATED,
-        )
+        instance = self.service.create(serializer.validated_data, actor=request.user)
+        return Response(SoftwareInstaladoSerializer(instance).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request: Request, *args, **kwargs) -> Response:
+        """Actualiza numero de licencia y fecha de instalacion de una instalacion existente."""
+        partial = kwargs.pop('partial', False)
+        instance = self.service.get_by_id(kwargs['pk'])
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        updated = self.service.update(kwargs['pk'], serializer.validated_data, actor=request.user)
+        return Response(SoftwareInstaladoSerializer(updated).data)
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
-        """Retira logicamente una instalacion existente."""
+        """Elimina logicamente una instalacion, liberando una licencia disponible."""
         self.service.delete(kwargs['pk'], actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

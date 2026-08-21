@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue';
 
 import softwareService from '@/services/software.service';
+import softwareInstalacionesService from '@/services/software-instalaciones.service';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -10,7 +11,10 @@ const emptyForm = () => ({
   fecha_instalacion: today(),
 });
 
-export function useSoftwareEquipo(service = softwareService) {
+export function useSoftwareEquipo(
+  productosService = softwareService,
+  instalacionesService = softwareInstalacionesService,
+) {
   const installations = ref([]);
   const products = ref([]);
   const loading = ref(false);
@@ -50,8 +54,8 @@ export function useSoftwareEquipo(service = softwareService) {
     loading.value = true;
     try {
       const [installationData, productData] = await Promise.all([
-        service.listarInstalaciones({ equipo_id: equipmentId, page_size: 100 }),
-        service.listarProductos({ page_size: 100 }),
+        instalacionesService.listar({ equipo_id: equipmentId, page_size: 100 }),
+        productosService.listar({ page_size: 100 }),
       ]);
       installations.value = installationData.results ?? installationData;
       products.value = productData.results ?? productData;
@@ -79,9 +83,9 @@ export function useSoftwareEquipo(service = softwareService) {
     if (Object.keys(errors).length) return;
     saving.value = true;
     try {
-      await service.instalar({
-        equipo_id: currentEquipmentId.value,
-        producto_software_id: Number(form.producto_software_id),
+      await instalacionesService.crear({
+        equipo: currentEquipmentId.value,
+        producto_software: Number(form.producto_software_id),
         numero_licencia_usado: form.numero_licencia_usado.trim(),
         fecha_instalacion: form.fecha_instalacion,
       });
@@ -109,7 +113,7 @@ export function useSoftwareEquipo(service = softwareService) {
     if (!pendingDelete.value) return;
     saving.value = true;
     try {
-      await service.retirar(pendingDelete.value.id);
+      await instalacionesService.eliminar(pendingDelete.value.id);
       cancelDelete();
       await load(currentEquipmentId.value);
       showToast('Software retirado del equipo.');

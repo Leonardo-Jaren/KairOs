@@ -3,13 +3,14 @@ from rest_framework import serializers
 from software.models import ProductoSoftware
 
 
-class ProductoSoftwareResumenSerializer(serializers.ModelSerializer):
-    """Representa los datos necesarios para identificar un producto."""
+class ProductoSoftwareSerializer(serializers.ModelSerializer):
+    """Representa un producto de software con sus indicadores de licenciamiento."""
 
-    tipo_licencia_display = serializers.CharField(
-        source='get_tipo_licencia_display',
-        read_only=True,
-    )
+    tipo_licencia_display = serializers.CharField(source='get_tipo_licencia_display', read_only=True)
+    licencias_usadas = serializers.IntegerField(read_only=True)
+    licencias_disponibles = serializers.IntegerField(read_only=True)
+    proxima_a_expirar = serializers.BooleanField(read_only=True)
+    sobre_uso = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductoSoftware
@@ -17,36 +18,42 @@ class ProductoSoftwareResumenSerializer(serializers.ModelSerializer):
             'id',
             'software',
             'version',
+            'descripcion',
             'tipo_licencia',
             'tipo_licencia_display',
-            'fecha_expiracion',
-        ]
-        read_only_fields = fields
-
-
-class ProductoSoftwareSerializer(ProductoSoftwareResumenSerializer):
-    """Representa el catalogo junto con la disponibilidad de licencias."""
-
-    licencias_usadas = serializers.IntegerField(read_only=True)
-    licencias_disponibles = serializers.SerializerMethodField()
-
-    class Meta(ProductoSoftwareResumenSerializer.Meta):
-        fields = ProductoSoftwareResumenSerializer.Meta.fields + [
-            'descripcion',
             'licencias_totales',
             'licencias_usadas',
             'licencias_disponibles',
+            'fecha_expiracion',
             'costo_anual_total',
+            'proxima_a_expirar',
+            'sobre_uso',
             'created_at',
             'updated_at',
         ]
         read_only_fields = fields
 
-    def get_licencias_disponibles(
-        self,
-        obj: ProductoSoftware,
-    ) -> int | None:
-        """Calcula disponibilidad sin contar instalaciones retiradas."""
-        if obj.tipo_licencia == 'libre':
-            return None
-        return max(obj.licencias_totales - obj.licencias_usadas, 0)
+    def get_sobre_uso(self, obj: ProductoSoftware) -> bool:
+        """Indica si las instalaciones vigentes superan las licencias totales."""
+        return obj.licencias_disponibles < 0
+
+
+class ProductoSoftwareCreateUpdateSerializer(serializers.ModelSerializer):
+    """Valida los datos de creacion y edicion de un producto de software."""
+
+    class Meta:
+        model = ProductoSoftware
+        fields = [
+            'software',
+            'version',
+            'descripcion',
+            'tipo_licencia',
+            'licencias_totales',
+            'fecha_expiracion',
+            'costo_anual_total',
+        ]
+        extra_kwargs = {
+            'software': {'validators': []},
+            'version': {'validators': []},
+            'fecha_expiracion': {'required': False, 'allow_null': True},
+        }
