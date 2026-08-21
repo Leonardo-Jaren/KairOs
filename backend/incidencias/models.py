@@ -1,64 +1,68 @@
-from django.conf import settings
 from django.db import models
 from shared.models import BaseModel
 
 
 class Incidencia(BaseModel):
     """
-    Reportes de incidencias generados por usuarios.
-    Asociados obligatoriamente a un espacio y opcionalmente a un equipo.
+    Reportes de incidencias de hardware o software sobre un equipo,
+    con seguimiento de estado hasta su resolución.
     """
 
-    tecnico = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='incidencias_registradas',
-        verbose_name='Técnico que registra',
-        limit_choices_to={'rol': 'tecnico'},
-        default=1,
-    )
-    docente = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='incidencias_reportadas',
-        verbose_name='Docente que reporta',
-        limit_choices_to={'rol': 'docente'},
-    )
+    TIPO_CHOICES = [
+        ('hardware', 'Hardware'),
+        ('software', 'Software'),
+    ]
+
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('en_proceso', 'En Proceso'),
+        ('resuelto', 'Resuelto'),
+    ]
+
     espacio = models.ForeignKey(
         'espacios.Espacio',
         on_delete=models.CASCADE,
         related_name='incidencias',
         verbose_name='Ubicación',
-        help_text='Espacio donde ocurrió la incidencia (obligatorio)',
+        help_text='Espacio donde ocurrió la incidencia',
     )
     equipo = models.ForeignKey(
         'equipos.Equipo',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name='incidencias',
         verbose_name='Equipo afectado',
     )
-    fecha_generado = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Fecha de generación',
+    tipo_incidencia = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        verbose_name='Tipo de incidencia',
     )
     descripcion = models.TextField(
         verbose_name='Descripción de la incidencia',
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='pendiente',
+        verbose_name='Estado',
+    )
+    fecha_resolucion = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de resolución',
     )
 
     class Meta:
         db_table = 'incidencias'
         verbose_name = 'Incidencia'
         verbose_name_plural = 'Incidencias'
-        ordering = ['-fecha_generado']
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['fecha_generado'], name='idx_incidencia_fecha'),
-            models.Index(fields=['tecnico'], name='idx_incidencia_tecnico'),
-            models.Index(fields=['docente'], name='idx_incidencia_docente'),
+            models.Index(fields=['estado'], name='idx_incidencia_estado'),
+            models.Index(fields=['tipo_incidencia'], name='idx_incidencia_tipo'),
+            models.Index(fields=['espacio'], name='idx_incidencia_espacio'),
+            models.Index(fields=['equipo'], name='idx_incidencia_equipo'),
         ]
 
     def __str__(self):
-        return f"Inc-{self.id} reg por {self.tecnico.nombre} ({self.fecha_generado:%Y-%m-%d})"
+        return f"Inc-{self.id} - {self.equipo.codigo} ({self.get_estado_display()})"

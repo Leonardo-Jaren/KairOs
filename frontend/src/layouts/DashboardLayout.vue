@@ -47,7 +47,7 @@ const menuItems = computed(() => [
   { name: 'Software', path: '/software', icon: AppWindow, roles: ['admin', 'tecnico', 'docente'] },
   { name: 'Instalaciones', path: '/software/instalaciones', icon: PackageCheck, roles: ['admin', 'tecnico', 'docente'] },
   { name: 'Mantenimiento', path: '/mantenimiento', icon: Wrench },
-  { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert },
+  { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert, roles: ['admin', 'tecnico', 'docente'] },
   { name: 'Historial', path: '/historial', icon: Clock3 },
 ].filter((item) => !item.roles || item.roles.includes(user.value?.rol)));
 

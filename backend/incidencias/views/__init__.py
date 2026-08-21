@@ -1,2 +1,3 @@
-# incidencias/views
-# TODO: Implementar vistas/viewsets para Incidencia
+from .incidencia_views import IncidenciaViewSet
+
+__all__ = ['IncidenciaViewSet']

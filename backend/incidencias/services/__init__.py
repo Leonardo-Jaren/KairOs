@@ -1,2 +1,3 @@
-# incidencias/services
-# TODO: Implementar servicios de lógica de negocio para incidencias
+from .incidencia_service import IncidenciaService
+
+__all__ = ['IncidenciaService']

@@ -1,2 +1,3 @@
-# incidencias/repositories
-# TODO: Implementar repositorios para Incidencia
+from .incidencia_repository import IncidenciaRepository
+
+__all__ = ['IncidenciaRepository']
