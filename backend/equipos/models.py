@@ -58,6 +58,20 @@ class Equipo(BaseModel):
         verbose_name='Dirección MAC',
         help_text='Ej: MAC:10001:10F',
     )
+    ipv4 = models.GenericIPAddressField(
+        protocol='IPv4',
+        blank=True,
+        null=True,
+        default='',
+        verbose_name='Dirección IPv4',
+    )
+    ipv6 = models.GenericIPAddressField(
+        protocol='IPv6',
+        blank=True,
+        null=True,
+        default='',
+        verbose_name='Dirección IPv6',
+    )
     tipo_equipo = models.CharField(
         max_length=30,
         choices=TIPO_EQUIPO_CHOICES,

@@ -5,12 +5,15 @@ import espaciosService from '@/services/espacios.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
+import { isValidIpv4, isValidIpv6 } from '@/utils/ip-validation';
 
 const emptyForm = () => ({
   espacio: '',
   codigo: '',
   numero_serie: '',
   numero_mac: '',
+  ipv4: '',
+  ipv6: '',
   tipo_equipo: 'desktop',
   marca: '',
   modelo: '',
@@ -121,6 +124,8 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
       codigo: equipo.codigo,
       numero_serie: equipo.numero_serie,
       numero_mac: equipo.numero_mac ?? '',
+      ipv4: equipo.ipv4 ?? '',
+      ipv6: equipo.ipv6 ?? '',
       tipo_equipo: equipo.tipo_equipo,
       marca: equipo.marca,
       modelo: equipo.modelo,
@@ -143,6 +148,9 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
     Object.keys(formErrors).forEach((key) => delete formErrors[key]);
     if (!form.codigo.trim()) formErrors.codigo = 'Ingresa el código interno.';
     if (!form.numero_serie.trim()) formErrors.numero_serie = 'Ingresa el número de serie.';
+    if (!form.ipv4.trim()) formErrors.ipv4 = 'Ingresa la dirección IPv4.';
+    else if (!isValidIpv4(form.ipv4)) formErrors.ipv4 = 'Ingresa una dirección IPv4 válida.';
+    if (form.ipv6.trim() && !isValidIpv6(form.ipv6)) formErrors.ipv6 = 'Ingresa una dirección IPv6 válida.';
     if (!form.tipo_equipo) formErrors.tipo_equipo = 'Selecciona el tipo de equipo.';
     if (!form.marca.trim()) formErrors.marca = 'Ingresa la marca.';
     if (!form.modelo.trim()) formErrors.modelo = 'Ingresa el modelo.';

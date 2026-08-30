@@ -41,6 +41,8 @@ defineEmits(['close', 'submit']);
       <BaseInput id="equipment-brand" v-model="form.marca" appearance="light" label="Marca" placeholder="HP" :error="errors.marca" />
       <BaseInput id="equipment-model" v-model="form.modelo" appearance="light" label="Modelo" placeholder="ProDesk 400" :error="errors.modelo" />
       <BaseInput id="equipment-mac" v-model="form.numero_mac" appearance="light" label="Dirección MAC" placeholder="AA:BB:CC:DD:EE:FF" />
+      <BaseInput id="equipment-ipv4" v-model="form.ipv4" appearance="light" label="Dirección IPv4" placeholder="192.168.1.10" :error="errors.ipv4" />
+      <BaseInput id="equipment-ipv6" v-model="form.ipv6" appearance="light" label="Dirección IPv6 (opcional)" placeholder="2001:db8::10" :error="errors.ipv6" />
       <BaseSelect id="equipment-acquisition" v-model="form.modo_adquisicion" label="Modo de adquisición" :options="acquisitionOptions" :error="errors.modo_adquisicion" />
       <BaseInput id="equipment-acquisition-date" v-model="form.fecha_adquisicion" type="date" appearance="light" label="Fecha de adquisición" :error="errors.fecha_adquisicion" />
       <BaseInput id="equipment-renewal-date" v-model="form.fecha_renovacion" type="date" appearance="light" label="Fecha de renovación (opcional)" />
