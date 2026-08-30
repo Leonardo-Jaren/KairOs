@@ -6,6 +6,7 @@ import mantenimientoService from '@/services/mantenimiento.service';
 import usuariosService from '@/services/usuarios.service';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
+import { isValidIpv4, isValidIpv6 } from '@/utils/ip-validation';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value)));
 const positionKey = (row, column) => `${row}-${column}`;
@@ -23,6 +24,8 @@ const emptyEquipment = () => ({
   codigo: '',
   numero_serie: '',
   numero_mac: '',
+  ipv4: '',
+  ipv6: '',
   tipo_equipo: 'desktop',
   marca: '',
   modelo: '',
@@ -501,6 +504,8 @@ export function usePlanoEspacio(
       codigo: equipment.codigo,
       numero_serie: equipment.numero_serie,
       numero_mac: equipment.numero_mac ?? '',
+      ipv4: equipment.ipv4 ?? '',
+      ipv6: equipment.ipv6 ?? '',
       tipo_equipo: equipment.tipo_equipo,
       marca: equipment.marca,
       modelo: equipment.modelo,
@@ -523,6 +528,9 @@ export function usePlanoEspacio(
     Object.keys(equipmentErrors).forEach((key) => delete equipmentErrors[key]);
     if (!equipmentForm.codigo.trim()) equipmentErrors.codigo = 'Ingresa el código interno.';
     if (!equipmentForm.numero_serie.trim()) equipmentErrors.numero_serie = 'Ingresa el número de serie.';
+    if (!equipmentForm.ipv4.trim()) equipmentErrors.ipv4 = 'Ingresa la dirección IPv4.';
+    else if (!isValidIpv4(equipmentForm.ipv4)) equipmentErrors.ipv4 = 'Ingresa una dirección IPv4 válida.';
+    if (equipmentForm.ipv6.trim() && !isValidIpv6(equipmentForm.ipv6)) equipmentErrors.ipv6 = 'Ingresa una dirección IPv6 válida.';
     if (!equipmentForm.marca.trim()) equipmentErrors.marca = 'Ingresa la marca.';
     if (!equipmentForm.modelo.trim()) equipmentErrors.modelo = 'Ingresa el modelo.';
     if (!equipmentForm.fecha_adquisicion) equipmentErrors.fecha_adquisicion = 'Ingresa la fecha.';

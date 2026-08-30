@@ -20,6 +20,8 @@ class EquipoSerializer(serializers.ModelSerializer):
             'codigo',
             'numero_serie',
             'numero_mac',
+            'ipv4',
+            'ipv6',
             'tipo_equipo',
             'tipo_equipo_display',
             'marca',
@@ -53,6 +55,8 @@ class EquipoCreateUpdateSerializer(serializers.ModelSerializer):
             'codigo',
             'numero_serie',
             'numero_mac',
+            'ipv4',
+            'ipv6',
             'tipo_equipo',
             'marca',
             'modelo',
@@ -65,6 +69,8 @@ class EquipoCreateUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'codigo': {'validators': []},
             'numero_serie': {'validators': []},
+            'ipv4': {'required': True, 'allow_blank': False, 'allow_null': False},
+            'ipv6': {'required': False, 'allow_blank': True, 'allow_null': True},
             'espacio': {'required': False, 'allow_null': True},
             'fecha_renovacion': {'required': False, 'allow_null': True},
         }

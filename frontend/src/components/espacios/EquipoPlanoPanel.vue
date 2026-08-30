@@ -78,6 +78,14 @@ const statusClasses = {
                   <dd class="mt-1.5 truncate font-mono text-xs font-semibold text-slate-700">{{ equipment.numero_mac || 'Sin registrar' }}</dd>
                 </div>
                 <div class="rounded-xl border border-slate-200 p-3">
+                  <dt class="text-[10px] font-bold uppercase tracking-wide text-slate-400">IPv4</dt>
+                  <dd class="mt-1.5 truncate font-mono text-xs font-semibold text-slate-700">{{ equipment.ipv4 || 'Sin registrar' }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-200 p-3">
+                  <dt class="text-[10px] font-bold uppercase tracking-wide text-slate-400">IPv6</dt>
+                  <dd class="mt-1.5 truncate font-mono text-xs font-semibold text-slate-700">{{ equipment.ipv6 || 'Sin registrar' }}</dd>
+                </div>
+                <div class="rounded-xl border border-slate-200 p-3">
                   <dt class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400"><CircleUserRound :size="13" /> Responsable</dt>
                   <dd class="mt-1.5 truncate text-xs font-semibold text-slate-700">{{ equipment.responsable_usuario || 'Sin asignar' }}</dd>
                 </div>
