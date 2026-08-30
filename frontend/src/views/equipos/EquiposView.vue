@@ -133,6 +133,8 @@
         <BaseInput id="equipo-marca" v-model="form.marca" appearance="light" label="Marca" placeholder="HP" :error="formErrors.marca" />
         <BaseInput id="equipo-modelo" v-model="form.modelo" appearance="light" label="Modelo" placeholder="ProDesk 400" :error="formErrors.modelo" />
         <BaseInput id="equipo-mac" v-model="form.numero_mac" appearance="light" label="Dirección MAC" placeholder="MAC:10001:10F" />
+        <BaseInput id="equipo-ipv4" v-model="form.ipv4" appearance="light" label="Dirección IPv4" placeholder="192.168.1.10" :error="formErrors.ipv4" />
+        <BaseInput id="equipo-ipv6" v-model="form.ipv6" appearance="light" label="Dirección IPv6 (opcional)" placeholder="2001:db8::10" :error="formErrors.ipv6" />
         <BaseSelect id="equipo-adquisicion" v-model="form.modo_adquisicion" label="Modo de adquisición" :options="modoAdquisicionOptions" :error="formErrors.modo_adquisicion" />
         <BaseInput id="equipo-fecha-adq" v-model="form.fecha_adquisicion" type="date" appearance="light" label="Fecha de adquisición" :error="formErrors.fecha_adquisicion" />
         <BaseInput id="equipo-fecha-ren" v-model="form.fecha_renovacion" type="date" appearance="light" label="Fecha de renovación (opcional)" />

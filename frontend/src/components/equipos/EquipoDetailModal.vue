@@ -168,6 +168,14 @@ const tabs = [
           <dd class="mt-1 font-mono text-xs text-slate-600">{{ equipo?.numero_mac || '—' }}</dd>
         </div>
         <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Dirección IPv4</dt>
+          <dd class="mt-1 font-mono text-xs text-slate-600">{{ equipo?.ipv4 || '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Dirección IPv6</dt>
+          <dd class="mt-1 font-mono text-xs text-slate-600">{{ equipo?.ipv6 || '—' }}</dd>
+        </div>
+        <div>
           <dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Espacio asignado</dt>
           <dd class="mt-1 text-sm text-slate-700">{{ equipo?.espacio_nombre ?? 'Sin asignar' }}</dd>
         </div>
