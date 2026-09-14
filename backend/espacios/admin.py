@@ -1,14 +1,24 @@
 from django.contrib import admin
-from .models import Edificio, Espacio, EspacioUsuario
+from .models import Edificio, Espacio, EspacioUsuario, Local
+
+
+@admin.register(Local)
+class LocalAdmin(admin.ModelAdmin):
+    """Configura la administración de locales físicos."""
+
+    list_display = ('id', 'codigo', 'nombre', 'ciudad', 'activo')
+    list_filter = ('ciudad', 'activo')
+    search_fields = ('codigo', 'nombre', 'ciudad', 'descripcion')
+    ordering = ('nombre', 'codigo')
 
 
 @admin.register(Edificio)
 class EdificioAdmin(admin.ModelAdmin):
     """Configura la administración de edificios del campus."""
 
-    list_display = ('id', 'codigo', 'nombre', 'activo')
+    list_display = ('id', 'codigo', 'nombre', 'local', 'activo')
     list_filter = ('activo',)
-    search_fields = ('codigo', 'nombre', 'descripcion')
+    search_fields = ('codigo', 'nombre', 'descripcion', 'local__codigo', 'local__nombre')
     ordering = ('nombre', 'codigo')
 
 

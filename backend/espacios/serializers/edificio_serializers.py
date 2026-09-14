@@ -1,14 +1,18 @@
 from rest_framework import serializers
 
 from espacios.models import Edificio
+from espacios.serializers.local_serializers import LocalResumenSerializer
 
 
 class EdificioResumenSerializer(serializers.ModelSerializer):
     """Representa la identidad mínima de un edificio relacionado."""
 
+    local_id = serializers.IntegerField(read_only=True)
+    local = LocalResumenSerializer(read_only=True)
+
     class Meta:
         model = Edificio
-        fields = ['id', 'codigo', 'nombre', 'activo']
+        fields = ['id', 'codigo', 'nombre', 'activo', 'local_id', 'local']
 
 
 class EdificioSerializer(serializers.ModelSerializer):
@@ -18,6 +22,8 @@ class EdificioSerializer(serializers.ModelSerializer):
     cantidad_pisos = serializers.IntegerField(read_only=True, default=0)
     cantidad_laboratorios = serializers.IntegerField(read_only=True, default=0)
     cantidad_aulas = serializers.IntegerField(read_only=True, default=0)
+    local_id = serializers.IntegerField(read_only=True)
+    local = LocalResumenSerializer(read_only=True)
 
     class Meta:
         model = Edificio
@@ -27,6 +33,8 @@ class EdificioSerializer(serializers.ModelSerializer):
             'nombre',
             'descripcion',
             'activo',
+            'local_id',
+            'local',
             'configuracion_croquis',
             'cantidad_espacios',
             'cantidad_pisos',
@@ -40,9 +48,11 @@ class EdificioSerializer(serializers.ModelSerializer):
 class EdificioCreateUpdateSerializer(serializers.ModelSerializer):
     """Valida los datos usados para crear o editar un edificio."""
 
+    local_id = serializers.IntegerField(required=False, allow_null=True)
+
     class Meta:
         model = Edificio
-        fields = ['codigo', 'nombre', 'descripcion', 'activo']
+        fields = ['codigo', 'nombre', 'descripcion', 'activo', 'local_id']
         extra_kwargs = {
             'codigo': {'validators': []},
         }

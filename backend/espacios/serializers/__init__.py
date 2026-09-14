@@ -14,6 +14,11 @@ from .espacio_usuario_serializers import (
     EspacioUsuarioCreateUpdateSerializer,
     EspacioUsuarioSerializer,
 )
+from .local_serializers import (
+    LocalCreateUpdateSerializer,
+    LocalResumenSerializer,
+    LocalSerializer,
+)
 
 __all__ = [
     'CroquisPisoSerializer',
@@ -26,4 +31,7 @@ __all__ = [
     'DisposicionEspacioSerializer',
     'EspacioUsuarioSerializer',
     'EspacioUsuarioCreateUpdateSerializer',
+    'LocalSerializer',
+    'LocalResumenSerializer',
+    'LocalCreateUpdateSerializer',
 ]

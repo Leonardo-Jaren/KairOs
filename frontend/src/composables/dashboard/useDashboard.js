@@ -88,12 +88,26 @@ export function useDashboard(service = dashboardService) {
     .sort((first, second) => second.cantidad_equipos - first.cantidad_equipos)
     .slice(0, 5));
 
+  const getDateParts = (value) => {
+    if (!value) return { day: '--', month: '---' };
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return { day: value, month: '' };
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = new Intl.DateTimeFormat('es-PE', { month: 'short' })
+      .format(date)
+      .replace('.', '')
+      .replace('-', '')
+      .trim()
+      .toUpperCase();
+    return { day, month };
+  };
+
   const formatDate = (value) => {
     if (!value) return 'Sin fecha';
     return new Intl.DateTimeFormat('es-PE', {
       day: '2-digit',
       month: 'short',
-    }).format(new Date(`${value}T00:00:00`));
+    }).format(new Date(`${value}T00:00:00`)).replace('-', ' ');
   };
 
   const loadDashboard = async () => {
@@ -149,6 +163,7 @@ export function useDashboard(service = dashboardService) {
     recentMaintenance,
     topSpaces,
     formatDate,
+    getDateParts,
     loadDashboard,
   };
 }

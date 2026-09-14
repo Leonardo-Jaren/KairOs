@@ -18,11 +18,17 @@ class EdificioService(AuditableMixin, BaseService):
     def __init__(self):
         self.repository = EdificioRepository()
 
-    def listar(self, busqueda: str = '', activo: bool | None = None):
+    def listar(
+        self,
+        busqueda: str = '',
+        activo: bool | None = None,
+        local_id: int | None = None,
+    ):
         """Lista edificios aplicando filtros normalizados."""
         return self.repository.listar(
             busqueda=busqueda.strip(),
             activo=activo,
+            local_id=local_id,
         )
 
     def get_estadisticas(self) -> dict:
@@ -114,6 +120,7 @@ class EdificioService(AuditableMixin, BaseService):
 
     def _do_create(self, data: dict, actor: Usuario = None):
         clean_data = self._normalizar(data)
+        self._validar_local(clean_data)
         existing = self.repository.get_by_codigo(clean_data['codigo'])
         if existing and existing.is_deleted:
             instance = self.repository.restore(existing, clean_data, actor)
@@ -129,6 +136,7 @@ class EdificioService(AuditableMixin, BaseService):
     def _do_update(self, id: int, data: dict, actor: Usuario = None) -> Edificio:
         instance = self.get_by_id(id)
         clean_data = self._normalizar(data, partial=True)
+        self._validar_local(clean_data)
         codigo = clean_data.get('codigo', instance.codigo)
         self._validar_codigo(codigo, exclude_id=instance.id)
         clean_data['updated_by'] = actor
@@ -180,3 +188,13 @@ class EdificioService(AuditableMixin, BaseService):
     def _validar_codigo(self, codigo: str, exclude_id: int | None = None) -> None:
         if self.repository.get_by_codigo(codigo, exclude_id):
             raise ValidationError({'codigo': 'Ya existe un edificio con este código.'})
+
+    def _validar_local(self, data: dict) -> None:
+        """Exige que una asignación de local apunte a un local activo vigente."""
+        if 'local_id' not in data or data['local_id'] is None:
+            return
+        local_id = data['local_id']
+        if self.repository.local_asignable(local_id) is None:
+            raise ValidationError({
+                'local_id': 'El local indicado no existe, está eliminado o está inactivo.'
+            })

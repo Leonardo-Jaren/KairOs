@@ -13,7 +13,9 @@ class EdificioRepository(BaseRepository):
 
     def get_all(self):
         """Retorna edificios vigentes con contadores de sus espacios."""
-        return self.model.objects.filter(is_deleted=False).annotate(
+        return self.model.objects.filter(is_deleted=False).select_related(
+            'local',
+        ).annotate(
             cantidad_espacios=Count(
                 'espacios',
                 filter=Q(espacios__is_deleted=False),
@@ -49,7 +51,12 @@ class EdificioRepository(BaseRepository):
         except self.model.DoesNotExist:
             return None
 
-    def listar(self, busqueda: str = '', activo: bool | None = None):
+    def listar(
+        self,
+        busqueda: str = '',
+        activo: bool | None = None,
+        local_id: int | None = None,
+    ):
         """Aplica búsqueda por código, nombre o descripción y estado."""
         queryset = self.get_all()
         if busqueda:
@@ -60,6 +67,8 @@ class EdificioRepository(BaseRepository):
             )
         if activo is not None:
             queryset = queryset.filter(activo=activo)
+        if local_id is not None:
+            queryset = queryset.filter(local_id=local_id)
         return queryset
 
     def get_by_codigo(
@@ -88,6 +97,16 @@ class EdificioRepository(BaseRepository):
             'laboratorios': espacios.filter(tipo='laboratorio').count(),
             'aulas': espacios.filter(tipo='aula').count(),
         }
+
+    def local_asignable(self, local_id: int):
+        """Busca un local vigente y activo para asignarlo a un edificio."""
+        from espacios.models import Local
+
+        return Local.objects.filter(
+            id=local_id,
+            is_deleted=False,
+            activo=True,
+        ).first()
 
     def get_space_ids_for_floor(self, building_id: int, floor: str) -> set[int]:
         """Obtiene los ambientes activos que deben aparecer en el croquis del piso."""

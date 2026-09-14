@@ -1,7 +1,9 @@
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { renderGoogleButton } from '@/services/google-identity.service';
+
+const REMEMBER_EMAIL_KEY = 'kairos_remembered_email';
 
 export function useLogin() {
   const router = useRouter();
@@ -9,10 +11,24 @@ export function useLogin() {
 
   const correo = ref('');
   const password = ref('');
+  const showPassword = ref(false);
+  const rememberMe = ref(true);
   const validationError = ref('');
   const googleButtonElement = ref(null);
   const googleLoading = ref(true);
   const googleError = ref('');
+
+  // Limpia el error de validacion inmediatamente cuando el usuario empieza a corregir datos
+  watch([correo, password], () => {
+    if (validationError.value) {
+      validationError.value = '';
+    }
+  });
+
+  // Alterna la visibilidad del campo de contraseña
+  const toggleShowPassword = () => {
+    showPassword.value = !showPassword.value;
+  };
 
   // Estados reactivos mapeados desde el store de Pinia
   const loading = computed(() => authStore.loading);
@@ -44,8 +60,15 @@ export function useLogin() {
     }
 
     try {
-      const success = await authStore.login(correo.value.trim(), password.value);
+      const cleanEmail = correo.value.trim();
+      const success = await authStore.login(cleanEmail, password.value);
       if (success) {
+        // Persistir o limpiar el correo segun la preferencia del usuario
+        if (rememberMe.value) {
+          localStorage.setItem(REMEMBER_EMAIL_KEY, cleanEmail);
+        } else {
+          localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        }
         // Redirigir al dashboard si las credenciales son correctas
         router.push('/dashboard');
       }
@@ -81,11 +104,22 @@ export function useLogin() {
     }
   };
 
-  onMounted(initializeGoogleLogin);
+  onMounted(() => {
+    // Restaurar el correo recordado si existe en el almacenamiento local
+    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
+    if (savedEmail) {
+      correo.value = savedEmail;
+      rememberMe.value = true;
+    }
+    initializeGoogleLogin();
+  });
 
   return {
     correo,
     password,
+    showPassword,
+    rememberMe,
+    toggleShowPassword,
     loading,
     googleButtonElement,
     googleLoading,

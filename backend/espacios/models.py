@@ -3,6 +3,49 @@ from django.db import models
 from shared.models import BaseModel
 
 
+class Local(BaseModel):
+    """Representa una sede física donde se agrupan los edificios."""
+
+    codigo = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Código del local',
+        help_text='Identificador global del local, por ejemplo LOC-01.',
+    )
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name='Nombre del local',
+    )
+    ciudad = models.CharField(
+        max_length=100,
+        verbose_name='Ciudad del local',
+    )
+    descripcion = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Descripción',
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name='Local activo',
+    )
+
+    class Meta:
+        db_table = 'locales'
+        verbose_name = 'Local'
+        verbose_name_plural = 'Locales'
+        ordering = ['nombre', 'codigo']
+        indexes = [
+            models.Index(fields=['codigo'], name='idx_local_codigo'),
+            models.Index(fields=['nombre'], name='idx_local_nombre'),
+            models.Index(fields=['ciudad'], name='idx_local_ciudad'),
+            models.Index(fields=['activo'], name='idx_local_activo'),
+        ]
+
+    def __str__(self):
+        return f'{self.codigo} - {self.nombre}'
+
+
 class Edificio(BaseModel):
     """Representa un bloque físico que agrupa espacios por piso."""
 
@@ -25,6 +68,15 @@ class Edificio(BaseModel):
     activo = models.BooleanField(
         default=True,
         verbose_name='Edificio activo',
+    )
+    local = models.ForeignKey(
+        Local,
+        on_delete=models.PROTECT,
+        related_name='edificios',
+        null=True,
+        blank=True,
+        verbose_name='Local',
+        help_text='Sede física a la que pertenece el edificio.',
     )
     configuracion_croquis = models.JSONField(
         default=dict,
