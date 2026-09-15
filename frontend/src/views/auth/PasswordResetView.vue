@@ -1,7 +1,13 @@
 <script setup>
 import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { User, Lock, Key } from '@lucide/vue';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Key,
+  Lock,
+  Mail,
+} from '@lucide/vue';
 import usePasswordReset from '@/composables/auth/usePasswordReset';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
@@ -31,15 +37,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-6">
+  <div class="w-full bg-white border border-slate-200/90 shadow-xl shadow-slate-200/50 rounded-2xl p-6 sm:p-7 flex flex-col gap-4 sm:gap-5 transition-all duration-200">
     
     <!-- Encabezado de la vista adaptado al flujo actual -->
-    <div class="flex flex-col gap-1 text-center select-none">
-      <h1 class="text-xl font-semibold text-white tracking-tight">
+    <div class="flex flex-col gap-1.5 text-center select-none">
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
         {{ token ? 'Establecer contraseña' : 'Recuperar contraseña' }}
       </h1>
-      <p class="text-sm text-white/40">
-        {{ token ? 'Ingresa el código y tu nueva contraseña' : 'Ingresa tu correo para recibir un código' }}
+      <p class="text-xs sm:text-sm text-slate-500">
+        {{ token ? 'Ingresa el código y tu nueva contraseña' : 'Ingresa tu correo institucional para recibir un código' }}
       </p>
     </div>
 
@@ -54,10 +60,12 @@ onMounted(() => {
         id="reset-token"
         type="text"
         v-model="token"
-        placeholder="Código de verificación"
+        appearance="light"
+        label="Código de verificación"
+        placeholder="Ej. 123456"
       >
         <template #icon>
-          <Key :size="15" :stroke-width="1.75" />
+          <Key :size="16" :stroke-width="1.8" />
         </template>
       </BaseInput>
 
@@ -66,10 +74,12 @@ onMounted(() => {
         id="reset-password"
         type="password"
         v-model="password"
-        placeholder="Nueva contraseña"
+        appearance="light"
+        label="Nueva contraseña"
+        placeholder="••••••••••••"
       >
         <template #icon>
-          <Lock :size="15" :stroke-width="1.75" />
+          <Lock :size="16" :stroke-width="1.8" />
         </template>
       </BaseInput>
 
@@ -78,10 +88,12 @@ onMounted(() => {
         id="reset-confirm-password"
         type="password"
         v-model="confirmPassword"
-        placeholder="Confirmar contraseña"
+        appearance="light"
+        label="Confirmar contraseña"
+        placeholder="••••••••••••"
       >
         <template #icon>
-          <Lock :size="15" :stroke-width="1.75" />
+          <Lock :size="16" :stroke-width="1.8" />
         </template>
       </BaseInput>
 
@@ -92,9 +104,14 @@ onMounted(() => {
         leave-to-class="opacity-0"
         leave-active-class="transition-all duration-150"
       >
-        <p v-if="error" class="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3.5 py-2.5 text-center">
-          {{ error }}
-        </p>
+        <div
+          v-if="error"
+          role="alert"
+          class="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 text-left"
+        >
+          <AlertCircle :size="15" class="shrink-0 mt-0.5 text-red-500" />
+          <span class="leading-snug">{{ error }}</span>
+        </div>
       </Transition>
 
       <Transition
@@ -103,9 +120,14 @@ onMounted(() => {
         leave-to-class="opacity-0"
         leave-active-class="transition-all duration-150"
       >
-        <p v-if="success" class="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3.5 py-2.5 text-center">
-          {{ successMessage }}
-        </p>
+        <div
+          v-if="success"
+          role="status"
+          class="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 text-left"
+        >
+          <CheckCircle2 :size="15" class="shrink-0 mt-0.5 text-emerald-500" />
+          <span class="leading-snug">{{ successMessage }}</span>
+        </div>
       </Transition>
 
       <!-- Botones de accion -->
@@ -114,14 +136,15 @@ onMounted(() => {
           id="btn-confirm-reset"
           type="submit"
           :loading="loading"
-          variant="primary"
+          variant="accent"
+          class="font-semibold shadow-sm hover:shadow py-2.5 rounded-xl cursor-pointer"
         >
           Restablecer contraseña
         </BaseButton>
 
         <router-link
           to="/auth/login"
-          class="text-center text-xs text-white/35 hover:text-white/60 transition-colors duration-200"
+          class="text-center text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors"
         >
           Volver al inicio de sesión
         </router-link>
@@ -139,10 +162,12 @@ onMounted(() => {
         id="reset-correo"
         type="email"
         v-model="correo"
-        placeholder="Correo electrónico"
+        appearance="light"
+        label="Correo institucional"
+        placeholder="usuario@institucion.edu"
       >
         <template #icon>
-          <User :size="15" :stroke-width="1.75" />
+          <Mail :size="16" :stroke-width="1.8" />
         </template>
       </BaseInput>
 
@@ -153,9 +178,14 @@ onMounted(() => {
         leave-to-class="opacity-0"
         leave-active-class="transition-all duration-150"
       >
-        <p v-if="error" class="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3.5 py-2.5 text-center">
-          {{ error }}
-        </p>
+        <div
+          v-if="error"
+          role="alert"
+          class="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 text-left"
+        >
+          <AlertCircle :size="15" class="shrink-0 mt-0.5 text-red-500" />
+          <span class="leading-snug">{{ error }}</span>
+        </div>
       </Transition>
 
       <Transition
@@ -164,9 +194,14 @@ onMounted(() => {
         leave-to-class="opacity-0"
         leave-active-class="transition-all duration-150"
       >
-        <p v-if="success" class="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3.5 py-2.5 text-center">
-          {{ successMessage }}
-        </p>
+        <div
+          v-if="success"
+          role="status"
+          class="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 text-left"
+        >
+          <CheckCircle2 :size="15" class="shrink-0 mt-0.5 text-emerald-500" />
+          <span class="leading-snug">{{ successMessage }}</span>
+        </div>
       </Transition>
 
       <!-- Botones de accion -->
@@ -175,14 +210,15 @@ onMounted(() => {
           id="btn-request-reset"
           type="submit"
           :loading="loading"
-          variant="primary"
+          variant="accent"
+          class="font-semibold shadow-sm hover:shadow py-2.5 rounded-xl cursor-pointer"
         >
           Solicitar código
         </BaseButton>
 
         <router-link
           to="/auth/login"
-          class="text-center text-xs text-white/35 hover:text-white/60 transition-colors duration-200"
+          class="text-center text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors"
         >
           Volver al inicio de sesión
         </router-link>

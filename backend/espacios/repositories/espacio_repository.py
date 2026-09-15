@@ -19,7 +19,7 @@ class EspacioRepository(BaseRepository):
         ).select_related('usuario').order_by('tipo_responsabilidad', 'usuario__nombre')
         equipos = Equipo.objects.filter(is_deleted=False).order_by('codigo')
         return self.model.objects.filter(is_deleted=False).select_related(
-            'edificio',
+            'edificio__local',
         ).prefetch_related(
             Prefetch(
                 'asignaciones_usuario',

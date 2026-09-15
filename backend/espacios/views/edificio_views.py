@@ -1,5 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -28,9 +29,16 @@ class EdificioViewSet(BaseViewSet):
 
     def list(self, request: Request, *args, **kwargs) -> Response:
         """Lista edificios aplicando búsqueda y estado."""
+        local_param = request.query_params.get('local_id')
+        local_id = self.parse_integer_query(local_param)
+        if local_param not in (None, '') and local_id is None:
+            raise ValidationError({
+                'local_id': 'El filtro local_id debe ser un identificador entero positivo.'
+            })
         queryset = self.service.listar(
             busqueda=request.query_params.get('search', ''),
             activo=self.parse_boolean_query(request.query_params.get('activo')),
+            local_id=local_id,
         )
         return self.get_collection_response(queryset)
 

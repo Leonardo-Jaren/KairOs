@@ -2,6 +2,10 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import edificiosService from '@/services/edificios.service';
 import espaciosService from '@/services/espacios.service';
+import localesService from '@/services/locales.service';
+import { listarTodas, useCampusTerritorio } from '@/composables/espacios/useCampusTerritorio';
+import { useLocalesCampus } from '@/composables/espacios/useLocalesCampus';
+export { listarTodas } from '@/composables/espacios/useCampusTerritorio';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 import { formatFloor } from '@/utils/formatters';
@@ -20,7 +24,7 @@ export const formatCountLabel = (count, singular, plural) => (
   count === 1 ? singular : plural
 );
 
-const emptyBuilding = () => ({ codigo: '', nombre: '', descripcion: '', activo: true });
+const emptyBuilding = () => ({ codigo: '', nombre: '', descripcion: '', local_id: '', activo: true });
 const emptySpace = () => ({
   codigo_espacio: '',
   tipo: 'laboratorio',
@@ -32,6 +36,8 @@ const emptySpace = () => ({
 export function useCampusTecnologico(
   spaceService = espaciosService,
   buildingService = edificiosService,
+  localService = localesService,
+  navigation = {},
 ) {
   const authStore = useAuthStore();
   const spaces = ref([]);
@@ -40,7 +46,7 @@ export function useCampusTecnologico(
   const saving = ref(false);
   const error = ref('');
   const search = ref('');
-  const selectedBuildingId = ref('');
+  const localRecords = ref([]);
   const activeFloorKey = ref('');
   const buildingModalOpen = ref(false);
   const buildingDeleteOpen = ref(false);
@@ -68,9 +74,21 @@ export function useCampusTecnologico(
     { value: 'otro', label: 'Otro' },
   ];
 
-  const edificios = computed(() => buildingRecords.value.map((building) => {
-    const buildingSpaces = spaces.value.filter((space) => (
-      Number(space.edificio_id ?? space.edificio?.id) === building.id
+  const territorio = useCampusTerritorio({
+    buildingRecords, localRecords, navigation,
+    isEditing: () => Boolean(editingFloor.value) || floorSaving.value,
+    showToast,
+  });
+  const { selectedBuildingId, currentBuildingRecords, refreshSelection,
+    selectionBlocked, selectSavedBuilding } = territorio;
+  const currentSpaces = computed(() => {
+    const ids = new Set(currentBuildingRecords.value.map((building) => Number(building.id)));
+    return spaces.value.filter((space) => ids.has(Number(space.edificio_id ?? space.edificio?.id)));
+  });
+
+  const edificios = computed(() => currentBuildingRecords.value.map((building) => {
+    const buildingSpaces = currentSpaces.value.filter((space) => (
+      Number(space.edificio_id ?? space.edificio?.id) === Number(building.id)
     ));
     const floors = [...new Set(buildingSpaces.map((space) => normalizeFloorValue(space.piso)))].sort(naturalCompare);
     return {
@@ -79,24 +97,13 @@ export function useCampusTecnologico(
       pisos: floors,
       laboratorios: buildingSpaces.filter((space) => ['laboratorio', 'sala_computo'].includes(space.tipo)),
       aulas: buildingSpaces.filter((space) => space.tipo === 'aula'),
-      equipos: buildingSpaces.reduce((total, space) => total + space.cantidad_equipos, 0),
+      equipos: buildingSpaces.reduce((total, space) => total + Number(space.cantidad_equipos ?? 0), 0),
       alertas: buildingSpaces.reduce((total, space) => (
         total + (space.resumen_equipos?.en_mantenimiento ?? 0) + (space.resumen_equipos?.dañado ?? 0)
       ), 0),
     };
   }));
-  const buildingColumnCount = computed(() => {
-    const count = edificios.value.length;
-    if (count <= 1) return 1;
-    const candidates = Array.from({ length: Math.min(6, count) - 1 }, (_, index) => index + 2);
-    return candidates.reduce((best, columns) => {
-      const emptyCells = Math.ceil(count / columns) * columns - count;
-      const bestEmptyCells = Math.ceil(count / best) * best - count;
-      return emptyCells < bestEmptyCells || (emptyCells === bestEmptyCells && columns > best)
-        ? columns
-        : best;
-    }, 2);
-  });
+  const buildingColumnCount = computed(() => Math.min(3, Math.max(1, edificios.value.length)));
 
   const edificioActivo = computed(() => (
     edificios.value.find((building) => String(building.id) === String(selectedBuildingId.value))
@@ -178,10 +185,11 @@ export function useCampusTecnologico(
 
   const stats = computed(() => ({
     edificios: edificios.value.length,
-    ambientes: spaces.value.length,
-    laboratorios: spaces.value.filter((space) => ['laboratorio', 'sala_computo'].includes(space.tipo)).length,
-    aulas: spaces.value.filter((space) => space.tipo === 'aula').length,
-    equipos: spaces.value.reduce((total, item) => total + item.cantidad_equipos, 0),
+    pisos: edificios.value.reduce((total, item) => total + item.pisos.length, 0),
+    ambientes: currentSpaces.value.length,
+    laboratorios: currentSpaces.value.filter((space) => ['laboratorio', 'sala_computo'].includes(space.tipo)).length,
+    aulas: currentSpaces.value.filter((space) => space.tipo === 'aula').length,
+    equipos: currentSpaces.value.reduce((total, item) => total + Number(item.cantidad_equipos ?? 0), 0),
     alertas: edificios.value.reduce((total, item) => total + item.alertas, 0),
   }));
 
@@ -195,16 +203,21 @@ export function useCampusTecnologico(
     if (showInitialLoader) loading.value = true;
     if (!silent) error.value = '';
     try {
-      const [buildingData, spaceData] = await Promise.all([
-        buildingService.listar({ activo: true, page_size: 100 }),
-        spaceService.listar({ activo: true, page_size: 200 }),
+      const [buildingData, spaceData, localData] = await Promise.all([
+        listarTodas(buildingService, { activo: true }),
+        listarTodas(spaceService, { activo: true }),
+        listarTodas(localService, { activo: true }),
       ]);
-      buildingRecords.value = buildingData.results ?? buildingData;
-      spaces.value = spaceData.results ?? spaceData;
+      buildingRecords.value = buildingData;
+      spaces.value = spaceData;
+      localRecords.value = localData;
+      refreshSelection();
+      return true;
     } catch (requestError) {
       const message = getApiErrorMessage(requestError, 'No se pudo cargar el campus.');
       if (silent) showToast(message, 'error');
       else error.value = message;
+      return false;
     } finally {
       if (showInitialLoader) loading.value = false;
     }
@@ -216,18 +229,22 @@ export function useCampusTecnologico(
   };
 
   const openCreateBuilding = () => {
+    if (!canEdit.value || selectionBlocked()) return;
     editingBuilding.value = null;
     resetBuildingForm();
+    buildingForm.local_id = territorio.localActivo.value?.id ?? '';
     buildingModalOpen.value = true;
   };
 
   const openEditBuilding = (building) => {
+    if (!canEdit.value || selectionBlocked()) return;
     editingBuilding.value = building;
     resetBuildingForm();
     Object.assign(buildingForm, {
       codigo: building.codigo,
       nombre: building.nombre,
       descripcion: building.descripcion ?? '',
+      local_id: building.local_id ?? building.local?.id ?? '',
       activo: building.activo,
     });
     buildingModalOpen.value = true;
@@ -240,6 +257,7 @@ export function useCampusTecnologico(
   };
 
   const submitBuilding = async () => {
+    if (!canEdit.value || saving.value || selectionBlocked()) return;
     Object.keys(buildingErrors).forEach((key) => delete buildingErrors[key]);
     if (!buildingForm.codigo.trim()) buildingErrors.codigo = 'Ingresa el código.';
     if (!buildingForm.nombre.trim()) buildingErrors.nombre = 'Ingresa el nombre.';
@@ -247,22 +265,27 @@ export function useCampusTecnologico(
     saving.value = true;
     try {
       const wasCreating = !isEditingBuilding.value;
-      const payload = { ...buildingForm };
+      const payload = { ...buildingForm, local_id: buildingForm.local_id ? Number(buildingForm.local_id) : null };
       const saved = wasCreating
         ? await buildingService.crear(payload)
         : await buildingService.actualizar(editingBuilding.value.id, payload);
       closeBuildingModal();
-      await loadCampus({ silent: true });
-      selectedBuildingId.value = saved.id;
-      showToast(wasCreating ? 'Edificio agregado al campus.' : 'Edificio actualizado.');
+      if (!await loadCampus({ silent: true })) return;
+      if (saved.activo !== false) selectSavedBuilding(saved);
+      showToast(wasCreating ? 'Pabellón agregado al local.' : 'Pabellón actualizado.');
     } catch (requestError) {
-      showToast(getApiErrorMessage(requestError, 'No se pudo guardar el edificio.'), 'error');
+      const errors = requestError.response?.data?.errores ?? {};
+      for (const field of Object.keys(buildingForm)) {
+        if (errors[field]) buildingErrors[field] = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
+      }
+      showToast(getApiErrorMessage(requestError, 'No se pudo guardar el pabellón.'), 'error');
     } finally {
       saving.value = false;
     }
   };
 
   const askDeleteBuilding = (building) => {
+    if (!canEdit.value || selectionBlocked()) return;
     pendingBuildingDelete.value = building;
     buildingDeleteOpen.value = true;
   };
@@ -271,15 +294,15 @@ export function useCampusTecnologico(
     buildingDeleteOpen.value = false;
   };
   const confirmDeleteBuilding = async () => {
-    if (!pendingBuildingDelete.value) return;
+    if (!pendingBuildingDelete.value || !canEdit.value || saving.value || selectionBlocked()) return;
     saving.value = true;
     try {
       await buildingService.desactivar(pendingBuildingDelete.value.id);
       cancelDeleteBuilding();
-      await loadCampus({ silent: true });
-      showToast('Edificio desactivado. Sus espacios conservaron el historial.');
+      if (!await loadCampus({ silent: true })) return;
+      showToast('Pabellón desactivado. Sus espacios conservaron el historial.');
     } catch (requestError) {
-      showToast(getApiErrorMessage(requestError, 'No se pudo desactivar el edificio.'), 'error');
+      showToast(getApiErrorMessage(requestError, 'No se pudo desactivar el pabellón.'), 'error');
     } finally {
       saving.value = false;
     }
@@ -290,12 +313,14 @@ export function useCampusTecnologico(
     Object.keys(spaceErrors).forEach((key) => delete spaceErrors[key]);
   };
   const openCreateSpace = (floor = '') => {
+    if (!canEdit.value) return;
     editingSpace.value = null;
     resetSpaceForm();
     spaceForm.piso = normalizeFloorValue(floor);
     spaceModalOpen.value = true;
   };
   const openEditSpace = (space) => {
+    if (!canEdit.value) return;
     editingSpace.value = space;
     resetSpaceForm();
     Object.assign(spaceForm, {
@@ -313,9 +338,10 @@ export function useCampusTecnologico(
     resetSpaceForm();
   };
   const submitSpace = async () => {
+    if (!canEdit.value || saving.value) return;
     Object.keys(spaceErrors).forEach((key) => delete spaceErrors[key]);
     if (!spaceForm.codigo_espacio.trim()) spaceErrors.codigo_espacio = 'Ingresa el código.';
-    if (!spaceForm.edificio_id) spaceErrors.edificio_id = 'Selecciona el edificio.';
+    if (!spaceForm.edificio_id) spaceErrors.edificio_id = 'Selecciona el pabellón.';
     const normalizedFloor = String(spaceForm.piso ?? '').trim();
     if (!/^\d+$/.test(normalizedFloor)) {
       spaceErrors.piso = 'El piso debe contener únicamente números.';
@@ -332,7 +358,7 @@ export function useCampusTecnologico(
       if (wasCreating) await spaceService.crear(payload);
       else await spaceService.actualizar(editingSpace.value.id, payload);
       closeSpaceModal();
-      await loadCampus({ silent: true });
+      if (!await loadCampus({ silent: true })) return;
       showToast(wasCreating ? 'Ambiente agregado al piso.' : 'Ambiente actualizado.');
     } catch (requestError) {
       showToast(getApiErrorMessage(requestError, 'No se pudo guardar el ambiente.'), 'error');
@@ -341,6 +367,7 @@ export function useCampusTecnologico(
     }
   };
   const askDeleteSpace = (space) => {
+    if (!canEdit.value) return;
     pendingSpaceDelete.value = space;
     spaceDeleteOpen.value = true;
   };
@@ -349,12 +376,12 @@ export function useCampusTecnologico(
     spaceDeleteOpen.value = false;
   };
   const confirmDeleteSpace = async () => {
-    if (!pendingSpaceDelete.value) return;
+    if (!pendingSpaceDelete.value || !canEdit.value || saving.value) return;
     saving.value = true;
     try {
       await spaceService.desactivar(pendingSpaceDelete.value.id);
       cancelDeleteSpace();
-      await loadCampus({ silent: true });
+      if (!await loadCampus({ silent: true })) return;
       showToast('Ambiente desactivado correctamente.');
     } catch (requestError) {
       showToast(getApiErrorMessage(requestError, 'No se pudo desactivar el ambiente.'), 'error');
@@ -363,13 +390,14 @@ export function useCampusTecnologico(
     }
   };
 
-  watch(edificios, (items) => {
-    if (!items.some((item) => String(item.id) === String(selectedBuildingId.value))) {
-      selectedBuildingId.value = items[0]?.id ?? '';
-    }
-  }, { immediate: true });
-
-  watch(selectedBuildingId, cancelFloorEditing);
+  const locales = useLocalesCampus({
+    service: localService, saving, canEdit, selectionBlocked, loadCampus,
+    selectLocal: territorio.selectLocal, showToast,
+  });
+  watch(selectedBuildingId, () => {
+    search.value = '';
+    cancelFloorEditing();
+  });
   watch(
     [selectedBuildingId, () => pisosVisibles.value.map((floor) => floor.key).join('|')],
     ([buildingId], [previousBuildingId] = []) => {
@@ -386,6 +414,7 @@ export function useCampusTecnologico(
   onMounted(loadCampus);
 
   return {
+    ...territorio, ...locales,
     loading, saving, error, search, edificios, selectedBuildingId, edificioActivo,
     pisosVisibles, activeFloor, activeFloorIndex, activeFloorKey, stats, canEdit,
     buildingColumnCount, buildingOptions, typeOptions, buildingModalOpen,
