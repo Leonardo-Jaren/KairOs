@@ -15,13 +15,33 @@
           Mapa de infraestructura
         </h1>
         <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          Selecciona una ciudad y un local para consultar sus pabellones, pisos
-          y ambientes.
+          Explora cada ciudad y entra en sus locales, pabellones y pisos sin mezclar ubicaciones.
         </p>
       </div>
       <div class="flex gap-2">
         <BaseButton
-          v-if="canEdit"
+          v-if="explorerLevel !== 'cities'"
+          variant="ghost"
+          :full-width="false"
+          :disabled="Boolean(editingFloor || floorSaving)"
+          @click="goBack"
+        ><template #icon><ArrowLeft :size="18" /></template>Volver</BaseButton>
+        <button
+          v-if="canEdit && explorerLevel === 'buildings' && localActivo"
+          type="button"
+          class="grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-primary-300 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          aria-label="Editar local"
+          @click="openEditLocal(localActivo)"
+        ><Pencil :size="17" /></button>
+        <button
+          v-if="canEdit && explorerLevel === 'buildings' && localActivo"
+          type="button"
+          class="grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-danger-300 hover:text-danger-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-500"
+          aria-label="Desactivar local"
+          @click="askDeleteLocal(localActivo)"
+        ><Trash2 :size="17" /></button>
+        <BaseButton
+          v-if="canEdit && explorerLevel === 'buildings'"
           variant="accent"
           :full-width="false"
           :disabled="Boolean(editingFloor || floorSaving)"
@@ -35,31 +55,34 @@
       class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400"
       aria-label="Ubicación actual"
     >
-      <span>Infraestructura</span><ChevronRight :size="14" /><span>{{
-        selectedCity === "__legacy__"
-          ? "Registros anteriores"
-          : selectedCity || "Sin ciudad"
-      }}</span
-      ><ChevronRight :size="14" /><span>{{
-        selectedLocalName || "Selecciona un local"
-      }}</span
-      ><ChevronRight :size="14" /><span class="text-slate-700">{{
-        edificioActivo?.nombre || "Selecciona un pabellón"
-      }}</span>
+      <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none" :disabled="explorerLevel === 'cities'" @click="showCities">Infraestructura</button>
+      <template v-if="selectedCity">
+        <ChevronRight :size="14" aria-hidden="true" />
+        <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none disabled:text-slate-700" :disabled="explorerLevel === 'locals'" @click="showLocals">{{ selectedCity === '__legacy__' ? 'Registros anteriores' : selectedCity }}</button>
+      </template>
+      <template v-if="selectedLocalId">
+        <ChevronRight :size="14" aria-hidden="true" />
+        <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none disabled:text-slate-700" :disabled="explorerLevel === 'buildings'" @click="showBuildings">{{ selectedLocalName }}</button>
+      </template>
+      <template v-if="selectedBuildingId">
+        <ChevronRight :size="14" aria-hidden="true" />
+        <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none disabled:text-slate-700" :disabled="explorerLevel === 'floors'" @click="showFloors">{{ edificioActivo?.nombre }}</button>
+      </template>
+      <template v-if="activeFloor">
+        <ChevronRight :size="14" aria-hidden="true" />
+        <span class="px-2 font-bold text-slate-700" aria-current="page">{{ activeFloor.label }}</span>
+      </template>
     </nav>
     <TerritorioSelector
+      v-if="!selectedLocalId"
       :city="selectedCity"
-      :city-options="cityOptions"
-      :local="selectedLocalId"
-      :local-options="localOptions"
-      :local-is-real="Boolean(localActivo)"
+      :city-cards="cityCards"
+      :local-cards="cityLocalCards"
       :can-edit="canEdit"
       :disabled="Boolean(editingFloor || floorSaving)"
-      @update:city="selectCity"
-      @update:local="selectLocal"
+      @select-city="selectCity"
+      @select-local="selectLocalCard"
       @create-local="openCreateLocal"
-      @edit-local="openEditLocal(localActivo)"
-      @delete-local="askDeleteLocal(localActivo)"
     />
     <div v-if="loading" class="grid gap-3 sm:grid-cols-3">
       <div
@@ -82,49 +105,44 @@
       >
     </div>
     <template v-else>
-      <section
-        class="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-0 sm:overflow-hidden sm:rounded-2xl sm:border sm:border-slate-200 sm:bg-white sm:shadow-sm"
-      >
-        <div
-          v-for="metric in [
-            ['Pabellones', stats.edificios],
-            ['Pisos activos', stats.pisos],
-            ['Ambientes', stats.ambientes],
-            ['Laboratorios', stats.laboratorios],
-            ['Aulas', stats.aulas],
-            ['Por revisar', stats.alertas],
-          ]"
-          :key="metric[0]"
-          class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm sm:rounded-none sm:border-0 sm:border-r sm:border-slate-100 sm:px-4 sm:py-3 sm:shadow-none sm:last:border-r-0"
-        >
-          <p
-            class="truncate text-[9px] font-bold uppercase tracking-wide text-slate-400 sm:text-[10px]"
-          >
-            {{ metric[0] }}
-          </p>
-          <p
-            class="mt-0.5 text-lg font-extrabold sm:mt-1 sm:text-xl"
-            :class="
-              metric[0] === 'Por revisar' && metric[1]
-                ? 'text-warning-700'
-                : 'text-slate-900'
-            "
-          >
-            {{ metric[1] }}
-          </p>
-        </div>
-      </section>
       <PabellonSelector
+        v-if="explorerLevel === 'buildings'"
+        :local="localActivo"
         :buildings="edificios"
+        :spaces="currentSpaces"
         :selected-id="selectedBuildingId"
         :can-edit="canEdit"
         :disabled="Boolean(editingFloor || floorSaving)"
         @select="selectBuilding"
         @edit="openEditBuilding"
         @delete="askDeleteBuilding"
+        @create-building="openCreateBuilding"
+        @select-space="goToSpace"
       />
       <section
-        v-if="edificioActivo"
+        v-if="explorerLevel === 'floors' && edificioActivo"
+        class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
+      >
+        <div class="mb-6 flex flex-col justify-between gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center">
+          <div class="flex items-center gap-4">
+            <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-50 text-primary-600"><Building2 :size="24" aria-hidden="true" /></span>
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-600">{{ selectedLocalName }}</p>
+              <h2 class="mt-1 text-xl font-extrabold text-slate-950">{{ edificioActivo.nombre }}</h2>
+              <p class="mt-1 text-xs text-slate-500">{{ edificioActivo.spaces.length }} ambientes distribuidos en {{ edificioActivo.pisos.length }} {{ edificioActivo.pisos.length === 1 ? 'piso' : 'pisos' }}.</p>
+            </div>
+          </div>
+          <BaseButton v-if="canEdit" variant="accent" :full-width="false" @click="openCreateSpace()"><template #icon><Plus :size="16" /></template>Agregar ambiente</BaseButton>
+        </div>
+        <PisoSelector
+          :floors="pisosVisibles"
+          :selected-key="activeFloorKey"
+          :disabled="Boolean(editingFloor)"
+          @select="selectFloor"
+        />
+      </section>
+      <section
+        v-else-if="explorerLevel === 'floor-plan' && edificioActivo"
         class="grid min-w-0 gap-5 xl:grid-cols-[270px_minmax(0,1fr)]"
       >
         <aside
@@ -200,40 +218,7 @@
                   <h2 class="text-lg font-extrabold text-slate-950 sm:text-xl">
                     Pisos y ambientes
                   </h2>
-                  <div
-                    v-if="activeFloor"
-                    class="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm"
-                  >
-                    <button
-                      type="button"
-                      class="grid size-8 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-35"
-                      :disabled="activeFloorIndex <= 0 || Boolean(editingFloor)"
-                      aria-label="Piso anterior"
-                      @click="showPreviousFloor"
-                    >
-                      <ChevronLeft :size="17" />
-                    </button>
-                    <div class="min-w-24 px-2 text-center">
-                      <p class="text-xs font-extrabold text-slate-800">
-                        {{ activeFloor.label }}
-                      </p>
-                      <p class="text-[9px] font-semibold text-slate-400">
-                        {{ activeFloorIndex + 1 }} de {{ pisosVisibles.length }}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      class="grid size-8 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-35"
-                      :disabled="
-                        activeFloorIndex >= pisosVisibles.length - 1 ||
-                        Boolean(editingFloor)
-                      "
-                      aria-label="Piso siguiente"
-                      @click="showNextFloor"
-                    >
-                      <ChevronRight :size="17" />
-                    </button>
-                  </div>
+                  <span v-if="activeFloor" class="rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700">{{ activeFloor.label }}</span>
                 </div>
                 <p class="mt-1 hidden text-xs text-slate-500 sm:block">
                   Navega entre pisos para consultar o editar su distribución.
@@ -262,7 +247,7 @@
               ></BaseInput>
             </div>
           </div>
-          <div v-if="activeFloor" class="mt-3 sm:mt-6">
+          <div class="mt-3 sm:mt-6">
             <CroquisPiso
               :key="activeFloor.key"
               :floor="activeFloor"
@@ -273,6 +258,7 @@
               :saving="floorSaving"
               :selected-space-id="selectedFloorSpaceId"
               :tool="floorTool"
+              :context-query="route.query"
               @start-edit="startFloorEditing(activeFloor)"
               @save="saveFloorLayout"
               @cancel="cancelFloorEditing"
@@ -288,38 +274,8 @@
               @delete-space="askDeleteSpace"
             />
           </div>
-          <div
-            v-else
-            class="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center"
-          >
-            <MapPin :size="30" class="mx-auto text-slate-300" />
-            <p class="mt-3 text-sm font-semibold text-slate-600">
-              {{
-                search
-                  ? "No hay ambientes que coincidan con la búsqueda."
-                  : "Este pabellón todavía no tiene ambientes."
-              }}
-            </p>
-            <BaseButton
-              v-if="canEdit && !search"
-              class="mt-4"
-              variant="accent"
-              :full-width="false"
-              @click="openCreateSpace()"
-              >Agregar ambiente</BaseButton
-            >
-          </div>
         </div>
       </section>
-      <div
-        v-else
-        class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
-      >
-        <Building2 :size="32" class="mx-auto text-slate-300" />
-        <p class="mt-3 text-sm font-semibold text-slate-600">
-          Selecciona un pabellón para ver pisos y ambientes.
-        </p>
-      </div>
     </template>
 
     <BaseModal
@@ -353,6 +309,18 @@
           label="Ciudad"
           placeholder="Huánuco"
           :error="localErrors.ciudad"
+        />
+        <BaseSelect
+          id="local-type"
+          v-model="localForm.tipo"
+          label="Tipo de ubicación"
+          :options="[
+            { value: 'campus', label: 'Campus' },
+            { value: 'sede', label: 'Sede' },
+            { value: 'anexo', label: 'Anexo' },
+            { value: 'otro', label: 'Otro' },
+          ]"
+          :error="localErrors.tipo"
         />
         <div class="sm:col-span-2">
           <BaseTextarea
@@ -632,18 +600,21 @@
 <script setup>
 import { useRoute, useRouter } from "vue-router";
 import {
+  ArrowLeft,
   Building2,
-  ChevronLeft,
   ChevronRight,
   Layers3,
   MapPin,
   MonitorCog,
+  Pencil,
   Plus,
   Search,
+  Trash2,
 } from "@lucide/vue";
 import BaseButton from "@/components/buttons/BaseButton.vue";
 import CroquisPiso from "@/components/espacios/CroquisPiso.vue";
 import PabellonSelector from "@/components/espacios/PabellonSelector.vue";
+import PisoSelector from "@/components/espacios/PisoSelector.vue";
 import TerritorioSelector from "@/components/espacios/TerritorioSelector.vue";
 import BaseInput from "@/components/inputs/BaseInput.vue";
 import BaseTextarea from "@/components/inputs/BaseTextarea.vue";
@@ -668,26 +639,27 @@ const {
   saving,
   error,
   search,
-  cityOptions,
+  cityCards,
+  cityLocalCards,
   selectedCity,
-  localOptions,
   allLocalOptions,
   localActivo,
   selectedLocalId,
   selectedLocalName,
   edificios,
+  currentSpaces,
   selectedBuildingId,
   edificioActivo,
   pisosVisibles,
   activeFloor,
-  activeFloorIndex,
+  activeFloorKey,
   stats,
+  explorerLevel,
   canEdit,
   buildingOptions,
   typeOptions,
   localModalOpen,
   localDeleteOpen,
-  editingLocal,
   pendingLocalDelete,
   localForm,
   localErrors,
@@ -707,7 +679,7 @@ const {
   toast,
   loadCampus,
   selectCity,
-  selectLocal,
+  selectLocalCard,
   selectBuilding,
   openCreateLocal,
   openEditLocal,
@@ -745,7 +717,21 @@ const {
   addFloorRow,
   removeFloorRow,
   saveFloorLayout,
-  showPreviousFloor,
-  showNextFloor,
+  selectFloor,
+  showCities,
+  showLocals,
+  showBuildings,
+  showFloors,
+  goBack,
 } = state;
+
+const goToSpace = (space) => {
+  const buildingId = space?.edificio_id ?? space?.edificio?.id;
+  if (buildingId) {
+    selectBuilding(buildingId);
+    if (space.piso) {
+      selectFloor(space.piso);
+    }
+  }
+};
 </script>

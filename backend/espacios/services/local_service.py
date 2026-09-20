@@ -16,9 +16,24 @@ class LocalService(AuditableMixin, BaseService):
     def __init__(self):
         self.repository = LocalRepository()
 
-    def listar(self, busqueda: str = '', activo: bool | None = None):
+    def listar(
+        self,
+        busqueda: str = '',
+        activo: bool | None = None,
+        actor: Usuario | None = None,
+        solo_asignables: bool = False,
+    ):
         """Lista locales vigentes aplicando filtros normalizados."""
-        return self.repository.listar(busqueda=busqueda.strip(), activo=activo)
+        sede_ids = None
+        if solo_asignables and actor and actor.rol != 'superadmin' and not actor.is_superuser:
+            sede_ids = list(
+                actor.usuario_sedes.filter(activo=True).values_list('local_id', flat=True)
+            )
+        return self.repository.listar(
+            busqueda=busqueda.strip(),
+            activo=activo,
+            sede_ids=sede_ids,
+        )
 
     def _do_create(self, data: dict, actor: Usuario = None):
         clean_data = self._normalizar(data)
@@ -91,14 +106,16 @@ class LocalService(AuditableMixin, BaseService):
             clean_data['codigo'] = clean_data['codigo'].strip().upper()
         elif not partial:
             clean_data['codigo'] = ''
-        for field in ['nombre', 'ciudad', 'descripcion']:
+        if not partial and 'tipo' not in clean_data:
+            clean_data['tipo'] = 'sede'
+        for field in ['nombre', 'ciudad', 'tipo', 'descripcion']:
             if field in clean_data:
                 clean_data[field] = clean_data[field].strip()
-        for field in ['codigo', 'nombre', 'ciudad']:
+        for field in ['codigo', 'nombre', 'ciudad', 'tipo']:
             if field in clean_data and not clean_data[field]:
                 raise ValidationError({field: 'Este campo es obligatorio.'})
         if not partial:
-            for field in ['codigo', 'nombre', 'ciudad']:
+            for field in ['codigo', 'nombre', 'ciudad', 'tipo']:
                 if field not in clean_data:
                     raise ValidationError({field: 'Este campo es obligatorio.'})
         return clean_data

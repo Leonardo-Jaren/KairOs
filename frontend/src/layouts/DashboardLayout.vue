@@ -17,7 +17,7 @@ import {
   UsersRound,
   Wrench,
 } from '@lucide/vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth';
@@ -38,18 +38,30 @@ const initials = computed(() => {
 
 const menuItems = computed(() => [
   { name: 'Dashboard', path: '/dashboard', icon: Gauge },
-  { name: 'Usuarios', path: '/usuarios', icon: UsersRound, roles: ['admin', 'tecnico'] },
-  { name: 'Campus', path: '/espacios/mapa', icon: MapPinned, roles: ['admin', 'tecnico'] },
-  { name: 'Espacios', path: '/espacios', icon: Building2, roles: ['admin', 'tecnico'] },
-  { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, roles: ['admin', 'tecnico'] },
-  { name: 'Equipos', path: '/equipos', icon: MonitorCog, roles: ['admin', 'tecnico'] },
-  { name: 'Componentes', path: '/componentes', icon: Boxes },
-  { name: 'Software', path: '/software', icon: AppWindow, roles: ['admin', 'tecnico', 'docente'] },
-  { name: 'Instalaciones', path: '/software/instalaciones', icon: PackageCheck, roles: ['admin', 'tecnico', 'docente'] },
-  { name: 'Mantenimiento', path: '/mantenimiento', icon: Wrench },
-  { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert, roles: ['admin', 'tecnico', 'docente'] },
-  { name: 'Historial', path: '/historial', icon: Clock3 },
-].filter((item) => !item.roles || item.roles.includes(user.value?.rol)));
+  { name: 'Usuarios', path: '/usuarios', icon: UsersRound, modulo: 'usuarios' },
+  { name: 'Campus', path: '/espacios/mapa', icon: MapPinned, modulo: 'espacios' },
+  { name: 'Espacios', path: '/espacios', icon: Building2, modulo: 'espacios' },
+  { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, modulo: 'espacios' },
+  { name: 'Equipos', path: '/equipos', icon: MonitorCog, modulo: 'equipos' },
+  { name: 'Componentes', path: '/componentes', icon: Boxes, modulo: 'equipos' },
+  { name: 'Software', path: '/software', icon: AppWindow, modulo: 'software' },
+  { name: 'Instalaciones', path: '/software/instalaciones', icon: PackageCheck, modulo: 'software' },
+  { name: 'Mantenimiento', path: '/mantenimiento', icon: Wrench, modulo: 'mantenimiento' },
+  { name: 'Incidencias', path: '/incidencias', icon: ShieldAlert, modulo: 'incidencias' },
+  { name: 'Historial', path: '/historial', icon: Clock3, modulo: 'auditoria' },
+].filter((item) => {
+  // Superadministradores y superusuarios visualizan todos los modulos
+  if (user.value?.rol === 'superadmin' || user.value?.is_superuser) return true;
+
+  // Items sin modulo asociado (ej: Dashboard) son accesibles para cualquier usuario autenticado
+  if (!item.modulo) {
+    if (!item.roles) return true;
+    return item.roles.includes(user.value?.rol);
+  }
+
+  // Si tiene modulo asociado, se evalua el permiso efectivo de visualizacion
+  return authStore.hasPermission(item.modulo, 'ver');
+}));
 
 const activeMenuPath = computed(() => menuItems.value
   .filter((item) => route.path === item.path || route.path.startsWith(`${item.path}/`))
@@ -77,6 +89,71 @@ const toggleSidebar = () => {
 
 watch(() => route.fullPath, () => {
   sidebarOpen.value = false;
+});
+
+let syncInterval = null;
+let broadcastChannel = null;
+let lastVisibilitySyncTimestamp = 0;
+const VISIBILITY_THROTTLE_MS = 60000;
+
+const syncPermissions = async (force = false) => {
+  if (authStore.isAuthenticated) {
+    await authStore.fetchProfile(force);
+    const currentModulo = route.meta?.modulo;
+    if (currentModulo && !authStore.hasPermission(currentModulo, 'ver')) {
+      router.push('/dashboard');
+    }
+  }
+};
+
+const handleVisibilityChange = () => {
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    const now = Date.now();
+    if (now - lastVisibilitySyncTimestamp >= VISIBILITY_THROTTLE_MS) {
+      lastVisibilitySyncTimestamp = now;
+      syncPermissions(false);
+    }
+  }
+};
+
+onMounted(() => {
+  // Sincronizar perfil y permisos al montar el layout
+  lastVisibilitySyncTimestamp = Date.now();
+  syncPermissions(false);
+
+  // Escuchar eventos de foco y visibilidad de ventana
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    syncInterval = setInterval(() => syncPermissions(false), 60000);
+
+    // Canal Broadcast para sincronización inter-pestañas en tiempo real
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        broadcastChannel = new BroadcastChannel('kairos_permisos_channel');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === 'PERMISOS_ACTUALIZADOS') {
+            syncPermissions(true);
+          }
+        };
+      } catch {
+        // Ignorar si el entorno no cuenta con soporte de BroadcastChannel
+      }
+    }
+  }
+});
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', handleVisibilityChange);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }
+  if (syncInterval) {
+    clearInterval(syncInterval);
+  }
+  if (broadcastChannel) {
+    broadcastChannel.close();
+  }
 });
 </script>
 

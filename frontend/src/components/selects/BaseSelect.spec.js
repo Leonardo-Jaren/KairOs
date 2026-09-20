@@ -25,6 +25,18 @@ describe('BaseSelect', () => {
     expect(wrapper.get('[role="alert"]').text()).toBe('Selecciona un rol.');
   });
 
+  it('usa una barra de desplazamiento adecuada para superficies claras', async () => {
+    const wrapper = mountSelect({
+      id: 'scroll-select',
+      modelValue: '',
+      options: [{ value: 'admin', label: 'Administrador' }],
+    });
+
+    await wrapper.get('button[role="combobox"]').trigger('click');
+
+    expect(wrapper.get('[role="listbox"]').classes()).toContain('surface-scrollbar');
+  });
+
   it('muestra la opcion activa, permite navegar con teclado y cierra al escapar', async () => {
     const wrapper = mountSelect({
       id: 'type',
@@ -79,5 +91,18 @@ describe('BaseSelect', () => {
 
     wrapper.unmount();
     host.remove();
+  });
+
+  it('aplica clases compactas cuando size es sm', () => {
+    const wrapper = mountSelect({
+      id: 'compact-select',
+      modelValue: '',
+      size: 'sm',
+      options: [{ value: '1', label: 'Opción 1' }],
+    });
+
+    const trigger = wrapper.get('button[role="combobox"]');
+    expect(trigger.classes()).toContain('h-8.5');
+    expect(trigger.classes()).toContain('text-xs');
   });
 });

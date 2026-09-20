@@ -3,15 +3,15 @@
 | Campo | Valor |
 |-------|-------|
 | Módulo | Espacios |
-| Versión | 1.0 |
-| Fecha | 2026-09-14 |
+| Versión | 2.0 |
+| Fecha | 2026-09-18 |
 | Estado | En revisión |
 
 ## Propósito y alcance
 
-`/espacios/mapa` facilita el acceso a la operación del campus a partir de su ubicación física: ciudad → local → pabellón → piso → ambiente → equipos. Desde el plano del ambiente se conservan los flujos existentes de componentes, software y mantenimiento. No se duplican esos módulos dentro del mapa.
+`/espacios/mapa` facilita el acceso a la operación del campus a partir de su ubicación física: ciudad → tipo de ubicación → local → pabellón → piso → ambiente → equipos. Desde el plano del ambiente se conservan los flujos existentes de componentes, software y mantenimiento. No se duplican esos módulos dentro del mapa.
 
-Un local representa un recinto físico, por ejemplo el local central o La Esperanza. Una ciudad puede contener varios locales y cada local una cantidad distinta de pabellones. Los ejemplos proporcionados para verificar la navegación son Huánuco / Local central con un pabellón, Huánuco / La Esperanza con siete y un local de Tingo María con dos. Son escenarios de prueba, no datos que deban insertarse automáticamente ni reglas que limiten la cantidad de pabellones.
+Un local representa un recinto físico, por ejemplo el campus central o una sede. Una ciudad puede contener varios locales y cada local una cantidad distinta de pabellones. El comando opcional `seed_datos_prueba` crea cuatro locales demostrativos y reparte ocho pabellones entre ellos para verificar el aislamiento visual. Son escenarios de prueba y no reglas que limiten la cantidad de pabellones.
 
 ## Actores y precondiciones
 
@@ -21,16 +21,17 @@ Un local representa un recinto físico, por ejemplo el local central o La Espera
 
 ## Flujo principal
 
-1. Abrir el mapa y elegir la ciudad y el local.
-2. Consultar los indicadores del local seleccionado y sus pabellones.
-3. Si existe un solo pabellón, mostrar sus pisos directamente. Si hay varios, permitir cambiar de pabellón mediante controles legibles en escritorio y móvil.
-4. Consultar el croquis existente del piso y abrir el plano de un ambiente.
-5. Continuar en las operaciones existentes de equipos, componentes, software y mantenimiento desde ese ambiente.
-6. Cambiar de local o pabellón conservando siempre un contexto coherente: no mostrar ambientes ni indicadores del lugar anterior.
+1. Abrir el mapa y elegir la ciudad.
+2. Elegir el tipo de ubicación disponible en la ciudad: campus, sede, anexo u otro.
+3. Elegir el local y luego el pabellón, sin autoseleccionar silenciosamente opciones posteriores.
+4. Elegir un piso en el selector visual y consultar su croquis existente.
+5. Abrir el plano de un ambiente y continuar en las operaciones existentes de equipos, componentes, software y mantenimiento.
+6. Cambiar cualquier nivel conservando un contexto coherente y limpiando las selecciones descendientes.
 
 ## Administración y modelo de datos
 
-- `Local` contiene código, nombre, ciudad, descripción y estado activo, además de los campos de auditoría compartidos.
+- `Local` contiene código, nombre, ciudad, tipo de ubicación, descripción y estado activo, además de los campos de auditoría compartidos.
+- El tipo de ubicación usa los valores estables `campus`, `sede`, `anexo` y `otro`. Los registros existentes migran como `sede` para conservar compatibilidad.
 - La ciudad se registra como texto del local; no se agrega un catálogo geográfico ni un mapa cartográfico.
 - `Edificio` sigue siendo la entidad interna del pabellón. Se añade la relación opcional `local`, expuesta como `local_id` y un resumen de lectura.
 - El administrador crea y edita locales, y asigna o reasigna pabellones usando su identificador, nunca mediante coincidencias del nombre.
@@ -58,10 +59,11 @@ Se conserva el diseño de **Pisos y ambientes**, incluida la distribución visua
 | Listado paginado | Recuperar todas las páginas necesarias antes de calcular los indicadores. |
 | Croquis en edición | Impedir cambios de contexto que descarten el borrador y explicar que se debe guardar o cancelar. |
 | Identificador inválido o pabellón de otro local | Resolver una selección coherente, sin mezclar lugares. |
+| Enlace anterior con `legacy`, `**legacy**` o `__legacy__` | Resolverlo como registros pendientes de clasificación sin exponer el sentinel técnico. |
 
 ## Criterios de aceptación
 
-- Los escenarios de uno, siete y dos pabellones se presentan sin mezclar locales ni crear datos ficticios.
+- Los pabellones se presentan únicamente dentro del local al que pertenecen, sin mezclar ciudades o tipos de ubicación.
 - Los indicadores y opciones de ambientes se calculan con el alcance del local seleccionado.
 - Un local vacío no hereda el pabellón activo del local anterior.
 - Los registros anteriores permanecen accesibles y pueden asignarse a un local.
@@ -69,6 +71,7 @@ Se conserva el diseño de **Pisos y ambientes**, incluida la distribución visua
 - Un técnico no obtiene acciones administrativas ni puede ejecutarlas contra la API.
 - Cambiar la asignación de un pabellón conserva su croquis y relaciones con ambientes.
 - Se mantiene la distribución visual por pisos y los flujos operativos del plano.
+- La URL conserva `ciudad`, `tipo`, `local`, `pabellon` y `piso`; al abrir un ambiente y volver se restaura el mismo contexto.
 
 ## Contratos y archivos de referencia
 
@@ -84,16 +87,16 @@ Se conserva el diseño de **Pisos y ambientes**, incluida la distribución visua
 
 ## Activación
 
-Aplicar la nueva migración de Espacios antes de utilizar el frontend actualizado. Después, registrar los locales reales y asignar los pabellones existentes. Las verificaciones automáticas deben utilizar una base de prueba y datos aislados; no deben sembrar o reorganizar la base del usuario.
+Aplicar la nueva migración de Espacios antes de utilizar el frontend actualizado. Después, registrar los locales reales y asignar los pabellones existentes. En una instalación real la migración no crea datos: el sistema comienza vacío y todo se registra manualmente. El comando `seed_datos_prueba` se ejecuta solo de forma explícita en desarrollo o demostraciones.
 
-La migración `0008_local_edificio_local` se aplicó en el entorno de desarrollo durante esta implementación. No se crearon locales ni se asignaron pabellones automáticamente.
+Las migraciones `0008_local_edificio_local` y `0009_local_tipo` deben aplicarse antes de usar el flujo actualizado. No se crean locales ni se asignan pabellones automáticamente mediante migraciones.
 
 ## Validación de la implementación
 
 - Backend: 118 pruebas aprobadas, incluidas permisos, migración y preservación de croquis al reasignar.
-- Frontend: 89 pruebas aprobadas, incluidas agrupación 1/7/2, local vacío, registros anteriores, paginación e historial de navegación.
-- Revisión en navegador con datos aislados a 375, 1024 y 1600 píxeles: selectores, acciones administrativas, acceso del técnico, protección de edición y formulario de asignación.
-- Los componentes y composables del croquis y plano originales permanecen sin modificaciones. El panel de pisos conserva su estructura y clases visuales; solo cambia la terminología de edificio a pabellón.
+- Frontend: 91 pruebas aprobadas, incluida la nueva cascada ciudad → tipo → local → pabellón y la regresión del selector de pisos sin desplazamiento horizontal, además de local vacío, registros anteriores, paginación e historial de navegación.
+- Build de producción verificado y revisión visual en navegador de la ruta, selectores, métricas, pabellones y pisos con datos reales.
+- Se conserva el croquis y su lógica de distribución. El navegador de pisos se extrae a un componente reutilizable y el enlace al detalle mantiene el contexto completo del mapa.
 
 ## Fuera de alcance
 

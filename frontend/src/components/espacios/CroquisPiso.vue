@@ -15,6 +15,7 @@ const props = defineProps({
   saving: { type: Boolean, default: false },
   selectedSpaceId: { type: [Number, String], default: null },
   tool: { type: String, default: 'move' },
+  contextQuery: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits([
@@ -231,7 +232,7 @@ const roomTone = (space) => {
             <span class="min-w-0"><strong class="block truncate font-mono text-xs">{{ room.space.codigo_espacio }}</strong><span v-if="room.ancho > 1" class="block truncate text-[10px] opacity-70">{{ room.space.tipo_display }}</span></span>
           </button>
           <template v-else>
-            <RouterLink :to="`/espacios/${room.space.id}`" class="flex size-full min-h-0 flex-col justify-between p-2 pr-9">
+            <RouterLink :to="{ path: `/espacios/${room.space.id}`, query: contextQuery }" class="flex size-full min-h-0 flex-col justify-between p-2 pr-9">
               <span class="flex items-start justify-between gap-2"><span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white/75"><component :is="roomIcon(room.space.tipo)" :size="17" /></span><span class="flex flex-col items-end gap-1"><span class="rounded-full bg-white/75 px-2 py-0.5 text-[9px] font-bold">{{ room.space.cantidad_equipos }} PC</span><span v-if="roomStatus(room.space)" class="inline-flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-extrabold" :title="roomStatus(room.space).label"><component :is="roomStatus(room.space).icon" :size="10" />{{ roomStatus(room.space).count }}</span></span></span>
               <span class="min-w-0"><strong class="block truncate font-mono text-xs">{{ room.space.codigo_espacio }}</strong><span v-if="room.ancho > 1" class="block truncate text-[10px] opacity-70">{{ room.space.tipo_display }}</span><span v-if="room.alto > 1" class="mt-1 inline-flex items-center gap-1 text-[9px] font-bold">Abrir plano <ArrowRight :size="11" /></span></span>
             </RouterLink>

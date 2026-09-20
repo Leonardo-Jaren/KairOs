@@ -1,15 +1,26 @@
 from rest_framework import permissions
 
+from shared.constants import (
+    ROL_SUPERADMIN,
+    ROL_ADMIN,
+    ROL_RESPONSABLE,
+    ROL_TECNICO,
+)
+from shared.permissions import HasModulePermission
+
 
 class CanManageEquipo(permissions.BasePermission):
-    """Permite CRUD a administradores y lectura a tecnicos."""
+    """
+    Permite acceso evaluando los permisos efectivos del modulo 'equipos'.
+    Superadmin tiene acceso total; roles operativos segun matriz base o personalizada.
+    """
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        if request.user.rol == 'admin':
+        if request.user.rol == ROL_SUPERADMIN or request.user.is_superuser:
             return True
-        return (
-            request.user.rol == 'tecnico'
-            and request.method in permissions.SAFE_METHODS
-        )
+        accion = HasModulePermission.ACCIONES_MAP.get(request.method, 'ver')
+        return request.user.tiene_permiso('equipos', accion)
+
+
