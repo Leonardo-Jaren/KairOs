@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from shared.base import BaseViewSet
 from usuarios.permissions import CanManageDocentes
 from usuarios.serializers import (
+    GuardarPermisosSerializer,
     UsuarioCreateUpdateSerializer,
     UsuarioSerializer,
 )
@@ -28,11 +29,15 @@ class UsuarioViewSet(BaseViewSet):
     def list(self, request: Request, *args, **kwargs) -> Response:
         """Lista usuarios aplicando búsqueda, rol, estado y alcance del actor."""
         activo = self.parse_boolean_query(request.query_params.get('activo'))
+        local_id = int(request.query_params['local_id']) if request.query_params.get('local_id') else None
+        supervisor_id = int(request.query_params['supervisor_id']) if request.query_params.get('supervisor_id') else None
         queryset = self.service.listar(
             actor=request.user,
             busqueda=request.query_params.get('search', ''),
             rol=request.query_params.get('rol', ''),
             activo=activo,
+            local_id=local_id,
+            supervisor_id=supervisor_id,
         )
         return self.get_collection_response(queryset)
 
@@ -84,3 +89,45 @@ class UsuarioViewSet(BaseViewSet):
     def estadisticas(self, request: Request) -> Response:
         """Entrega indicadores resumidos para el encabezado del módulo."""
         return Response(self.service.get_estadisticas(actor=request.user))
+
+    @action(detail=False, methods=['get'], url_path='organigrama')
+    def organigrama(self, request: Request) -> Response:
+        """Devuelve el organigrama estructurado jerárquicamente."""
+        local_id = int(request.query_params['local_id']) if request.query_params.get('local_id') else None
+        return Response(self.service.get_organigrama(actor=request.user, local_id=local_id))
+
+    @action(detail=True, methods=['get', 'post'], url_path='permisos')
+    def permisos(self, request: Request, pk=None) -> Response:
+        """Consulta o actualiza la matriz de permisos personalizados de un usuario."""
+        instance = self.service.get_by_id(pk)
+        self.check_object_permissions(request, instance)
+
+        if request.method == 'GET':
+            return Response(self.service.get_permisos(pk, actor=request.user))
+
+        serializer = GuardarPermisosSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if serializer.validated_data.get('reset_to_default'):
+            data = self.service.reset_permisos(pk, actor=request.user)
+        else:
+            permisos_data = serializer.validated_data.get('permisos', [])
+            data = self.service.guardar_permisos(pk, permisos_data, actor=request.user)
+        return Response(data)
+
+    @action(detail=True, methods=['get'], url_path='actividad')
+    def actividad(self, request: Request, pk=None) -> Response:
+        """Retorna los últimos eventos de auditoría del usuario a cargo."""
+        instance = self.service.get_by_id(pk)
+        self.check_object_permissions(request, instance)
+        limit = int(request.query_params.get('limit', 20))
+        return Response(self.service.get_actividad(pk, actor=request.user, limit=limit))
+
+    @action(detail=True, methods=['get'], url_path='subordinados')
+    def subordinados(self, request: Request, pk=None) -> Response:
+        """Retorna subordinados directos asignados al usuario."""
+        instance = self.service.get_by_id(pk)
+        self.check_object_permissions(request, instance)
+        subs = self.service.repository.get_subordinados(pk, directos_solo=True)
+        return Response(UsuarioSerializer(subs, many=True).data)
+
+

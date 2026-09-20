@@ -26,6 +26,10 @@ class LocalViewSet(BaseViewSet):
         queryset = self.service.listar(
             busqueda=request.query_params.get('search', ''),
             activo=self.parse_boolean_query(request.query_params.get('activo')),
+            actor=request.user,
+            solo_asignables=(
+                self.parse_boolean_query(request.query_params.get('asignables')) is True
+            ),
         )
         return self.get_collection_response(queryset)
 

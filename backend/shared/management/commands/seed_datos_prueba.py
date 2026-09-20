@@ -5,11 +5,50 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from equipos.models import Equipo
-from espacios.models import Espacio
+from espacios.models import Edificio, Espacio, Local
 from mantenimiento.models import Mantenimiento, TecnicoMantenimiento
 from usuarios.models import PerfilTecnico, Usuario
 
-PABELLONES = ['Pabellon 1', 'Pabellon 2', 'Pabellon 3', 'Pabellon 4']
+LOCALES_PRUEBA = [
+    {
+        'codigo': 'HCO-CENTRAL',
+        'nombre': 'Campus Central',
+        'ciudad': 'Huánuco',
+        'tipo': 'campus',
+        'descripcion': 'Campus principal para pruebas de navegación territorial.',
+    },
+    {
+        'codigo': 'HCO-ESPERANZA',
+        'nombre': 'Sede La Esperanza',
+        'ciudad': 'Huánuco',
+        'tipo': 'sede',
+        'descripcion': 'Sede académica de prueba en La Esperanza.',
+    },
+    {
+        'codigo': 'TM-CAMPUS',
+        'nombre': 'Campus Tingo María',
+        'ciudad': 'Tingo María',
+        'tipo': 'campus',
+        'descripcion': 'Campus de prueba para la ciudad de Tingo María.',
+    },
+    {
+        'codigo': 'AMB-ANEXO',
+        'nombre': 'Anexo Académico Ambo',
+        'ciudad': 'Ambo',
+        'tipo': 'anexo',
+        'descripcion': 'Anexo de prueba para validar ubicaciones pequeñas.',
+    },
+]
+PABELLONES_PRUEBA = [
+    ('HCO-CENTRAL', 'PAB-HCO-A', 'Pabellón Académico A'),
+    ('HCO-CENTRAL', 'PAB-HCO-B', 'Pabellón Tecnológico B'),
+    ('HCO-ESPERANZA', 'PAB-ESP-A', 'Pabellón Académico'),
+    ('HCO-ESPERANZA', 'PAB-ESP-B', 'Pabellón Administrativo'),
+    ('TM-CAMPUS', 'PAB-TM-A', 'Pabellón Principal'),
+    ('TM-CAMPUS', 'PAB-TM-B', 'Pabellón de Innovación'),
+    ('AMB-ANEXO', 'PAB-AMB-A', 'Pabellón de Aulas'),
+    ('AMB-ANEXO', 'PAB-AMB-B', 'Pabellón de Servicios'),
+]
 TIPOS_ESPACIO = ['laboratorio', 'aula', 'sala_computo']
 MARCAS = ['HP', 'Dell', 'Lenovo', 'Acer', 'Asus', 'Epson', 'Samsung']
 MODELOS_POR_TIPO = {
@@ -45,7 +84,7 @@ class Command(BaseCommand):
     help = 'Puebla espacios, equipos, tecnicos y tickets de mantenimiento con datos de prueba.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--espacios', type=int, default=6, help='Cantidad de espacios a generar.')
+        parser.add_argument('--espacios', type=int, default=16, help='Cantidad de espacios a generar.')
         parser.add_argument('--equipos', type=int, default=60, help='Cantidad de equipos a generar.')
         parser.add_argument('--tecnicos', type=int, default=8, help='Cantidad de tecnicos a generar.')
         parser.add_argument('--mantenimientos', type=int, default=40, help='Cantidad de tickets de mantenimiento.')
@@ -55,7 +94,8 @@ class Command(BaseCommand):
         random.seed(options['seed'])
 
         with transaction.atomic():
-            espacios = self._crear_espacios(options['espacios'])
+            edificios = self._crear_campus()
+            espacios = self._crear_espacios(options['espacios'], edificios)
             equipos = self._crear_equipos(options['equipos'], espacios)
             tecnicos = self._crear_tecnicos(options['tecnicos'])
             total_mantenimientos = self._crear_mantenimientos(
@@ -64,6 +104,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             'Datos de prueba generados correctamente:\n'
+            f'  Locales:        {len(LOCALES_PRUEBA)}\n'
+            f'  Pabellones:     {len(edificios)}\n'
             f'  Espacios:       {len(espacios)}\n'
             f'  Equipos:        {len(equipos)}\n'
             f'  Tecnicos:       {len(tecnicos)} (contrasena: Tecnico123!)\n'
@@ -72,18 +114,46 @@ class Command(BaseCommand):
             '"python manage.py crear_admin_prueba" para revisar el modulo.'
         ))
 
-    def _crear_espacios(self, cantidad):
+    def _crear_campus(self):
+        """Crea una estructura territorial variada e idempotente para pruebas."""
+        locales = {}
+        for data in LOCALES_PRUEBA:
+            local, _ = Local.objects.update_or_create(
+                codigo=data['codigo'],
+                defaults={**data, 'activo': True, 'is_deleted': False},
+            )
+            locales[local.codigo] = local
+
+        edificios = []
+        for local_code, codigo, nombre in PABELLONES_PRUEBA:
+            edificio, _ = Edificio.objects.update_or_create(
+                codigo=codigo,
+                defaults={
+                    'nombre': nombre,
+                    'descripcion': f'{nombre} de {locales[local_code].nombre}.',
+                    'local': locales[local_code],
+                    'activo': True,
+                    'is_deleted': False,
+                },
+            )
+            edificios.append(edificio)
+        return edificios
+
+    def _crear_espacios(self, cantidad, edificios):
         """Crea espacios de forma idempotente usando el codigo como clave."""
         espacios = []
         for i in range(1, cantidad + 1):
             codigo = f'LAB{200 + i}'
-            espacio, _ = Espacio.objects.get_or_create(
+            edificio = edificios[(i - 1) % len(edificios)]
+            espacio, _ = Espacio.objects.update_or_create(
                 codigo_espacio=codigo,
                 defaults={
                     'tipo': random.choice(TIPOS_ESPACIO),
-                    'pabellon': random.choice(PABELLONES),
-                    'piso': f'Piso {random.randint(1, 4)}',
+                    'pabellon': edificio.nombre,
+                    'edificio': edificio,
+                    'piso': str(((i - 1) // len(edificios)) + 1),
                     'activo': True,
+                    'is_deleted': False,
                 },
             )
             espacios.append(espacio)

@@ -1,11 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from autenticacion.serializers.auth_serializers import (
     LocalLoginSerializer,
     GoogleLoginSerializer,
+    UserProfileSerializer,
     UserAuthResponseSerializer
 )
 from autenticacion.services.google_auth_service import GoogleAuthService
@@ -115,3 +116,16 @@ class GoogleLoginView(APIView):
         
         output_serializer = UserAuthResponseSerializer(response_payload)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+class MeView(APIView):
+    """
+    Controlador que entrega el perfil y los permisos efectivos actualizados
+    del usuario actualmente autenticado mediante su token JWT.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request) -> Response:
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

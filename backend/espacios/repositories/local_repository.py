@@ -21,14 +21,22 @@ class LocalRepository(BaseRepository):
         except self.model.DoesNotExist:
             return None
 
-    def listar(self, busqueda: str = '', activo: bool | None = None):
+    def listar(
+        self,
+        busqueda: str = '',
+        activo: bool | None = None,
+        sede_ids: list[int] | None = None,
+    ):
         """Aplica búsqueda por código, nombre, ciudad o descripción."""
         queryset = self.get_all()
+        if sede_ids is not None:
+            queryset = queryset.filter(id__in=sede_ids)
         if busqueda:
             queryset = queryset.filter(
                 Q(codigo__icontains=busqueda)
                 | Q(nombre__icontains=busqueda)
                 | Q(ciudad__icontains=busqueda)
+                | Q(tipo__icontains=busqueda)
                 | Q(descripcion__icontains=busqueda)
             )
         if activo is not None:

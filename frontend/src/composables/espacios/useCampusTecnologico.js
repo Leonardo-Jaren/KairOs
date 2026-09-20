@@ -63,7 +63,11 @@ export function useCampusTecnologico(
   const toast = reactive({ show: false, message: '', type: 'success' });
   const showToast = (message, type = 'success') => Object.assign(toast, { show: true, message, type });
 
-  const canEdit = computed(() => authStore.user?.rol === 'admin');
+  const canEdit = computed(() => (
+    authStore.isSuperAdmin
+    || authStore.isAdmin
+    || authStore.hasPermission('espacios', 'editar')
+  ));
   const isEditingBuilding = computed(() => Boolean(editingBuilding.value));
   const isEditingSpace = computed(() => Boolean(editingSpace.value));
   const typeOptions = [
@@ -107,7 +111,6 @@ export function useCampusTecnologico(
 
   const edificioActivo = computed(() => (
     edificios.value.find((building) => String(building.id) === String(selectedBuildingId.value))
-    ?? edificios.value[0]
     ?? null
   ));
 
@@ -169,18 +172,56 @@ export function useCampusTecnologico(
     pisosVisibles.value[activeFloorIndex.value] ?? null
   ));
   const selectDefaultFloor = () => {
+    const requestedFloor = normalizeFloorValue(navigation.route?.query?.piso);
     const preferred = pisosVisibles.value.find(
-      (floor) => normalizeFloorValue(floor.key) === '2',
-    ) ?? pisosVisibles.value[1] ?? pisosVisibles.value[0];
+      (floor) => normalizeFloorValue(floor.key) === requestedFloor,
+    ) ?? (!navigation.route ? pisosVisibles.value[0] : null);
     activeFloorKey.value = preferred?.key ?? '';
+  };
+  const writeFloorQuery = (method = 'replace') => {
+    if (!navigation.router || !navigation.route) return;
+    const query = {
+      ...navigation.route.query,
+      ciudad: territorio.selectedCity.value || undefined,
+      tipo: territorio.selectedCampusType.value || undefined,
+      local: territorio.selectedLocalId.value || undefined,
+      pabellon: territorio.selectedBuildingId.value || undefined,
+    };
+    Object.keys(query).forEach((key) => {
+      if (query[key] === undefined || query[key] === '') delete query[key];
+    });
+    if (activeFloorKey.value) query.piso = String(activeFloorKey.value);
+    else delete query.piso;
+    if (String(navigation.route.query.piso ?? '') === String(query.piso ?? '')) return;
+    navigation.router[method]({ query }).catch(() => {
+      showToast('No se pudo actualizar el piso en la navegación.', 'error');
+    });
   };
   const showPreviousFloor = () => {
     if (editingFloor.value || activeFloorIndex.value <= 0) return;
-    activeFloorKey.value = pisosVisibles.value[activeFloorIndex.value - 1].key;
+    selectFloor(pisosVisibles.value[activeFloorIndex.value - 1].key);
   };
   const showNextFloor = () => {
     if (editingFloor.value || activeFloorIndex.value >= pisosVisibles.value.length - 1) return;
-    activeFloorKey.value = pisosVisibles.value[activeFloorIndex.value + 1].key;
+    selectFloor(pisosVisibles.value[activeFloorIndex.value + 1].key);
+  };
+
+  function selectFloor(floor, method = 'push') {
+    if (editingFloor.value) return false;
+    const match = pisosVisibles.value.find((item) => String(item.key) === String(floor));
+    if (!match) return false;
+    activeFloorKey.value = match.key;
+    writeFloorQuery(method);
+    return true;
+  }
+  const clearFloorSelection = (method = 'push') => {
+    if (editingFloor.value) {
+      showToast('Guarda o cancela la edición del croquis antes de cambiar de ubicación.', 'error');
+      return false;
+    }
+    activeFloorKey.value = '';
+    writeFloorQuery(method);
+    return true;
   };
 
   const stats = computed(() => ({
@@ -392,8 +433,29 @@ export function useCampusTecnologico(
 
   const locales = useLocalesCampus({
     service: localService, saving, canEdit, selectionBlocked, loadCampus,
-    selectLocal: territorio.selectLocal, showToast,
+    selectLocal: territorio.selectSavedLocal,
+    selectedCity: territorio.selectedCity,
+    selectedType: territorio.selectedCampusType,
+    showToast,
   });
+  const explorerLevel = computed(() => {
+    if (activeFloor.value) return 'floor-plan';
+    if (territorio.selectedBuildingId.value) return 'floors';
+    if (territorio.selectedLocalId.value) return 'buildings';
+    if (territorio.selectedCity.value) return 'locals';
+    return 'cities';
+  });
+  const showCities = () => territorio.selectCity('');
+  const showLocals = () => territorio.selectCity(territorio.selectedCity.value);
+  const showBuildings = () => territorio.selectLocalCard(territorio.selectedLocalId.value);
+  const showFloors = () => clearFloorSelection();
+  const goBack = () => {
+    if (explorerLevel.value === 'floor-plan') return showFloors();
+    if (explorerLevel.value === 'floors') return territorio.selectBuilding('');
+    if (explorerLevel.value === 'buildings') return showLocals();
+    if (explorerLevel.value === 'locals') return showCities();
+    return false;
+  };
   watch(selectedBuildingId, () => {
     search.value = '';
     cancelFloorEditing();
@@ -406,17 +468,27 @@ export function useCampusTecnologico(
       );
       if (String(buildingId) !== String(previousBuildingId) || !floorStillExists) {
         selectDefaultFloor();
+        territorio.afterNavigation(() => writeFloorQuery('replace'));
       }
     },
     { immediate: true },
   );
+  if (navigation.route) {
+    watch(() => navigation.route.query.piso, (floor) => {
+      const normalized = normalizeFloorValue(floor);
+      if (normalized && normalized !== normalizeFloorValue(activeFloorKey.value)) {
+        selectFloor(normalized, 'replace');
+      }
+    });
+  }
 
   onMounted(loadCampus);
 
   return {
     ...territorio, ...locales,
-    loading, saving, error, search, edificios, selectedBuildingId, edificioActivo,
+    loading, saving, error, search, edificios, currentSpaces, selectedBuildingId, edificioActivo,
     pisosVisibles, activeFloor, activeFloorIndex, activeFloorKey, stats, canEdit,
+    explorerLevel,
     buildingColumnCount, buildingOptions, typeOptions, buildingModalOpen,
     buildingDeleteOpen, editingBuilding, pendingBuildingDelete, buildingForm,
     buildingErrors, isEditingBuilding, spaceModalOpen, spaceDeleteOpen, editingSpace,
@@ -429,6 +501,7 @@ export function useCampusTecnologico(
     startFloorEditing, cancelFloorEditing, selectFloorSpace, handleFloorCell,
     setFloorTool,
     resizeSelectedFloorSpace, updateFloorColumns, addFloorRow, removeFloorRow,
-    saveFloorLayout, showPreviousFloor, showNextFloor,
+    saveFloorLayout, showPreviousFloor, showNextFloor, selectFloor, clearFloorSelection,
+    showCities, showLocals, showBuildings, showFloors, goBack,
   };
 }

@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from espacios.models import Espacio
+from espacios.models import Espacio, Local
 from historial.models import Historial
 from historial.repositories import HistorialRepository
 from historial.services import HistorialService
@@ -315,6 +315,11 @@ class HistorialIntegracionUsuarioTests(TestCase):
     def setUp(self):
         self.repo = UsuarioRepository()
         self.service = UsuarioService()
+        self.local = Local.objects.create(
+            codigo='LOC-HISTORIAL',
+            nombre='Sede de historial',
+            ciudad='Huánuco',
+        )
         self.admin = self.repo.create_user(
             correo='admin@example.com',
             username='admin',
@@ -333,6 +338,7 @@ class HistorialIntegracionUsuarioTests(TestCase):
                 'apellido': 'Docente',
                 'rol': 'docente',
                 'password': 'Pass123456',
+                'sede_ids': [self.local.id],
             },
             actor=self.admin,
         )

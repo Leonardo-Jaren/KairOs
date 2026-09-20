@@ -8,10 +8,10 @@ import { useCampusTecnologico } from '@/composables/espacios/useCampusTecnologic
 import { listarTodas } from '@/composables/espacios/useCampusTerritorio';
 
 const locales = [
-  { id: 1, codigo: 'HC', nombre: 'Local central', ciudad: 'Huánuco', activo: true },
-  { id: 2, codigo: 'HE', nombre: 'La Esperanza', ciudad: 'Huánuco', activo: true },
-  { id: 3, codigo: 'TM', nombre: 'Tingo María', ciudad: 'Tingo María', activo: true },
-  { id: 4, codigo: 'HV', nombre: 'Local vacío', ciudad: 'Huánuco', activo: true },
+  { id: 1, codigo: 'HC', nombre: 'Local central', ciudad: 'Huánuco', tipo: 'campus', activo: true },
+  { id: 2, codigo: 'HE', nombre: 'La Esperanza', ciudad: 'Huánuco', tipo: 'campus', activo: true },
+  { id: 3, codigo: 'TM', nombre: 'Tingo María', ciudad: 'Tingo María', tipo: 'sede', activo: true },
+  { id: 4, codigo: 'HV', nombre: 'Local vacío', ciudad: 'Huánuco', tipo: 'anexo', activo: true },
 ];
 const buildings = [1, 2, 2, 2, 2, 2, 2, 2, 3, 3, null].map((localId, index) => ({
   id: index + 1, codigo: `PAB-${index + 1}`, nombre: `Pabellón ${index + 1}`,
@@ -25,7 +25,7 @@ const spaces = buildings.map((building) => ({
 const wrappers = [];
 afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()));
 
-async function createCampus({ path = '/espacios/mapa?local=1', role = 'admin', reject = false } = {}) {
+async function createCampus({ path = '/espacios/mapa?local=1&pabellon=1', role = 'admin', reject = false } = {}) {
   const data = { buildings: structuredClone(buildings), spaces: structuredClone(spaces), locales: structuredClone(locales) };
   const buildingService = {
     listar: vi.fn(async () => ({ results: data.buildings })),
@@ -67,10 +67,19 @@ describe('mapa por locales', () => {
     expect(state.stats.value).toMatchObject({ ambientes: 1, equipos: 1 });
     state.selectLocal(2);
     await flushPromises();
+    state.selectBuilding(2);
+    await flushPromises();
     expect(state.edificios.value).toHaveLength(7);
     expect(state.stats.value).toMatchObject({ ambientes: 7, equipos: 35 });
     expect(state.buildingOptions.value.map((item) => item.value)).toEqual([2, 3, 4, 5, 6, 7, 8]);
     state.selectCity('Tingo María');
+    await flushPromises();
+    expect(state.edificios.value).toHaveLength(0);
+    state.selectCampusType('sede');
+    await flushPromises();
+    state.selectLocal(3);
+    await flushPromises();
+    state.selectBuilding(9);
     await flushPromises();
     expect(state.edificios.value).toHaveLength(2);
     expect(state.stats.value).toMatchObject({ ambientes: 2, equipos: 19 });
@@ -79,12 +88,20 @@ describe('mapa por locales', () => {
 
   it('muestra un local vacío sin heredar ambientes y conserva acceso a registros anteriores', async () => {
     const { state } = await createCampus();
+    state.selectCampusType('anexo');
+    await flushPromises();
     state.selectLocal(4);
     await flushPromises();
     expect(state.edificioActivo.value).toBeNull();
     expect(state.activeFloor.value).toBeNull();
     expect(state.stats.value.ambientes).toBe(0);
+    state.selectCity('__legacy__');
+    await flushPromises();
+    state.selectCampusType('__legacy__');
+    await flushPromises();
     state.selectLocal('__legacy__');
+    await flushPromises();
+    state.selectBuilding(11);
     await flushPromises();
     expect(state.selectedLocalName.value).toBe('Sin local asignado');
     expect(state.edificioActivo.value.id).toBe(11);
@@ -94,9 +111,9 @@ describe('mapa por locales', () => {
   it('respeta enlaces y vuelve al contexto previo con el historial del navegador', async () => {
     const { state, router } = await createCampus({ path: '/espacios/mapa?local=2&pabellon=7&otra=conservar' });
     expect(state.selectedBuildingId.value).toBe(7);
-    state.selectLocal(3);
+    state.selectLocal(1);
     await flushPromises();
-    expect(router.currentRoute.value.query.local).toBe('3');
+    expect(router.currentRoute.value.query.local).toBe('1');
     expect(router.currentRoute.value.query.otra).toBe('conservar');
     router.back();
     await flushPromises();
@@ -106,12 +123,14 @@ describe('mapa por locales', () => {
 
   it('corrige una pareja local/pabellón incoherente sin mostrar otro local', async () => {
     const { state, router } = await createCampus({ path: '/espacios/mapa?local=1&pabellon=9' });
-    expect(state.edificioActivo.value.id).toBe(1);
-    expect(router.currentRoute.value.query.pabellon).toBe('1');
+    expect(state.edificioActivo.value).toBeNull();
+    expect(router.currentRoute.value.query.pabellon).toBeUndefined();
   });
 
   it('conserva el borrador frente a cambios de local, pabellón y ruta mientras se edita', async () => {
     const { state, router } = await createCampus();
+    state.selectFloor('2');
+    await flushPromises();
     state.startFloorEditing(state.activeFloor.value);
     expect(state.selectLocal(2)).toBe(false);
     expect(state.selectBuilding(2)).toBe(false);
@@ -127,7 +146,7 @@ describe('mapa por locales', () => {
   });
 
   it('permite asignar un pabellón anterior a un local de otra ciudad y sigue su ubicación', async () => {
-    const { state, buildingService } = await createCampus({ path: '/espacios/mapa?local=__legacy__' });
+    const { state, buildingService } = await createCampus({ path: '/espacios/mapa?local=__legacy__&pabellon=11' });
     state.openEditBuilding(state.edificioActivo.value);
     state.buildingForm.local_id = 3;
     await state.submitBuilding();
@@ -136,6 +155,38 @@ describe('mapa por locales', () => {
     expect(state.selectedCity.value).toBe('Tingo María');
     expect(state.selectedLocalId.value).toBe(3);
     expect(state.edificioActivo.value.id).toBe(11);
+  });
+
+  it('avanza por ciudad, local, pabellón y piso sin saltar niveles', async () => {
+    const { state, router } = await createCampus({ path: '/espacios/mapa' });
+    expect(state.selectedCity.value).toBe('');
+    expect(state.edificioActivo.value).toBeNull();
+
+    state.selectCity('Huánuco');
+    await flushPromises();
+    expect(state.selectedCampusType.value).toBe('');
+    expect(state.selectedLocalId.value).toBe('');
+
+    expect(state.cityLocalCards.value).toHaveLength(3);
+    state.selectLocalCard(2);
+    await flushPromises();
+    expect(state.selectedCampusType.value).toBe('campus');
+    expect(state.edificios.value).toHaveLength(7);
+    expect(state.selectedBuildingId.value).toBe('');
+
+    state.selectBuilding(7);
+    await flushPromises();
+    expect(state.edificioActivo.value.id).toBe(7);
+    expect(router.currentRoute.value.query).toMatchObject({
+      ciudad: 'Huánuco', tipo: 'campus', local: '2', pabellon: '7',
+    });
+    expect(router.currentRoute.value.query.piso).toBeUndefined();
+    expect(state.activeFloor.value).toBeNull();
+
+    state.selectFloor('2');
+    await flushPromises();
+    expect(router.currentRoute.value.query.piso).toBe('2');
+    expect(state.activeFloor.value.key).toBe('2');
   });
 
   it('impide acciones administrativas en el composable para un técnico', async () => {

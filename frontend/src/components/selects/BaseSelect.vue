@@ -10,6 +10,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   options: { type: Array, default: () => [] },
   placeholder: { type: String, default: 'Seleccionar' },
+  size: { type: String, default: 'md' }, // 'sm' | 'md'
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -44,12 +45,17 @@ const updateDropdownPosition = () => {
   const availableHeight = Math.max(96, Math.min(240, opensUpward ? spaceAbove - gap : spaceBelow - gap));
   const visibleHeight = Math.min(menuHeight, availableHeight);
 
+  // Mantener el menu alineado con su campo sin desbordar la ventana
+  const maxAllowedWidth = window.innerWidth - gap * 2;
+  const widthToUse = Math.min(Math.max(rect.width, 160), maxAllowedWidth);
+  const leftPosition = Math.max(gap, Math.min(rect.left, window.innerWidth - widthToUse - gap));
+
   dropdownStyle.value = {
-    left: `${rect.left}px`,
+    left: `${leftPosition}px`,
     top: opensUpward
       ? `${Math.max(gap, rect.top - visibleHeight - gap)}px`
       : `${rect.bottom + gap}px`,
-    width: `${rect.width}px`,
+    width: `${widthToUse}px`,
     maxHeight: `${availableHeight}px`,
   };
 };
@@ -144,8 +150,11 @@ onBeforeUnmount(() => {
       :id="id"
       ref="trigger"
       type="button"
-      class="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border bg-white px-3.5 text-left text-sm outline-none transition-all duration-200"
+      class="flex w-full items-center justify-between border bg-white text-left outline-none transition-all duration-200 min-w-0 overflow-hidden"
       :class="[
+        size === 'sm'
+          ? 'h-8.5 rounded-xl px-2.5 text-xs gap-1.5'
+          : 'h-11 rounded-xl px-3.5 text-sm gap-2.5',
         error
           ? 'border-danger-300 focus:border-danger-400 focus:ring-4 focus:ring-danger-100'
           : isOpen
@@ -163,11 +172,15 @@ onBeforeUnmount(() => {
       @click.stop="toggle"
       @keydown="handleKeydown"
     >
-      <span :class="selectedOption ? 'text-slate-800' : 'text-slate-400'">
+      <span
+        class="truncate min-w-0 flex-1"
+        :title="selectedOption?.label ?? placeholder"
+        :class="selectedOption ? 'text-slate-800' : 'text-slate-400'"
+      >
         {{ selectedOption?.label ?? placeholder }}
       </span>
       <ChevronDown
-        :size="18"
+        :size="size === 'sm' ? 14 : 18"
         class="shrink-0 text-slate-400 transition-transform duration-200"
         :class="isOpen ? 'rotate-180 text-primary-600' : ''"
         aria-hidden="true"
@@ -190,7 +203,8 @@ onBeforeUnmount(() => {
           role="listbox"
           :aria-labelledby="label ? id : undefined"
           :style="dropdownStyle"
-          class="fixed z-[70] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10"
+          class="surface-scrollbar fixed z-[70] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10"
+          :class="size === 'sm' ? 'p-1' : 'p-1.5'"
         >
           <button
             v-for="(option, index) in options"
@@ -198,9 +212,11 @@ onBeforeUnmount(() => {
             :key="option.value"
             type="button"
             role="option"
+            :title="option.label"
             :aria-selected="selectedOption === option"
-            class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-150"
+            class="flex w-full items-center justify-between gap-2 text-left transition-colors duration-150 min-w-0"
             :class="[
+              size === 'sm' ? 'rounded-lg px-2.5 py-1.5 text-xs' : 'rounded-lg px-3 py-2.5 text-sm',
               highlightedIndex === index
                 ? 'bg-primary-50 text-primary-700'
                 : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950',
@@ -209,10 +225,10 @@ onBeforeUnmount(() => {
             @mouseenter="highlightedIndex = index"
             @click="selectOption(option)"
           >
-            <span>{{ option.label }}</span>
-            <Check v-if="selectedOption === option" :size="16" class="text-primary-600" aria-hidden="true" />
+            <span class="truncate min-w-0 flex-1">{{ option.label }}</span>
+            <Check v-if="selectedOption === option" :size="size === 'sm' ? 13 : 16" class="shrink-0 text-primary-600" aria-hidden="true" />
           </button>
-          <p v-if="!options.length" class="px-3 py-2.5 text-sm text-slate-400">No hay opciones disponibles.</p>
+          <p v-if="!options.length" :class="size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2.5 text-sm'" class="text-slate-400">No hay opciones disponibles.</p>
         </div>
       </Transition>
     </Teleport>

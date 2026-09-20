@@ -47,73 +47,73 @@ const routes = [
         path: '/usuarios',
         name: 'Usuarios',
         component: () => import('@/views/usuarios/UsuariosView.vue'),
-        meta: { title: 'Usuarios', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Usuarios', modulo: 'usuarios' },
       },
       {
         path: '/espacios',
         name: 'Espacios',
         component: () => import('@/views/espacios/EspaciosView.vue'),
-        meta: { title: 'Espacios', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Espacios', modulo: 'espacios' },
       },
       {
         path: '/espacios/usuarios',
         name: 'EspaciosUsuarios',
         component: () => import('@/views/espacios/EspaciosUsuariosView.vue'),
-        meta: { title: 'Usuarios por espacio', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Usuarios por espacio', modulo: 'espacios' },
       },
       {
         path: '/espacios/mapa',
         name: 'CampusTecnologico',
         component: () => import('@/views/espacios/CampusTecnologicoView.vue'),
-        meta: { title: 'Mapa tecnológico', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Mapa tecnológico', modulo: 'espacios' },
       },
       {
         path: '/espacios/:id',
         name: 'EspacioDetalle',
         component: () => import('@/views/espacios/EspacioDetalleView.vue'),
-        meta: { title: 'Plano interactivo', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Plano interactivo', modulo: 'espacios' },
       },
       {
         path: '/historial',
         name: 'Historial',
         component: () => import('@/views/historial/HistorialView.vue'),
-        meta: { title: 'Historial de auditoría', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Historial de auditoría', modulo: 'auditoria' },
       },
       {
         path: '/equipos',
         name: 'Equipos',
         component: () => import('@/views/equipos/EquiposView.vue'),
-        meta: { title: 'Equipos', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Equipos', modulo: 'equipos' },
       },
       {
         path: '/componentes',
         name: 'Componentes',
         component: () => import('@/views/equipos/ComponentesView.vue'),
-        meta: { title: 'Componentes', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Componentes', modulo: 'equipos' },
       },
       {
         path: '/software',
         name: 'Software',
         component: () => import('@/views/software/SoftwareView.vue'),
-        meta: { title: 'Software', roles: ['admin', 'tecnico', 'docente'] },
+        meta: { title: 'Software', modulo: 'software' },
       },
       {
         path: '/software/instalaciones',
         name: 'SoftwareInstalaciones',
         component: () => import('@/views/software/InstalacionesView.vue'),
-        meta: { title: 'Instalaciones de software', roles: ['admin', 'tecnico', 'docente'] },
+        meta: { title: 'Instalaciones de software', modulo: 'software' },
       },
       {
         path: '/mantenimiento',
         name: 'Mantenimiento',
         component: () => import('@/views/mantenimiento/MantenimientoView.vue'),
-        meta: { title: 'Mantenimiento', roles: ['admin', 'tecnico'] },
+        meta: { title: 'Mantenimiento', modulo: 'mantenimiento' },
       },
       {
         path: '/incidencias',
         name: 'Incidencias',
         component: () => import('@/views/incidencias/IncidenciasView.vue'),
-        meta: { title: 'Incidencias', roles: ['admin', 'tecnico', 'docente'] },
+        meta: { title: 'Incidencias', modulo: 'incidencias' },
       },
     ],
   },
@@ -150,11 +150,30 @@ router.beforeEach((to) => {
       return { name: 'Login' };
     }
     
-    // Validar autorizacion por roles si la ruta los especifica
+    const userRole = authStore.user?.rol;
+    const isSuper = userRole === 'superadmin' || authStore.user?.is_superuser;
+
+    // Superadministradores y superusuarios tienen acceso total
+    if (isSuper) {
+      return true;
+    }
+
+    // Validar autorizacion por permisos del modulo (efectivos o plantilla base)
+    if (to.meta.modulo) {
+      if (!authStore.hasPermission(to.meta.modulo, 'ver')) {
+        return { name: 'Dashboard' };
+      }
+      return true;
+    }
+
+    // Validar autorizacion por roles de respaldo si la ruta no tiene modulo asociado
     const allowedRoles = to.meta.roles;
-    if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(authStore.user?.rol)) {
-      // Redirigir al dashboard si el rol del usuario no tiene permisos
-      return { name: 'Dashboard' };
+    if (allowedRoles && allowedRoles.length > 0) {
+      const hasAccess = allowedRoles.includes(userRole) || (userRole === 'responsable' && allowedRoles.includes('admin'));
+      if (!hasAccess) {
+        // Redirigir al dashboard si el rol del usuario no tiene permisos
+        return { name: 'Dashboard' };
+      }
     }
     
     return true;

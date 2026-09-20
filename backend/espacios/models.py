@@ -6,6 +6,13 @@ from shared.models import BaseModel
 class Local(BaseModel):
     """Representa una sede física donde se agrupan los edificios."""
 
+    TIPO_CHOICES = [
+        ('campus', 'Campus'),
+        ('sede', 'Sede'),
+        ('anexo', 'Anexo'),
+        ('otro', 'Otro'),
+    ]
+
     codigo = models.CharField(
         max_length=50,
         unique=True,
@@ -19,6 +26,12 @@ class Local(BaseModel):
     ciudad = models.CharField(
         max_length=100,
         verbose_name='Ciudad del local',
+    )
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        default='sede',
+        verbose_name='Tipo de ubicación',
     )
     descripcion = models.TextField(
         blank=True,
@@ -39,6 +52,7 @@ class Local(BaseModel):
             models.Index(fields=['codigo'], name='idx_local_codigo'),
             models.Index(fields=['nombre'], name='idx_local_nombre'),
             models.Index(fields=['ciudad'], name='idx_local_ciudad'),
+            models.Index(fields=['tipo'], name='idx_local_tipo'),
             models.Index(fields=['activo'], name='idx_local_activo'),
         ]
 

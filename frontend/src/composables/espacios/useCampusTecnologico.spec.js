@@ -75,19 +75,19 @@ describe('useCampusTecnologico', () => {
     expect(state.edificios.value).toHaveLength(2);
     expect(state.edificioActivo.value.spaces).toHaveLength(2);
     expect(state.pisosVisibles.value.map((floor) => floor.key)).toEqual(['1', '2']);
-    expect(state.activeFloor.value.key).toBe('2');
+    expect(state.activeFloor.value.key).toBe('1');
     expect(state.stats.value).toMatchObject({ laboratorios: 1, aulas: 1, ambientes: 3 });
   });
 
-  it('navega un piso a la vez empezando por el piso 2', async () => {
+  it('navega un piso a la vez empezando por el primer piso', async () => {
     const state = mountComposable(services);
     await flushPromises();
 
-    expect(state.activeFloor.value.key).toBe('2');
-    state.showPreviousFloor();
     expect(state.activeFloor.value.key).toBe('1');
     state.showNextFloor();
     expect(state.activeFloor.value.key).toBe('2');
+    state.showPreviousFloor();
+    expect(state.activeFloor.value.key).toBe('1');
   });
 
   it('balancea la cuadrícula según la cantidad de edificios', async () => {

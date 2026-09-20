@@ -18,6 +18,7 @@ const usersResponse = {
     dni: '12345678',
     rol: 'docente',
     is_active: true,
+    sedes: [{ id: 1, codigo: 'HCO-CENTRAL', nombre: 'Campus Central', ciudad: 'Huánuco' }],
   }],
 };
 
@@ -35,7 +36,19 @@ const createService = () => ({
   desactivar: vi.fn().mockResolvedValue(undefined),
 });
 
-const mountComposable = (service, role = 'admin') => {
+const localesResponse = {
+  count: 2,
+  results: [
+    { id: 1, codigo: 'HCO-CENTRAL', nombre: 'Campus Central', ciudad: 'Huánuco' },
+    { id: 2, codigo: 'HCO-ESPERANZA', nombre: 'Sede La Esperanza', ciudad: 'Huánuco' },
+  ],
+};
+
+const createSedesService = () => ({
+  listar: vi.fn().mockResolvedValue(localesResponse),
+});
+
+const mountComposable = (service, role = 'admin', sedesService = createSedesService()) => {
   let state;
   const pinia = createPinia();
   setActivePinia(pinia);
@@ -44,12 +57,12 @@ const mountComposable = (service, role = 'admin') => {
 
   const wrapper = mount(defineComponent({
     setup() {
-      state = useUsuarios(service);
+      state = useUsuarios(service, sedesService);
       return () => h('div');
     },
   }), { global: { plugins: [pinia] } });
 
-  return { state, wrapper };
+  return { state, wrapper, sedesService };
 };
 
 describe('useUsuarios', () => {
@@ -60,24 +73,61 @@ describe('useUsuarios', () => {
   });
 
   it('carga usuarios, paginación e indicadores al montar', async () => {
-    const { state } = mountComposable(service);
+    const { state, sedesService } = mountComposable(service);
     await flushPromises();
 
     expect(service.listar).toHaveBeenCalledOnce();
     expect(service.obtenerEstadisticas).toHaveBeenCalledOnce();
+    expect(sedesService.listar).toHaveBeenCalledWith({
+      activo: 'true',
+      asignables: 'true',
+      page_size: 100,
+    });
     expect(state.usuarios.value).toHaveLength(1);
     expect(state.pagination.total).toBe(1);
     expect(state.stats.docentes).toBe(1);
   });
 
-  it('limita los roles disponibles para un técnico', async () => {
+  it('muestra todas las sedes activas al superadministrador', async () => {
+    const { state } = mountComposable(service, 'superadmin');
+    await flushPromises();
+
+    expect(state.sedeOptions.value).toEqual([
+      { value: 1, label: 'HCO-CENTRAL - Campus Central (Huánuco)' },
+      { value: 2, label: 'HCO-ESPERANZA - Sede La Esperanza (Huánuco)' },
+    ]);
+    expect(state.localesError.value).toBe('');
+  });
+
+  it('reintenta cargar las sedes al abrir el formulario tras un fallo inicial', async () => {
+    const sedesService = createSedesService();
+    sedesService.listar
+      .mockRejectedValueOnce(new Error('Servidor temporalmente no disponible'))
+      .mockResolvedValueOnce(localesResponse);
+    const { state } = mountComposable(service, 'superadmin', sedesService);
+    await flushPromises();
+
+    expect(state.sedeOptions.value).toEqual([]);
+    expect(state.localesError.value).toBe('No se pudieron cargar las sedes disponibles.');
+
+    state.openCreate();
+    await flushPromises();
+
+    expect(sedesService.listar).toHaveBeenCalledTimes(2);
+    expect(state.sedeOptions.value).toHaveLength(2);
+    expect(state.localesError.value).toBe('');
+  });
+
+  it('limita los roles y restringe permisos de administración para un técnico', async () => {
     const { state } = mountComposable(service, 'tecnico');
     await flushPromises();
 
     expect(state.canManageAll.value).toBe(false);
-    expect(state.availableRoleOptions.value).toEqual([
-      { value: 'docente', label: 'Docente' },
-    ]);
+    expect(state.canCreate.value).toBe(false);
+    expect(state.canEdit.value).toBe(false);
+    expect(state.canDelete.value).toBe(false);
+    expect(state.availableRoleOptions.value).toEqual([{ value: 'docente', label: 'Docente' }]);
+    expect(state.filterRoleOptions).toEqual(state.roleOptions);
   });
 
   it('valida el formulario antes de crear', async () => {
@@ -105,6 +155,8 @@ describe('useUsuarios', () => {
       rol: 'docente',
       password: 'TeacherPass123',
       is_active: true,
+      sede_ids: [1],
+      sede_principal_id: 1,
     });
 
     const result = await state.submit();
@@ -128,6 +180,10 @@ describe('useUsuarios', () => {
     expect(result).toBe(true);
     expect(service.actualizar).toHaveBeenCalledWith(
       1,
+      expect.objectContaining({ sede_ids: [1] }),
+    );
+    expect(service.actualizar).toHaveBeenCalledWith(
+      1,
       expect.not.objectContaining({ password: expect.anything() }),
     );
   });
@@ -143,6 +199,8 @@ describe('useUsuarios', () => {
       nombre: 'Diana',
       rol: 'docente',
       password: 'TeacherPass123',
+      sede_ids: [1],
+      sede_principal_id: 1,
     });
 
     await state.submit();

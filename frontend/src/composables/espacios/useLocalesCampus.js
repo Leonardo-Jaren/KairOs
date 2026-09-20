@@ -1,9 +1,26 @@
 import { computed, reactive, ref } from 'vue';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
-const emptyLocal = () => ({ codigo: '', nombre: '', ciudad: '', descripcion: '', activo: true });
+const emptyLocal = () => ({
+  codigo: '',
+  nombre: '',
+  ciudad: '',
+  tipo: 'sede',
+  descripcion: '',
+  activo: true,
+});
 
-export function useLocalesCampus({ service, saving, canEdit, selectionBlocked, loadCampus, selectLocal, showToast }) {
+export function useLocalesCampus({
+  service,
+  saving,
+  canEdit,
+  selectionBlocked,
+  loadCampus,
+  selectLocal,
+  selectedCity,
+  selectedType,
+  showToast,
+}) {
   const localModalOpen = ref(false);
   const localDeleteOpen = ref(false);
   const editingLocal = ref(null);
@@ -19,6 +36,12 @@ export function useLocalesCampus({ service, saving, canEdit, selectionBlocked, l
     if (!canEdit.value || selectionBlocked()) return;
     editingLocal.value = null;
     resetForm();
+    if (selectedCity?.value && selectedCity.value !== '__legacy__') {
+      localForm.ciudad = selectedCity.value;
+    }
+    if (selectedType?.value && selectedType.value !== '__legacy__') {
+      localForm.tipo = selectedType.value;
+    }
     localModalOpen.value = true;
   };
   const openEditLocal = (local) => {

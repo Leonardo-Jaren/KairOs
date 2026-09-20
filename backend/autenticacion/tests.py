@@ -242,3 +242,57 @@ class PasswordServiceTests(TestCase):
         # La contraseña antigua debe mantenerse
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("oldpassword123"))
+
+
+class MeViewTests(APITestCase):
+    """Pruebas de verificación para el endpoint /api/v1/auth/me/."""
+
+    endpoint = '/api/v1/auth/me/'
+
+    def setUp(self):
+        self.user = Usuario.objects.create(
+            correo='jorge.tecnico@kairos.test',
+            username='tecnico_test',
+            nombre='Jorge',
+            apellido='Alvarez',
+            rol='tecnico',
+        )
+        self.user.set_password('Admin123!')
+        self.user.save()
+
+    def test_me_unauthenticated_returns_401(self):
+        """Peticiones anónimas sin token deben ser rechazadas con 401."""
+        response = self.client.get(self.endpoint)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_me_authenticated_returns_user_profile_and_effective_permissions(self):
+        """Usuario autenticado recibe su perfil y matriz de permisos calculada."""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.endpoint)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], self.user.id)
+        self.assertEqual(response.data['correo'], 'jorge.tecnico@kairos.test')
+        self.assertEqual(response.data['nombre'], 'Jorge')
+        self.assertEqual(response.data['apellido'], 'Alvarez')
+        self.assertEqual(response.data['rol'], 'tecnico')
+        self.assertIn('permisos_efectivos', response.data)
+        # Por defecto rol tecnico tiene ver=True en software
+        self.assertTrue(response.data['permisos_efectivos']['software']['ver'])
+
+    def test_me_reflects_custom_permission_revocation(self):
+        """Valida que un permiso revocado mediante PermisoPersonalizado se refleje inmediatamente."""
+        from usuarios.models import PermisoPersonalizado
+        PermisoPersonalizado.objects.create(
+            usuario=self.user,
+            modulo='software',
+            accion='ver',
+            permitido=False,
+        )
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.endpoint)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['permisos_efectivos']['software']['ver'])
+
