@@ -240,6 +240,16 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
+        'django.request': {
+            'handlers': ['console', 'archivo'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 

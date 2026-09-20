@@ -5,7 +5,7 @@ from rest_framework.test import APITestCase
 from django.urls import reverse
 
 from espacios.models import Edificio, Espacio, Local
-from usuarios.models import Usuario
+from usuarios.models import Usuario, UsuarioSede
 
 
 class LocalAPITests(APITestCase):
@@ -35,6 +35,7 @@ class LocalAPITests(APITestCase):
             'codigo': ' loc-01 ',
             'nombre': 'Campus Norte',
             'ciudad': 'Lima',
+            'tipo': 'campus',
             'descripcion': 'Sede principal',
             'activo': True,
         }
@@ -48,6 +49,7 @@ class LocalAPITests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['codigo'], 'LOC-01')
         self.assertEqual(response.data['ciudad'], 'Lima')
+        self.assertEqual(response.data['tipo'], 'campus')
         self.assertEqual(listed.data['count'], 1)
 
     def test_tecnico_reads_but_cannot_write_and_regular_user_is_blocked(self):
@@ -58,6 +60,61 @@ class LocalAPITests(APITestCase):
 
         self.client.force_authenticate(self.usuario)
         self.assertEqual(self.client.get(self.url).status_code, 403)
+
+    def test_superadmin_lists_all_active_locations(self):
+        """Garantiza que el catálogo de sedes del formulario no se limite por sede."""
+        superadmin = Usuario.objects.create_superuser(
+            correo='superadmin-locales@example.com',
+            username='superadmin_locales',
+            nombre='Leonardo',
+            password='SuperAdminPass123',
+        )
+        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
+        second = Local.objects.create(codigo='LOC-02', nombre='Sur', ciudad='Cusco')
+        Local.objects.create(
+            codigo='LOC-03',
+            nombre='Inactiva',
+            ciudad='Piura',
+            activo=False,
+        )
+        self.client.force_authenticate(superadmin)
+
+        response = self.client.get(
+            self.url,
+            {'activo': 'true', 'asignables': 'true', 'page_size': 100},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(
+            {item['id'] for item in response.data['results']},
+            {first.id, second.id},
+        )
+
+    def test_assignable_locations_are_scoped_for_admin_and_responsable(self):
+        """Limita el selector a las sedes vinculadas al actor territorial."""
+        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
+        second = Local.objects.create(codigo='LOC-02', nombre='Sur', ciudad='Cusco')
+        responsable = Usuario.objects.create_user(
+            correo='responsable-locales@example.com',
+            username='responsable_locales',
+            nombre='Rosa',
+            rol='responsable',
+        )
+        UsuarioSede.objects.create(usuario=self.admin, local=first, activo=True)
+        UsuarioSede.objects.create(usuario=responsable, local=second, activo=True)
+
+        for actor, expected_id in ((self.admin, first.id), (responsable, second.id)):
+            with self.subTest(rol=actor.rol):
+                self.client.force_authenticate(actor)
+                response = self.client.get(
+                    self.url,
+                    {'activo': 'true', 'asignables': 'true', 'page_size': 100},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data['count'], 1)
+                self.assertEqual(response.data['results'][0]['id'], expected_id)
 
     def test_edificio_assigns_reassigns_and_filters_by_local(self):
         first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')

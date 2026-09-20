@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <RouterLink to="/espacios/mapa"
+      <RouterLink :to="{ path: '/espacios/mapa', query: $route.query }"
         class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary-600">
         <ArrowLeft :size="17" /> Volver al mapa de campus
       </RouterLink>

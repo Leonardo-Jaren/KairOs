@@ -23,7 +23,13 @@ const authService = {
   async confirmPasswordReset(token, password) {
     const response = await api.post('/api/v1/auth/password-reset-confirm/', { token, password });
     return response.data;
-  }
+  },
+
+  // Consulta el perfil y los permisos efectivos actualizados del usuario autenticado
+  async getMe() {
+    const response = await api.get('/api/v1/auth/me/');
+    return response.data;
+  },
 };
 
 export default authService;

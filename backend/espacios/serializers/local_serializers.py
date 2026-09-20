@@ -8,7 +8,7 @@ class LocalResumenSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Local
-        fields = ['id', 'codigo', 'nombre', 'ciudad', 'activo']
+        fields = ['id', 'codigo', 'nombre', 'ciudad', 'tipo', 'activo']
 
 
 class LocalSerializer(serializers.ModelSerializer):
@@ -21,6 +21,7 @@ class LocalSerializer(serializers.ModelSerializer):
             'codigo',
             'nombre',
             'ciudad',
+            'tipo',
             'descripcion',
             'activo',
             'created_at',
@@ -33,7 +34,7 @@ class LocalCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Local
-        fields = ['codigo', 'nombre', 'ciudad', 'descripcion', 'activo']
+        fields = ['codigo', 'nombre', 'ciudad', 'tipo', 'descripcion', 'activo']
         extra_kwargs = {
             'codigo': {'validators': []},
         }

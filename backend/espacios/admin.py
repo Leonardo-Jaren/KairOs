@@ -6,8 +6,8 @@ from .models import Edificio, Espacio, EspacioUsuario, Local
 class LocalAdmin(admin.ModelAdmin):
     """Configura la administración de locales físicos."""
 
-    list_display = ('id', 'codigo', 'nombre', 'ciudad', 'activo')
-    list_filter = ('ciudad', 'activo')
+    list_display = ('id', 'codigo', 'nombre', 'ciudad', 'tipo', 'activo')
+    list_filter = ('ciudad', 'tipo', 'activo')
     search_fields = ('codigo', 'nombre', 'ciudad', 'descripcion')
     ordering = ('nombre', 'codigo')
 

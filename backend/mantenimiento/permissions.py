@@ -1,22 +1,28 @@
 from rest_framework import permissions
 
+from shared.constants import (
+    ROL_SUPERADMIN,
+    ROL_ADMIN,
+    ROL_RESPONSABLE,
+    ROL_TECNICO,
+)
+from shared.permissions import HasModulePermission
+
 
 class CanManageMantenimiento(permissions.BasePermission):
     """
-    Permisos de la gestion de mantenimiento:
-    - Administrador: acceso total (CRUD).
-    - Tecnico: puede listar, crear y actualizar tickets, pero no eliminarlos.
-    - Otros roles: sin acceso.
+    Permisos de la gestion de mantenimiento evaluando permisos efectivos del modulo 'mantenimiento'.
+    Superadministrador tiene acceso total; roles operativos segun matriz base o personalizada.
     """
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        if request.user.rol == 'admin':
+        if request.user.rol == ROL_SUPERADMIN or request.user.is_superuser:
             return True
 
-        if request.user.rol == 'tecnico':
-            return request.method != 'DELETE'
+        accion = HasModulePermission.ACCIONES_MAP.get(request.method, 'ver')
+        return request.user.tiene_permiso('mantenimiento', accion)
 
-        return False
+

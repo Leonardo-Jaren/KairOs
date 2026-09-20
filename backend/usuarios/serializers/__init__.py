@@ -1,4 +1,15 @@
-from .usuario_serializers import UsuarioSerializer, UsuarioCreateUpdateSerializer
+from .usuario_serializers import (
+    GuardarPermisosSerializer,
+    PermisoItemSerializer,
+    UsuarioCreateUpdateSerializer,
+    UsuarioSerializer,
+)
 
-__all__ = ['UsuarioSerializer', 'UsuarioCreateUpdateSerializer']
+__all__ = [
+    'UsuarioSerializer',
+    'UsuarioCreateUpdateSerializer',
+    'PermisoItemSerializer',
+    'GuardarPermisosSerializer',
+]
+
 

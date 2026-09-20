@@ -74,17 +74,22 @@
 }
 
 /* Configuracion base para toda la aplicacion */
-html,
-body,
-#app {
+html {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+body {
   margin: 0;
   padding: 0;
-  width: 100%;
-  height: 100%;
+  min-height: 100%;
   font-family: var(--font-sans);
   background-color: var(--color-secondary-950);
   color: #ffffff;
-  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100%;
 }
 
 /* Transiciones globales para efectos interactivos */
@@ -95,23 +100,44 @@ select {
   transition: all 0.2s ease-in-out;
 }
 
-/* Estilos personalizados para la barra de desplazamiento */
+/* Scrollbar global estandarizado para toda la aplicacion */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-secondary-950);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-secondary-800);
-  border-radius: 3px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary-500);
+  background: #94a3b8;
+}
+
+/* Scrollbar adaptado para paneles y superficies oscuras */
+aside.bg-secondary-950,
+.bg-secondary-950 {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+aside.bg-secondary-950::-webkit-scrollbar-thumb,
+.bg-secondary-950::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+aside.bg-secondary-950::-webkit-scrollbar-thumb:hover,
+.bg-secondary-950::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 /* Oculta la barra visual sin deshabilitar el desplazamiento horizontal. */
@@ -121,6 +147,68 @@ select {
 
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+/* Barra de desplazamiento estilizada para paneles laterales y listas */
+.dock-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dock-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dock-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dock-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.dock-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Barra discreta para menus y superficies claras flotantes */
+.surface-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-400) transparent;
+  scrollbar-gutter: stable;
+}
+
+.surface-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.surface-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.surface-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background: var(--color-secondary-400);
+  background-clip: padding-box;
+}
+
+.surface-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary-500);
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 
