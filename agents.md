@@ -74,3 +74,22 @@ El frontend está construido sobre **Vue 3 (Vite) + Tailwind CSS v4** y se organ
 *   **Guard de Rutas:** Configurar el `beforeEach` de Vue Router para interceptar la navegación hacia rutas que requieran autenticación (`meta.requiresAuth`).
 *   **Verificación de Roles:** Validar que el rol almacenado en el Pinia Store coincida con los roles autorizados en la ruta (`meta.roles`) antes de permitir el acceso.
 *   **Silent Refresh Interceptor:** Implementar la renovación automática del token de acceso (`access`) usando el token de refresco (`refresh`) ante respuestas HTTP 401 del backend, sin interrumpir la sesión activa del usuario.
+
+---
+
+## 🚀 5. Flujo de Trabajo Git y Creación Automática de PR
+
+Cuando el usuario indique **"sube los cambios"**, **"crea el PR"**, **"haz el PR"**, **"sube todo"** o similar:
+1. **Acción directa y sin redundancia:** No solicitar al usuario que recuerde las directivas de `.github/` o `docs/`; el agente debe asumir y ejecutar todo el ciclo automáticamente.
+2. **Revisar cambios y contexto:** Identificar los archivos modificados (`git status`), el módulo afectado y el propósito de los cambios para derivar un `<slug>` descriptivo en kebab-case, el `<modulo>` y un `<HistoriaTitulo>`.
+3. **Iniciales y Configuración:** Leer las iniciales del desarrollador desde [`.github/developer-config.json`](.github/developer-config.json) (por defecto `LJ` o el valor configurado).
+4. **Convención de Ramas:** Nunca hacer push directamente a `main`. La rama debe cumplir estrictamente con el formato:
+   `{ANIO}{Iniciales}_{MesAbrev}{Dia}_{descripcion-kebab}` (ejemplo: `2026LJ_Sep20_actualizar-agents`).
+5. **Creación del PR y Proyecto:**
+   - Si se tienen cambios pendientes en el árbol de trabajo, moverlos/commitearlos a la rama correspondiente.
+   - Ejecutar el script automatizado desde la raíz del proyecto:
+     ```powershell
+     .\scripts\create-pr-and-project.ps1 -Descripcion "<slug>" -Modulo "<modulo>" -HistoriaTitulo "<titulo>"
+     ```
+   - O bien, realizar la secuencia de Git (`git checkout -b <rama>`, `git add .`, `git commit -m "..."`, `git push -u origin <rama>`) y crear el Pull Request con `gh pr create` apuntando a `main`, aplicando el contenido y formato de [`.github/pull_request_template.md`](.github/pull_request_template.md).
+
