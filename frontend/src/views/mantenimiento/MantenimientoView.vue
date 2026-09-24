@@ -1,8 +1,14 @@
 <script setup>
+import { watch } from 'vue';
+import { useRoute } from 'vue-router';
+
 import {
   CalendarClock,
+  CheckCircle2,
+  Eye,
   MonitorCog,
   Pencil,
+  Play,
   Plus,
   Search,
   Trash2,
@@ -18,6 +24,7 @@ import BasePagination from '@/components/pagination/BasePagination.vue';
 import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTable from '@/components/tables/BaseTable.vue';
 import BaseToast from '@/components/toasts/BaseToast.vue';
+import MantenimientoFinalizeModal from '@/components/mantenimiento/MantenimientoFinalizeModal.vue';
 import { useMantenimiento } from '@/composables/mantenimiento/useMantenimiento';
 
 const columns = [
@@ -25,6 +32,7 @@ const columns = [
   { key: 'equipo', label: 'Equipo' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'tipo', label: 'Tipo de mantenimiento' },
+  { key: 'incidencia', label: 'Origen' },
   { key: 'tecnico', label: 'Técnico responsable' },
   { key: 'estado', label: 'Estado' },
   { key: 'acciones', label: 'Acciones', class: 'text-right' },
@@ -34,23 +42,40 @@ const {
   mantenimientos,
   loading,
   saving,
+  finalizing,
   modalOpen,
+  finalizeModalOpen,
+  detailOpen,
   deleteModalOpen,
   pendingDelete,
   form,
+  finalizeForm,
   formErrors,
+  finalizeErrors,
+  finalizingTicket,
+  selectedTicket,
   filters,
   pagination,
   stats,
   toast,
   isEditing,
   canDelete,
+  canCreate,
+  canEdit,
   tipoOptions,
   estadoOptions,
+  estadoEdicionOptions,
   equipoSelectOptions,
   tecnicoSelectOptions,
+  resultadoFinalOptions,
   openCreate,
   openEdit,
+  openFinalize,
+  closeFinalize,
+  startMaintenance,
+  finalizeMaintenance,
+  openDetail,
+  closeDetail,
   closeModal,
   submit,
   askDelete,
@@ -62,25 +87,45 @@ const {
   closeToast,
 } = useMantenimiento();
 
+const route = useRoute();
+
+watch(
+  mantenimientos,
+  (tickets) => {
+    const ticketId = Number(route.query.ticket_id);
+    if (!ticketId || detailOpen.value) return;
+    const ticket = tickets.find((item) => item.id === ticketId);
+    if (ticket) openDetail(ticket);
+  },
+  { immediate: true },
+);
+
 const estadoClasses = {
   pendiente: 'bg-slate-100 text-slate-600',
-  en_proceso: 'bg-success-50 text-success-700',
-  resuelto: 'bg-primary-50 text-primary-700',
+  en_proceso: 'bg-warning-50 text-warning-700',
+  resuelto: 'bg-success-50 text-success-700',
   cancelado: 'bg-danger-50 text-danger-700',
 };
 
 const estadoDotClasses = {
   pendiente: 'bg-slate-400',
-  en_proceso: 'bg-success-500',
-  resuelto: 'bg-primary-500',
+  en_proceso: 'bg-warning-500',
+  resuelto: 'bg-success-500',
   cancelado: 'bg-danger-500',
 };
 
 const estadoLabels = {
   pendiente: 'Pendiente',
-  en_proceso: 'En mantenimiento',
-  resuelto: 'Terminado',
-  cancelado: 'Fuera de servicio',
+  en_proceso: 'En atención',
+  resuelto: 'Finalizado',
+  cancelado: 'Cancelado',
+};
+
+const resultadoLabels = {
+  en_uso: 'Funcional / en uso',
+  en_mantenimiento: 'En mantenimiento',
+  dañado: 'Dañado',
+  de_baja: 'De baja',
 };
 
 const tipoClasses = {
@@ -105,7 +150,7 @@ const formatFecha = (fecha) => {
           Registra y da seguimiento a los tickets de mantenimiento preventivo y correctivo de los equipos.
         </p>
       </div>
-      <BaseButton variant="accent" :full-width="false" @click="openCreate">
+      <BaseButton v-if="canCreate" variant="accent" :full-width="false" @click="openCreate">
         <template #icon><Plus :size="18" /></template>
         Agregar
       </BaseButton>
@@ -118,7 +163,7 @@ const formatFecha = (fecha) => {
       <StatCard label="Dispositivos" :value="stats.total_dispositivos" tone="violet" helper="Equipos registrados">
         <template #icon><MonitorCog :size="20" /></template>
       </StatCard>
-      <StatCard label="En mantenimiento" :value="stats.en_proceso" tone="emerald" helper="Tickets en curso">
+      <StatCard label="En atención" :value="stats.en_proceso" tone="emerald" helper="Tickets en curso">
         <template #icon><CalendarClock :size="20" /></template>
       </StatCard>
       <StatCard label="Pendientes" :value="stats.pendientes" tone="amber" helper="Por atender">
@@ -178,6 +223,10 @@ const formatFecha = (fecha) => {
           {{ item.tipo_mantenimiento_display }}
         </span>
       </template>
+      <template #cell-incidencia="{ item }">
+        <span v-if="item.incidencia_origen_id" class="font-mono text-xs font-semibold text-warning-700">INC-{{ item.incidencia_origen_id }}</span>
+        <span v-else class="text-xs text-slate-400">Preventivo / directo</span>
+      </template>
       <template #cell-tecnico="{ item }">
         <span class="text-sm text-slate-700">{{ item.tecnico_responsable }}</span>
       </template>
@@ -191,8 +240,44 @@ const formatFecha = (fecha) => {
         </span>
       </template>
       <template #cell-acciones="{ item }">
-        <div class="flex justify-end gap-1">
-          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar mantenimiento" @click="openEdit(item)">
+        <div class="flex flex-wrap justify-end gap-1.5">
+          <BaseButton
+            v-if="canEdit && item.estado === 'pendiente'"
+            variant="secondary"
+            size="sm"
+            :full-width="false"
+            @click="startMaintenance(item)"
+          >
+            <template #icon><Play :size="14" aria-hidden="true" /></template>
+            Iniciar atención
+          </BaseButton>
+          <BaseButton
+            v-if="canEdit && item.estado === 'en_proceso'"
+            variant="accent"
+            size="sm"
+            :full-width="false"
+            @click="openFinalize(item)"
+          >
+            <template #icon><CheckCircle2 :size="14" aria-hidden="true" /></template>
+            Finalizar mantenimiento
+          </BaseButton>
+          <BaseButton
+            v-if="['resuelto', 'cancelado'].includes(item.estado)"
+            variant="ghost"
+            size="sm"
+            :full-width="false"
+            @click="openDetail(item)"
+          >
+            <template #icon><Eye :size="14" aria-hidden="true" /></template>
+            Ver detalle
+          </BaseButton>
+          <button
+            v-if="canEdit && ['pendiente', 'en_proceso'].includes(item.estado)"
+            type="button"
+            class="grid size-9 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-primary-50 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            aria-label="Editar datos del mantenimiento"
+            @click="openEdit(item)"
+          >
             <Pencil :size="17" />
           </button>
           <button
@@ -233,6 +318,9 @@ const formatFecha = (fecha) => {
             :error="formErrors.equipo_id"
           />
         </div>
+        <div v-if="isEditing && form.incidencia_id" class="sm:col-span-2 rounded-xl border border-warning-100 bg-warning-50 px-3 py-2 text-xs text-warning-800">
+          Orden correctiva derivada de la incidencia <strong>INC-{{ form.incidencia_id }}</strong>.
+        </div>
         <BaseInput id="mant-fecha" v-model="form.fecha" type="date" appearance="light" label="Fecha" :error="formErrors.fecha" />
         <BaseSelect
           id="mant-tecnico"
@@ -248,11 +336,11 @@ const formatFecha = (fecha) => {
           :options="tipoOptions"
           :error="formErrors.tipo_mantenimiento"
         />
-        <BaseSelect
+        <BaseSelect v-if="isEditing"
           id="mant-estado-form"
           v-model="form.estado"
           label="Estado"
-          :options="estadoOptions"
+          :options="estadoEdicionOptions"
           :error="formErrors.estado"
         />
         <div class="sm:col-span-2">
@@ -273,6 +361,70 @@ const formatFecha = (fecha) => {
           {{ isEditing ? 'Guardar cambios' : 'Crear ticket' }}
         </BaseButton>
       </template>
+    </BaseModal>
+
+    <MantenimientoFinalizeModal
+      :open="finalizeModalOpen"
+      :ticket="finalizingTicket"
+      :form="finalizeForm"
+      :errors="finalizeErrors"
+      :saving="finalizing"
+      :resultado-options="resultadoFinalOptions"
+      @close="closeFinalize"
+      @submit="finalizeMaintenance"
+    />
+
+    <BaseModal
+      :open="detailOpen"
+      :title="selectedTicket ? `Mantenimiento #${selectedTicket.id}` : 'Detalle de mantenimiento'"
+      description="Consulta el resultado y la trazabilidad de la orden."
+      size="lg"
+      @close="closeDetail"
+    >
+      <div v-if="selectedTicket" class="grid gap-5">
+        <section class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-2">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Equipo</p>
+            <p class="mt-1 text-sm font-bold text-slate-900">{{ selectedTicket.equipo?.codigo || '—' }}</p>
+            <p class="text-xs text-slate-500">{{ selectedTicket.equipo?.marca }} {{ selectedTicket.equipo?.modelo }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Estado</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ estadoLabels[selectedTicket.estado] ?? selectedTicket.estado_display }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Tipo</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ selectedTicket.tipo_mantenimiento_display }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Resultado del equipo</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ resultadoLabels[selectedTicket.resultado_equipo] || 'Pendiente de resultado' }}</p>
+          </div>
+          <div v-if="selectedTicket.incidencia_origen_id" class="sm:col-span-2">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Incidencia relacionada</p>
+            <p class="mt-1 text-sm font-semibold text-warning-700">INC-{{ selectedTicket.incidencia_origen_id }}</p>
+          </div>
+        </section>
+        <section class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Diagnóstico</p>
+            <p class="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700">{{ selectedTicket.diagnostico || 'No registrado' }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Trabajo realizado</p>
+            <p class="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700">{{ selectedTicket.trabajo_realizado || 'No registrado' }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Prueba de funcionamiento</p>
+            <p class="mt-1 text-sm text-slate-700">{{ selectedTicket.prueba_realizada ? 'Realizada' : 'No registrada' }}</p>
+            <p v-if="selectedTicket.observacion_prueba" class="mt-1 whitespace-pre-line text-xs text-slate-500">{{ selectedTicket.observacion_prueba }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Técnico responsable</p>
+            <p class="mt-1 text-sm text-slate-700">{{ selectedTicket.tecnico_responsable || 'Sin asignar' }}</p>
+          </div>
+        </section>
+      </div>
     </BaseModal>
 
     <BaseModal :open="deleteModalOpen" title="Eliminar mantenimiento" size="sm" @close="cancelDelete">

@@ -121,6 +121,15 @@ describe('mapa por locales', () => {
     expect(state.selectedBuildingId.value).toBe(7);
   });
 
+  it('conserva el piso al abrir directamente un enlace profundo del mapa', async () => {
+    const { state, router } = await createCampus({ path: '/espacios/mapa?ciudad=Hu%C3%A1nuco&local=1&pabellon=1&piso=2' });
+    expect(state.selectedCity.value).toBe('Huánuco');
+    expect(state.selectedLocalId.value).toBe(1);
+    expect(state.selectedBuildingId.value).toBe(1);
+    expect(state.activeFloor.value?.key).toBe('2');
+    expect(router.currentRoute.value.query.piso).toBe('2');
+  });
+
   it('corrige una pareja local/pabellón incoherente sin mostrar otro local', async () => {
     const { state, router } = await createCampus({ path: '/espacios/mapa?local=1&pabellon=9' });
     expect(state.edificioActivo.value).toBeNull();

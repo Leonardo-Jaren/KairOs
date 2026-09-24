@@ -99,6 +99,7 @@ El Dashboard consolida la telemetría en tiempo real de todo el parque tecnológ
    - **Equipos registrados:** Muestra el total de computadoras y dispositivos junto con el porcentaje de operatividad inmediata.
    - **Espacios activos:** Laboratorios, talleres y salas de cómputo habilitadas para docencia.
    - **Mantenimientos abiertos:** Número de órdenes de servicio en estado pendiente y en curso.
+   - **Incidencias abiertas:** Reportes de fallas pendientes o en proceso que requieren triage.
    - **Usuarios del sistema:** Cuentas registradas clasificadas por técnicos y docentes activos.
 2. **[Recuadro 2] Salud del Inventario de Hardware:** Gráfica interactiva de barras segmentadas que desglosa los dispositivos según su condición (En uso, En mantenimiento, Dañados o De baja).
 3. **[Recuadro 3] Mesa de Soporte y Flujo de Trabajo:** Muestra la tasa de resolución porcentual, órdenes pendientes y tiempo promedio de atención técnica.
@@ -183,7 +184,8 @@ Este visualizador gráfico permite auditar la infraestructura distribuida en dif
    - Número de serie y Dirección MAC.
    - Direcciones de red IPv4 / IPv6 asignadas.
    - Acceso a software instalado y herramientas técnicas de soporte.
-4. **[Paso 4] Botón "Registrar falla":** Permite al personal reportar de forma inmediata una avería sobre la terminal seleccionada sin salir del plano interactivo.
+4. **[Paso 4] Botón "Registrar falla":** Crea una incidencia pendiente sobre la terminal seleccionada sin salir del plano interactivo. Si el personal operativo elige atención inmediata, el sistema crea después un mantenimiento correctivo relacionado; el reporte y la orden siguen siendo registros separados.
+5. **[Paso 5] Historial de la máquina:** La ficha muestra incidencias abiertas, mantenimientos en curso y el historial de intervenciones.
 
 
 ---
@@ -264,9 +266,11 @@ Este visualizador gráfico permite auditar la infraestructura distribuida en dif
 
 #### Flujo de Atención de Mantenimientos:
 1. **[Paso 1] Buscador de Tickets:** Localice órdenes por código de equipo afectado, técnico asignado o palabras clave del diagnóstico.
-2. **[Paso 2] Filtro por Tipo y Estado:** Conmute entre mantenimiento **Preventivo** (limpieza periódica, calibración) y **Correctivo** (reparación de averías). Filtre por tickets `Pendientes`, `En Proceso` o `Resueltos`.
-3. **[Paso 3] Botón "+ Agregar orden":** Abre el formulario para registrar un nuevo ticket, seleccionando el equipo dañado, describiendo la falla y asignando a uno o más técnicos.
-4. **[Paso 4] Grilla de Seguimiento:** Muestra la fecha de emisión, técnico a cargo y menú para transicionar el estado del ticket hasta su resolución satisfactoria.
+2. **[Paso 2] Filtro por Tipo y Estado:** Conmute entre mantenimiento **Preventivo** (limpieza periódica, calibración) y **Correctivo** (reparación de averías). Filtre por tickets `Pendientes`, `En atención`, `Finalizados` o `Cancelados`.
+3. **[Paso 3] Botón "+ Agregar orden":** Abre el formulario para registrar un ticket, seleccionando el equipo, el tipo y, si es correctivo, la incidencia de origen.
+4. **[Paso 4] Iniciar atención:** En una orden pendiente pulse **Iniciar atención** cuando el técnico comience a trabajar.
+5. **[Paso 5] Finalizar mantenimiento:** Pulse **Finalizar mantenimiento** en una orden en atención. Registre diagnóstico, trabajo realizado, confirme la prueba de funcionamiento y seleccione el resultado (`Funcional / en uso`, `Dañado` o `De baja`).
+6. **[Paso 6] Resultado:** Si el correctivo deja el equipo funcional, KairOs cierra automáticamente la incidencia relacionada. Si queda dañado, la incidencia permanece abierta y muestra **Crear otra intervención**.
 
 ---
 
@@ -274,10 +278,12 @@ Este visualizador gráfico permite auditar la infraestructura distribuida en dif
 
 ![Reportes de Incidencias](capturas/16_incidencias_reportes.png)
 
-1. **[Paso 1] Buscador de Incidencias:** Encuentre reportes ingresando la descripción de la falla o el espacio donde ocurrió.
-2. **[Paso 2] Filtros Multicriterio:** Clasifique por naturaleza de la falla (`Hardware` vs. `Software`) y por estado (`Pendiente`, `En proceso`, `Resuelto`).
-3. **[Paso 3] Botón "+ Reportar":** Permite a docentes y técnicos notificar una avería en una terminal en menos de un minuto.
-4. **[Paso 4] Listado de Averías:** Provee el nombre del usuario reportante, fecha del incidente, detalle técnico y herramientas para derivar a mantenimiento correctivo.
+1. **[Paso 1] Buscador de Incidencias:** Encuentre reportes por descripción, equipo, espacio o técnico asignado.
+2. **[Paso 2] Filtros Multicriterio:** Clasifique por prioridad (`Baja`, `Media`, `Alta`, `Crítica`), naturaleza (`Hardware`/`Software`) y estado (`Pendiente`, `En proceso`, `Resuelto`, `Cerrado`, `Cancelado`, `Duplicado`).
+3. **[Paso 3] Botón "+ Reportar":** Docentes y usuarios registran la falla sin elegir estado; el reporte inicia en `Pendiente`.
+4. **[Paso 4] Panel de triage:** El personal operativo pulsa **Atender incidencia**, asigna técnico y puede crear un mantenimiento correctivo relacionado.
+5. **[Paso 5] Progreso:** El detalle muestra Reportada, En atención, Mantenimiento, Equipo verificado y Cerrada, además de las órdenes relacionadas.
+6. **[Paso 6] Resultado:** Un correctivo funcional cierra la incidencia automáticamente. Si el equipo queda dañado, el reporte permanece abierto para crear otra orden; si el problema reaparece después del cierre, se registra una nueva incidencia.
 
 ---
 

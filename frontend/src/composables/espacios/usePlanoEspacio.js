@@ -1,9 +1,9 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import equiposService from '@/services/equipos.service';
+import incidenciasService from '@/services/incidencias.service';
 import espaciosService from '@/services/espacios.service';
 import mantenimientoService from '@/services/mantenimiento.service';
-import usuariosService from '@/services/usuarios.service';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 import { isValidIpv4, isValidIpv6 } from '@/utils/ip-validation';
@@ -15,7 +15,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyReport = () => ({
   descripcion: '',
   tecnico_id: '',
-  reportado_por_id: '',
   atencion: 'en_proceso',
 });
 
@@ -40,6 +39,7 @@ export function usePlanoEspacio(
   id,
   spaceService = espaciosService,
   maintenanceService = mantenimientoService,
+  incidentService = incidenciasService,
 ) {
   const authStore = useAuthStore();
   const espacio = ref(null);
@@ -63,16 +63,21 @@ export function usePlanoEspacio(
   const equipmentErrors = reactive({});
   const activeMaintenances = ref([]);
   const maintenanceLoading = ref(false);
+  const activeIncidencias = ref([]);
+  const incidenciaLoading = ref(false);
   const reportOpen = ref(false);
   const reportSaving = ref(false);
   const reportForm = reactive(emptyReport());
   const reportErrors = reactive({});
   const technicians = ref([]);
-  const users = ref([]);
   const toast = reactive({ show: false, message: '', type: 'success' });
 
   const equipos = computed(() => espacio.value?.equipos ?? []);
-  const canEdit = computed(() => authStore.user?.rol === 'admin');
+  const canEdit = computed(() => (
+    authStore.hasPermission('espacios', 'editar')
+    && authStore.hasPermission('equipos', 'editar')
+  ));
+  const canReport = computed(() => authStore.hasPermission('incidencias', 'crear'));
   const isEditingEquipment = computed(() => Boolean(editingEquipment.value));
   const selectedPosition = computed(() => (
     positions.value.find((item) => item.equipo_id === selectedPositionId.value) ?? null
@@ -123,10 +128,6 @@ export function usePlanoEspacio(
   const technicianOptions = computed(() => technicians.value.map((technician) => ({
     value: technician.id,
     label: `${technician.nombre_completo} · ${technician.area}`,
-  })));
-  const reporterOptions = computed(() => users.value.map((user) => ({
-    value: user.id,
-    label: `${user.nombre} ${user.apellido} · ${user.correo}`,
   })));
 
   const equipmentTypeOptions = [
@@ -247,15 +248,6 @@ export function usePlanoEspacio(
     }
   };
 
-  const loadUsers = async () => {
-    try {
-      const data = await usuariosService.listar({ activo: true, page_size: 100 });
-      users.value = data.results ?? data;
-    } catch {
-      users.value = [];
-    }
-  };
-
   const loadEquipmentMaintenance = async (equipmentId) => {
     maintenanceLoading.value = true;
     activeMaintenances.value = [];
@@ -272,10 +264,29 @@ export function usePlanoEspacio(
     }
   };
 
+  const loadEquipmentIncidencias = async (equipmentId) => {
+    incidenciaLoading.value = true;
+    activeIncidencias.value = [];
+    try {
+      const data = await incidentService.listar({ equipo_id: equipmentId, page_size: 20 });
+      const records = data.results ?? data;
+      activeIncidencias.value = records.filter((record) => (
+        !['cerrado', 'cancelado', 'duplicado'].includes(record.estado)
+      ));
+    } catch {
+      activeIncidencias.value = [];
+    } finally {
+      incidenciaLoading.value = false;
+    }
+  };
+
   const selectEquipment = (equipment) => {
     selectedEquipo.value = equipment;
     equipmentDetailOpen.value = false;
-    if (equipment) loadEquipmentMaintenance(equipment.id);
+    if (equipment) {
+      loadEquipmentMaintenance(equipment.id);
+      loadEquipmentIncidencias(equipment.id);
+    }
   };
 
   const manageSelectedEquipment = () => {
@@ -411,7 +422,6 @@ export function usePlanoEspacio(
     if (!equipment) return;
     selectedEquipo.value = equipment;
     Object.assign(reportForm, emptyReport());
-    reportForm.reportado_por_id = authStore.user?.id ?? '';
     const currentTechnician = technicians.value.find((technician) => (
       technician.usuario_id === authStore.user?.id
     ));
@@ -440,15 +450,20 @@ export function usePlanoEspacio(
     const equipmentId = selectedEquipo.value.id;
     const attentionMode = reportForm.atencion;
     try {
-      await maintenanceService.crear({
-        equipo_id: equipmentId,
-        fecha: today(),
-        tipo_mantenimiento: 'correctivo',
-        estado: reportForm.atencion,
+      const incidencia = await incidentService.crear({
+        espacio: Number(id),
+        equipo: equipmentId,
+        tipo_incidencia: 'hardware',
+        prioridad: 'media',
         descripcion: reportForm.descripcion.trim(),
-        reportado_por_id: reportForm.reportado_por_id ? Number(reportForm.reportado_por_id) : null,
-        tecnicos_ids: reportForm.tecnico_id ? [Number(reportForm.tecnico_id)] : [],
       });
+
+      if (reportForm.atencion === 'en_proceso') {
+        await incidentService.crearMantenimiento(incidencia.id, {
+          descripcion: reportForm.descripcion.trim(),
+          tecnicos_ids: reportForm.tecnico_id ? [Number(reportForm.tecnico_id)] : [],
+        });
+      }
 
       if (reportForm.atencion === 'en_proceso') {
         espacio.value.equipos = equipos.value.map((equipment) => (
@@ -465,6 +480,7 @@ export function usePlanoEspacio(
 
       closeReport();
       await loadEquipmentMaintenance(equipmentId);
+      await loadEquipmentIncidencias(equipmentId);
       showToast(
         attentionMode === 'en_proceso'
           ? 'Falla registrada y equipo enviado a mantenimiento.'
@@ -595,7 +611,7 @@ export function usePlanoEspacio(
     toast.show = false;
   };
 
-  onMounted(() => Promise.all([loadSpace(), loadTechnicians(), loadUsers()]));
+  onMounted(() => Promise.all([loadSpace(), loadTechnicians()]));
 
   return {
     espacio,
@@ -605,6 +621,7 @@ export function usePlanoEspacio(
     error,
     editing,
     canEdit,
+    canReport,
     columns,
     rows,
     cells,
@@ -624,12 +641,13 @@ export function usePlanoEspacio(
     isEditingEquipment,
     activeMaintenances,
     maintenanceLoading,
+    activeIncidencias,
+    incidenciaLoading,
     reportOpen,
     reportSaving,
     reportForm,
     reportErrors,
     technicianOptions,
-    reporterOptions,
     equipmentTypeOptions,
     acquisitionModeOptions,
     equipmentStatusOptions,

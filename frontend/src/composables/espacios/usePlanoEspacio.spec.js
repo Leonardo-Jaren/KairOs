@@ -39,7 +39,12 @@ const createServices = () => {
     listar: vi.fn().mockResolvedValue({ results: [] }),
     crear: vi.fn().mockResolvedValue({ id: 10 }),
   };
-  return { spaceService, maintenanceService };
+  const incidentService = {
+    listar: vi.fn().mockResolvedValue({ results: [] }),
+    crear: vi.fn().mockResolvedValue({ id: 15 }),
+    crearMantenimiento: vi.fn().mockResolvedValue({ id: 10 }),
+  };
+  return { spaceService, maintenanceService, incidentService };
 };
 
 const mountComposable = (services, role = 'admin') => {
@@ -49,7 +54,12 @@ const mountComposable = (services, role = 'admin') => {
   useAuthStore().user = { id: 99, nombre: 'Ada', rol: role };
   mount(defineComponent({
     setup() {
-      state = usePlanoEspacio(1, services.spaceService, services.maintenanceService);
+      state = usePlanoEspacio(
+        1,
+        services.spaceService,
+        services.maintenanceService,
+        services.incidentService,
+      );
       return () => h('div');
     },
   }), { global: { plugins: [pinia] } });
@@ -128,11 +138,14 @@ describe('usePlanoEspacio', () => {
 
     await state.submitReport();
 
-    expect(services.maintenanceService.crear).toHaveBeenCalledWith(expect.objectContaining({
-      equipo_id: 1,
-      tipo_mantenimiento: 'correctivo',
-      estado: 'en_proceso',
-      reportado_por_id: 99,
+    expect(services.incidentService.crear).toHaveBeenCalledWith(expect.objectContaining({
+      espacio: 1,
+      equipo: 1,
+      tipo_incidencia: 'hardware',
+      prioridad: 'media',
+    }));
+    expect(services.incidentService.crearMantenimiento).toHaveBeenCalledWith(15, expect.objectContaining({
+      tecnicos_ids: [],
     }));
     expect(state.equipos.value[0].estado).toBe('en_mantenimiento');
   });

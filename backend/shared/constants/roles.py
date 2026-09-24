@@ -67,7 +67,7 @@ ROL_PERMISOS_BASE = {
         'espacios': {'ver': False, 'crear': False, 'editar': False, 'eliminar': False},
         'equipos': {'ver': False, 'crear': False, 'editar': False, 'eliminar': False},
         'mantenimiento': {'ver': False, 'crear': False, 'editar': False, 'eliminar': False},
-        'incidencias': {'ver': True, 'crear': True, 'editar': True, 'eliminar': False},
+        'incidencias': {'ver': True, 'crear': True, 'editar': False, 'eliminar': False},
         'software': {'ver': True, 'crear': False, 'editar': False, 'eliminar': False},
         'usuarios': {'ver': False, 'crear': False, 'editar': False, 'eliminar': False},
         'auditoria': {'ver': False, 'crear': False, 'editar': False, 'eliminar': False},

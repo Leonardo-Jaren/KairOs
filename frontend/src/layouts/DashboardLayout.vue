@@ -39,8 +39,8 @@ const initials = computed(() => {
 const menuItems = computed(() => [
   { name: 'Dashboard', path: '/dashboard', icon: Gauge },
   { name: 'Usuarios', path: '/usuarios', icon: UsersRound, modulo: 'usuarios' },
-  { name: 'Campus', path: '/espacios/mapa', icon: MapPinned, modulo: 'espacios' },
   { name: 'Espacios', path: '/espacios', icon: Building2, modulo: 'espacios' },
+  { name: 'Croquis', path: '/espacios/mapa', icon: MapPinned, modulo: 'espacios' },
   { name: 'Usuarios por espacio', path: '/espacios/usuarios', icon: UserRoundCog, modulo: 'espacios' },
   { name: 'Equipos', path: '/equipos', icon: MonitorCog, modulo: 'equipos' },
   { name: 'Componentes', path: '/componentes', icon: Boxes, modulo: 'equipos' },

@@ -44,10 +44,11 @@ export function useCampusTerritorio({
   showToast,
 }) {
   const authStore = useAuthStore();
-  const selectedCity = ref('');
-  const selectedCampusType = ref('');
-  const selectedLocalId = ref('');
-  const selectedBuildingId = ref('');
+  const initialQuery = navigation.route?.query ?? {};
+  const selectedCity = ref(initialQuery.ciudad ? String(initialQuery.ciudad) : '');
+  const selectedCampusType = ref(initialQuery.tipo ? String(initialQuery.tipo) : '');
+  const selectedLocalId = ref(initialQuery.local ? (Number(initialQuery.local) || String(initialQuery.local)) : '');
+  const selectedBuildingId = ref(initialQuery.pabellon ? (Number(initialQuery.pabellon) || String(initialQuery.pabellon)) : '');
   let ready = false;
   let latestWrittenQuery = '';
   let navigationPending = Promise.resolve();
@@ -186,10 +187,8 @@ export function useCampusTerritorio({
     if (!ready || !navigation.router) return;
     const previous = navigation.route?.query ?? {};
     const query = { ...previous };
-    const locationChanged = !sameId(previous.ciudad, selectedCity.value)
-      || !sameId(previous.tipo, selectedCampusType.value)
-      || !sameId(previous.local, selectedLocalId.value)
-      || !sameId(previous.pabellon, selectedBuildingId.value);
+    const locationChanged = Boolean(previous.local && !sameId(previous.local, selectedLocalId.value))
+      || Boolean(previous.pabellon && !sameId(previous.pabellon, selectedBuildingId.value));
     for (const [key, value] of Object.entries({
       ciudad: selectedCity.value,
       tipo: selectedCampusType.value,
@@ -317,9 +316,18 @@ export function useCampusTerritorio({
 
   if (navigation.route) {
     watch(() => navigation.route.query, (query) => {
-      if (!ready) return;
+      if (!ready) {
+        selectedCity.value = query?.ciudad ? String(query.ciudad) : '';
+        selectedCampusType.value = query?.tipo ? String(query.tipo) : '';
+        selectedLocalId.value = query?.local ? (Number(query.local) || String(query.local)) : '';
+        selectedBuildingId.value = query?.pabellon ? (Number(query.pabellon) || String(query.pabellon)) : '';
+        return;
+      }
       const signature = querySignature(query);
-      if (latestWrittenQuery && signature !== latestWrittenQuery) return;
+      if (latestWrittenQuery && signature === latestWrittenQuery) {
+        latestWrittenQuery = '';
+        return;
+      }
       applySelection(query);
     });
   }

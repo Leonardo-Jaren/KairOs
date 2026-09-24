@@ -33,6 +33,7 @@ class EspacioViewSet(BaseViewSet):
         edificio_id = self.parse_integer_query(
             request.query_params.get('edificio_id') or edificio_param
         )
+        local_id = self.parse_integer_query(request.query_params.get('local_id') or request.query_params.get('sede_id'))
         queryset = self.service.listar(
             busqueda=request.query_params.get('search', ''),
             tipo=request.query_params.get('tipo', ''),
@@ -40,6 +41,8 @@ class EspacioViewSet(BaseViewSet):
             pabellon=request.query_params.get('pabellon', ''),
             edificio='' if edificio_id is not None else edificio_param,
             edificio_id=edificio_id,
+            local_id=local_id,
+            piso=request.query_params.get('piso', ''),
         )
         return self.get_collection_response(queryset)
 

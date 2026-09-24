@@ -105,6 +105,49 @@ class UsuarioRepository(BaseRepository):
             ).distinct()
 
         usuarios = list(queryset)
+        user_ids = [u.id for u in usuarios]
+
+        # Carga en lote optimizada de asignaciones territoriales activas (O(1) queries)
+        asignaciones_por_usuario: dict[int, list[dict]] = {u_id: [] for u_id in user_ids}
+        if user_ids:
+            from espacios.models import EspacioUsuario
+
+            asig_qs = (
+                EspacioUsuario.objects.filter(
+                    usuario_id__in=user_ids,
+                    activo=True,
+                    is_deleted=False,
+                )
+                .select_related('local', 'edificio', 'espacio', 'espacio__edificio')
+                .order_by('ambito', 'edificio__nombre', 'piso', 'espacio__codigo_espacio')
+            )
+            if local_id:
+                asig_qs = asig_qs.filter(
+                    Q(local_id=local_id) |
+                    Q(edificio__local_id=local_id) |
+                    Q(espacio__edificio__local_id=local_id)
+                )
+            elif sede_ids:
+                asig_qs = asig_qs.filter(
+                    Q(local_id__in=sede_ids) |
+                    Q(edificio__local_id__in=sede_ids) |
+                    Q(espacio__edificio__local_id__in=sede_ids)
+                )
+
+            for asig in asig_qs:
+                badge = asig.badge_texto
+                asignaciones_por_usuario[asig.usuario_id].append({
+                    'id': asig.id,
+                    'ambito': asig.ambito,
+                    'tipo_responsabilidad': asig.tipo_responsabilidad,
+                    'badge': badge,
+                    'badge_texto': badge,
+                    'nombre_ambito': asig.nombre_ambito,
+                    'local_id': asig.local_id,
+                    'edificio_id': asig.edificio_id,
+                    'piso': asig.piso,
+                    'espacio_id': asig.espacio_id,
+                })
 
         nodes_by_id = {}
         for u in usuarios:
@@ -135,6 +178,7 @@ class UsuarioRepository(BaseRepository):
                     if u.rol != 'docente' and u.supervisor else None
                 ),
                 'sedes': sedes_data,
+                'asignaciones_territoriales': asignaciones_por_usuario.get(u.id, []),
                 'subordinados_count': 0,
                 'children': [],
             }
