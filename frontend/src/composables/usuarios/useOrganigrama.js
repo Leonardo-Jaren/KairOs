@@ -325,6 +325,29 @@ export function useOrganigrama(
     }
   };
 
+  // Busqueda recursiva de nodo por ID en el arbol jerarquico
+  const findNodeById = (nodeId, nodes = rawArbol.value) => {
+    if (!nodeId || !Array.isArray(nodes)) return null;
+    for (const node of nodes) {
+      if (node.id === nodeId) return node;
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        const found = findNodeById(nodeId, node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Extractor seguro de asignaciones territoriales
+  const getTerritorialBadges = (node) => {
+    return Array.isArray(node?.asignaciones_territoriales) ? node.asignaciones_territoriales : [];
+  };
+
+  // Verificador de existencia de asignaciones territoriales
+  const hasTerritorialAssignments = (node) => {
+    return getTerritorialBadges(node).length > 0;
+  };
+
   // Asignacion reactiva de supervisor directo
   const assignSupervisor = async (usuarioId, supervisorId) => {
     if (!usuarioId || !supervisorId) return false;
@@ -334,6 +357,13 @@ export function useOrganigrama(
     try {
       await userManagementService.actualizar(usuarioId, { supervisor_id: supervisorId });
       await loadOrganigrama();
+      // Resincronizar usuario activo en drawer si coincide
+      if (selectedUser.value && selectedUser.value.id === usuarioId) {
+        const refreshed = findNodeById(usuarioId);
+        if (refreshed) {
+          selectedUser.value = refreshed;
+        }
+      }
       return true;
     } catch (err) {
       error.value = getApiErrorMessage(err, 'No se pudo asignar el supervisor.');
@@ -392,6 +422,9 @@ export function useOrganigrama(
     setDockTab,
     toggleDock,
     assignSupervisor,
+    findNodeById,
+    getTerritorialBadges,
+    hasTerritorialAssignments,
     zoom,
     pan,
     isDragging,

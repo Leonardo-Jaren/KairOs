@@ -1,11 +1,19 @@
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.request import Request
 from rest_framework.response import Response
+from django.utils import timezone
 
 from incidencias.permissions import CanManageIncidencia
-from incidencias.serializers import IncidenciaCreateUpdateSerializer, IncidenciaSerializer
+from incidencias.serializers import (
+    IncidenciaCreateSerializer,
+    IncidenciaSerializer,
+    IncidenciaUpdateSerializer,
+)
 from incidencias.services import IncidenciaService
+from mantenimiento.serializers import MantenimientoCreateUpdateSerializer, MantenimientoSerializer
+from mantenimiento.services import MantenimientoService
 from shared.base import BaseViewSet
 
 
@@ -18,8 +26,10 @@ class IncidenciaViewSet(BaseViewSet):
 
     def get_serializer_class(self):
         """Selecciona serializers separados para lectura y escritura."""
-        if self.action in ['create', 'update', 'partial_update']:
-            return IncidenciaCreateUpdateSerializer
+        if self.action == 'create':
+            return IncidenciaCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            return IncidenciaUpdateSerializer
         return IncidenciaSerializer
 
     def list(self, request: Request, *args, **kwargs) -> Response:
@@ -33,6 +43,8 @@ class IncidenciaViewSet(BaseViewSet):
             equipo_id=self.parse_integer_query(request.query_params.get('equipo_id')),
             tipo_incidencia=request.query_params.get('tipo_incidencia', ''),
             estado=request.query_params.get('estado', ''),
+            prioridad=request.query_params.get('prioridad', ''),
+            asignado_a_id=self.parse_integer_query(request.query_params.get('asignado_a_id')),
             actor=request.user,
         )
         return self.get_collection_response(queryset)
@@ -52,7 +64,7 @@ class IncidenciaViewSet(BaseViewSet):
     def update(self, request: Request, *args, **kwargs) -> Response:
         """Actualiza total o parcialmente una incidencia existente."""
         partial = kwargs.pop('partial', False)
-        instance = self.service.get_by_id(kwargs['pk'])
+        instance = self.service.get_visible_by_id(kwargs['pk'], actor=request.user)
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         updated = self.service.update(kwargs['pk'], serializer.validated_data, actor=request.user)
@@ -60,6 +72,7 @@ class IncidenciaViewSet(BaseViewSet):
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
         """Elimina logicamente una incidencia."""
+        self.service.get_visible_by_id(kwargs['pk'], actor=request.user)
         self.service.delete(kwargs['pk'], actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -76,7 +89,7 @@ class IncidenciaViewSet(BaseViewSet):
         reportar incidencias pero no tiene acceso de lectura al modulo de
         espacios.
         """
-        return Response(self.service.get_espacios_opciones())
+        return Response(self.service.get_espacios_opciones(actor=request.user))
 
     @action(detail=False, methods=['get'], url_path='equipos-opciones')
     def equipos_opciones(self, request: Request) -> Response:
@@ -87,5 +100,36 @@ class IncidenciaViewSet(BaseViewSet):
         de equipos.
         """
         return Response(self.service.get_equipos_opciones(
-            espacio_id=self.parse_integer_query(request.query_params.get('espacio_id'))
+            espacio_id=self.parse_integer_query(request.query_params.get('espacio_id')),
+            actor=request.user,
         ))
+
+    @action(detail=False, methods=['get'], url_path='tecnicos-disponibles')
+    def tecnicos_disponibles(self, request: Request) -> Response:
+        """Entrega tecnicos activos para el panel de triage."""
+        if not self.service.puede_operar(request.user):
+            raise PermissionDenied('Solo el personal operativo puede asignar técnicos.')
+        return Response(self.service.get_tecnicos_disponibles())
+
+    @action(detail=True, methods=['get'], url_path='mantenimientos')
+    def mantenimientos(self, request: Request, pk=None) -> Response:
+        """Lista órdenes asociadas a una incidencia visible."""
+        tickets = self.service.get_mantenimientos(pk, actor=request.user)
+        return Response(MantenimientoSerializer(tickets, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='crear-mantenimiento')
+    def crear_mantenimiento(self, request: Request, pk=None) -> Response:
+        """Crea una orden correctiva vinculada a la incidencia."""
+        if not self.service.puede_operar(request.user):
+            raise PermissionDenied('Solo el personal operativo puede crear mantenimientos.')
+        incidencia = self.service.get_visible_by_id(pk, actor=request.user)
+        payload = request.data.copy()
+        payload.setdefault('equipo_id', incidencia.equipo_id)
+        payload.setdefault('incidencia_id', incidencia.id)
+        payload.setdefault('tipo_mantenimiento', 'correctivo')
+        payload.setdefault('fecha', timezone.localdate().isoformat())
+        payload.setdefault('descripcion', f'Atención correctiva derivada de la incidencia INC-{incidencia.id}.')
+        serializer = MantenimientoCreateUpdateSerializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        ticket = MantenimientoService().create(serializer.validated_data, actor=request.user)
+        return Response(MantenimientoSerializer(ticket).data, status=status.HTTP_201_CREATED)

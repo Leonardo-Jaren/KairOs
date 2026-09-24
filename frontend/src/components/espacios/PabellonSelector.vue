@@ -198,7 +198,7 @@ function getBuildingLetter(index) {
                     {{ getBuildingLetter(index) }}
                   </span>
                   <div>
-                    <h4 class="text-base font-extrabold text-slate-950 group-hover:text-primary-600 transition-colors">
+                    <h4 class="text-base font-extrabold text-slate-950 group-hover:text-primary-600 transition-colors line-clamp-1" :title="building.nombre">
                       {{ building.nombre }}
                     </h4>
                     <p class="font-mono text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -231,7 +231,7 @@ function getBuildingLetter(index) {
               </div>
 
               <!-- Descripción del pabellón -->
-              <p class="mt-3 text-xs leading-5 text-slate-500 line-clamp-2">
+              <p class="mt-3 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-slate-500">
                 {{ building.descripcion || 'Bloque físico con distribución de pisos, laboratorios y áreas de cómputo.' }}
               </p>
 

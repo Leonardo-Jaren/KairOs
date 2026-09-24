@@ -43,7 +43,7 @@ export const ROLE_BASE_PERMISSIONS = {
     espacios: { ver: false, crear: false, editar: false, eliminar: false },
     equipos: { ver: false, crear: false, editar: false, eliminar: false },
     mantenimiento: { ver: false, crear: false, editar: false, eliminar: false },
-    incidencias: { ver: true, crear: true, editar: true, eliminar: false },
+    incidencias: { ver: true, crear: true, editar: false, eliminar: false },
     software: { ver: true, crear: false, editar: false, eliminar: false },
     usuarios: { ver: false, crear: false, editar: false, eliminar: false },
     auditoria: { ver: false, crear: false, editar: false, eliminar: false },

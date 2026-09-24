@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import edificiosService from '@/services/edificios.service';
 import espaciosService from '@/services/espacios.service';
+import espaciosUsuariosService from '@/services/espacios-usuarios.service';
 import localesService from '@/services/locales.service';
 import { listarTodas, useCampusTerritorio } from '@/composables/espacios/useCampusTerritorio';
 import { useLocalesCampus } from '@/composables/espacios/useLocalesCampus';
@@ -38,6 +39,7 @@ export function useCampusTecnologico(
   buildingService = edificiosService,
   localService = localesService,
   navigation = {},
+  asignacionesService = espaciosUsuariosService,
 ) {
   const authStore = useAuthStore();
   const spaces = ref([]);
@@ -47,7 +49,7 @@ export function useCampusTecnologico(
   const error = ref('');
   const search = ref('');
   const localRecords = ref([]);
-  const activeFloorKey = ref('');
+  const activeFloorKey = ref(normalizeFloorValue(navigation.route?.query?.piso) || '');
   const buildingModalOpen = ref(false);
   const buildingDeleteOpen = ref(false);
   const editingBuilding = ref(null);
@@ -62,6 +64,18 @@ export function useCampusTecnologico(
   const spaceErrors = reactive({});
   const toast = reactive({ show: false, message: '', type: 'success' });
   const showToast = (message, type = 'success') => Object.assign(toast, { show: true, message, type });
+
+  const floorAssignments = ref([]);
+  const technicianModalOpen = ref(false);
+  const technicianSaving = ref(false);
+  const technicianLoading = ref(false);
+  const technicianTarget = ref(null);
+  const technicianOptions = ref([]);
+  const technicianForm = reactive({
+    assignment_id: null,
+    usuario_id: '',
+    tipo_responsabilidad: 'tecnico',
+  });
 
   const canEdit = computed(() => (
     authStore.isSuperAdmin
@@ -126,6 +140,48 @@ export function useCampusTecnologico(
     showToast,
   });
 
+  const loadFloorAssignments = async (buildingId) => {
+    if (!buildingId) {
+      floorAssignments.value = [];
+      return;
+    }
+    try {
+      const res = await asignacionesService.listar({
+        ambito: 'piso',
+        edificio_id: buildingId,
+        activo: 'true',
+        page_size: 100,
+      });
+      floorAssignments.value = res.results ?? res ?? [];
+    } catch {
+      floorAssignments.value = [];
+    }
+  };
+
+  watch(selectedBuildingId, (newId) => {
+    if (newId) loadFloorAssignments(newId);
+    else floorAssignments.value = [];
+  }, { immediate: true });
+
+  const getFloorEncargado = (floor) => {
+    const normalized = normalizeFloorValue(floor);
+    const match = floorAssignments.value.find((asig) => (
+      normalizeFloorValue(asig.piso) === normalized
+      && asig.activo !== false
+    ));
+    if (!match) return null;
+    return {
+      id: match.id,
+      usuario_id: match.usuario?.id ?? match.usuario_id,
+      usuario_nombre: match.usuario?.nombre_completo ?? `${match.usuario?.nombre ?? ''} ${match.usuario?.apellido ?? ''}`.trim(),
+      correo: match.usuario?.correo ?? '',
+      tipo_responsabilidad: match.tipo_responsabilidad ?? 'tecnico',
+      tipo_responsabilidad_display: match.tipo_responsabilidad_display ?? 'Técnico',
+      badge_texto: match.badge_texto ?? `Encargado Piso ${match.piso}`,
+      activo: match.activo,
+    };
+  };
+
   const pisosVisibles = computed(() => {
     const query = search.value.trim().toLocaleLowerCase('es');
     const filtered = (edificioActivo.value?.spaces ?? []).filter((space) => (
@@ -152,7 +208,12 @@ export function useCampusTecnologico(
           .find(([key]) => normalizeFloorValue(key) === floor)?.[1];
         return {
           key: floor,
+          piso: floor,
           label: formatFloor(floor),
+          edificio_id: Number(edificioActivo.value?.id ?? allFloorSpaces[0]?.edificio_id ?? allFloorSpaces[0]?.edificio?.id ?? 0) || null,
+          edificio_nombre: edificioActivo.value?.nombre ?? allFloorSpaces[0]?.edificio?.nombre ?? allFloorSpaces[0]?.pabellon ?? '',
+          local_id: Number(edificioActivo.value?.local_id ?? edificioActivo.value?.local?.id ?? territorio.selectedLocalId.value ?? allFloorSpaces[0]?.local_id ?? 0) || null,
+          encargado: getFloorEncargado(floor),
           spaces: visibleSpaces,
           allSpaces: sortedSpaces,
           layout: editingFloor.value === floor && floorDraft.value
@@ -471,16 +532,75 @@ export function useCampusTecnologico(
         territorio.afterNavigation(() => writeFloorQuery('replace'));
       }
     },
-    { immediate: true },
   );
   if (navigation.route) {
     watch(() => navigation.route.query.piso, (floor) => {
       const normalized = normalizeFloorValue(floor);
       if (normalized && normalized !== normalizeFloorValue(activeFloorKey.value)) {
         selectFloor(normalized, 'replace');
+      } else if (!normalized && activeFloorKey.value) {
+        activeFloorKey.value = '';
       }
     });
   }
+
+  const openAssignTechnicianModal = async (target) => {
+    if (!canEdit.value) return;
+    technicianTarget.value = target;
+    technicianForm.assignment_id = target.encargado?.id ?? null;
+    technicianForm.usuario_id = target.encargado?.usuario_id ?? '';
+    technicianForm.tipo_responsabilidad = target.encargado?.tipo_responsabilidad ?? 'tecnico';
+    technicianModalOpen.value = true;
+
+    if (!technicianOptions.value.length) {
+      technicianLoading.value = true;
+      try {
+        const data = await asignacionesService.obtenerOpciones();
+        const users = data?.usuarios ?? [];
+        technicianOptions.value = users
+          .filter((u) => ['tecnico', 'responsable', 'admin'].includes(u.rol))
+          .map((u) => ({
+            value: u.id,
+            label: `${u.nombre} ${u.apellido} (${u.rol}) · ${u.correo}`,
+          }));
+      } catch {
+        technicianOptions.value = [];
+      } finally {
+        technicianLoading.value = false;
+      }
+    }
+  };
+
+  const submitTechnicianAssignment = async () => {
+    if (!technicianForm.usuario_id || !technicianTarget.value || technicianSaving.value) return;
+    technicianSaving.value = true;
+    const target = technicianTarget.value;
+    const payload = {
+      usuario_id: Number(technicianForm.usuario_id),
+      tipo_responsabilidad: technicianForm.tipo_responsabilidad || 'tecnico',
+      activo: true,
+      ambito: 'piso',
+      local_id: Number(target.local_id),
+      edificio_id: Number(target.edificio_id),
+      piso: String(target.piso).trim(),
+      espacio_id: null,
+    };
+
+    try {
+      if (technicianForm.assignment_id) {
+        await asignacionesService.actualizar(technicianForm.assignment_id, payload);
+      } else {
+        await asignacionesService.crear(payload);
+      }
+      technicianModalOpen.value = false;
+      showToast('Técnico encargado del piso asignado correctamente.');
+      await loadFloorAssignments(target.edificio_id);
+    } catch (err) {
+      showToast(getApiErrorMessage(err, 'No se pudo asignar el técnico al piso.'), 'error');
+    } finally {
+      technicianSaving.value = false;
+    }
+  };
 
   onMounted(loadCampus);
 
@@ -494,6 +614,9 @@ export function useCampusTecnologico(
     buildingErrors, isEditingBuilding, spaceModalOpen, spaceDeleteOpen, editingSpace,
     pendingSpaceDelete, spaceForm, spaceErrors, isEditingSpace, toast, loadCampus,
     editingFloor, floorDraft, floorTool, selectedFloorSpaceId, floorSaving,
+    floorAssignments, technicianModalOpen, technicianSaving, technicianLoading,
+    technicianTarget, technicianOptions, technicianForm,
+    openAssignTechnicianModal, submitTechnicianAssignment, loadFloorAssignments,
     openCreateBuilding, openEditBuilding, closeBuildingModal, submitBuilding,
     askDeleteBuilding, cancelDeleteBuilding, confirmDeleteBuilding, openCreateSpace,
     openEditSpace, closeSpaceModal, submitSpace, askDeleteSpace, cancelDeleteSpace,

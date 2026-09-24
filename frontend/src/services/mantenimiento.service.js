@@ -26,6 +26,16 @@ const mantenimientoService = {
     return data;
   },
 
+  async iniciar(id) {
+    const { data } = await api.post(`/api/v1/mantenimiento/${id}/iniciar/`);
+    return data;
+  },
+
+  async finalizar(id, payload) {
+    const { data } = await api.post(`/api/v1/mantenimiento/${id}/finalizar/`, payload);
+    return data;
+  },
+
   async eliminar(id) {
     await api.delete(`/api/v1/mantenimiento/${id}/`);
   },

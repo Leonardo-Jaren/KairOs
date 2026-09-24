@@ -65,6 +65,7 @@ describe('DashboardLayout', () => {
 
     // Módulos de infraestructura y administración excluidos
     expect(linkTexts).not.toContain('Campus');
+    expect(linkTexts).not.toContain('Croquis');
     expect(linkTexts).not.toContain('Espacios');
     expect(linkTexts).not.toContain('Usuarios por espacio');
     expect(linkTexts).not.toContain('Equipos');
@@ -94,7 +95,7 @@ describe('DashboardLayout', () => {
     expect(linkTexts).not.toContain('Instalaciones');
   });
 
-  it('oculta Campus, Espacios y Usuarios por espacio si el modulo espacios no tiene permiso', async () => {
+  it('oculta Espacios y Usuarios por espacio si el modulo espacios no tiene permiso', async () => {
     const wrapper = await createWrapper({
       id: 2,
       nombre: 'Tomás',
@@ -109,6 +110,7 @@ describe('DashboardLayout', () => {
     const linkTexts = links.map((l) => l.text().trim());
 
     expect(linkTexts).not.toContain('Campus');
+    expect(linkTexts).not.toContain('Croquis');
     expect(linkTexts).not.toContain('Espacios');
     expect(linkTexts).not.toContain('Usuarios por espacio');
     expect(linkTexts).toContain('Equipos');
@@ -131,7 +133,6 @@ describe('DashboardLayout', () => {
 
     expect(linkTexts).not.toContain('Equipos');
     expect(linkTexts).not.toContain('Componentes');
-    expect(linkTexts).toContain('Campus');
     expect(linkTexts).toContain('Espacios');
   });
 
@@ -149,8 +150,8 @@ describe('DashboardLayout', () => {
     const linkTexts = links.map((l) => l.text().trim());
 
     // Debe incluir los submódulos dependientes de espacios
-    expect(linkTexts).toContain('Campus');
     expect(linkTexts).toContain('Espacios');
+    expect(linkTexts).toContain('Croquis');
     expect(linkTexts).toContain('Usuarios por espacio');
     // Módulos base siguen disponibles
     expect(linkTexts).toContain('Software');

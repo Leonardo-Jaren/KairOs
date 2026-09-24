@@ -68,6 +68,37 @@
         </span>
       </div>
 
+      <!-- Badges de Ámbitos Territoriales a cargo -->
+      <div
+        v-if="asignaciones.length > 0"
+        class="mt-2.5 flex flex-wrap items-center gap-1.5"
+        data-testid="org-node-territorial-badges"
+      >
+        <span
+          v-for="asig in visibleAsignaciones"
+          :key="asig.id || asig.badge_texto || asig.badge"
+          data-testid="territorial-badge"
+          class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium border transition-colors shadow-2xs"
+          :class="getAmbitoBadgeClass(asig.ambito)"
+          :title="formatTooltip(asig)"
+        >
+          <component :is="getAmbitoIcon(asig.ambito)" :size="11" class="shrink-0" />
+          <span class="max-w-[130px] truncate font-medium">
+            {{ asig.badge_texto || asig.badge || asig.nombre_ambito || asig.ambito }}
+          </span>
+        </span>
+
+        <!-- Pastilla de desbordamiento para asignaciones adicionales -->
+        <span
+          v-if="remainingCount > 0"
+          data-testid="territorial-overflow"
+          class="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200/80 cursor-help"
+          :title="remainingTooltip"
+        >
+          +{{ remainingCount }} más
+        </span>
+      </div>
+
       <!-- Pie de la tarjeta: Botón para gestionar permisos y subordinados -->
       <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs text-slate-500">
         <div class="flex items-center gap-1.5 font-medium">
@@ -136,6 +167,7 @@
             :node="child"
             :collapsed-set="collapsedSet"
             :selected-id="selectedId"
+            :max-visible-badges="maxVisibleBadges"
             @select="$emit('select', $event)"
             @toggle-collapse="$emit('toggle-collapse', $event)"
             @manage-permisos="$emit('manage-permisos', $event)"
@@ -153,8 +185,11 @@ import {
   Building2,
   ChevronDown,
   Crown,
+  DoorClosed,
   GraduationCap,
   KeyRound,
+  Landmark,
+  Layers,
   MapPin,
   Shield,
   User,
@@ -179,6 +214,10 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  maxVisibleBadges: {
+    type: Number,
+    default: 1,
+  },
 });
 
 defineEmits(['select', 'toggle-collapse', 'manage-permisos']);
@@ -187,6 +226,79 @@ const isCollapsed = computed(() => props.collapsedSet.has(props.node.id));
 const hasChildren = computed(() => Array.isArray(props.node.children) && props.node.children.length > 0);
 const selected = computed(() => props.selectedId === props.node.id);
 const totalSubordinados = computed(() => props.node.subordinados_count ?? props.node.children?.length ?? 0);
+
+// Logica de calculo y presentacion de badges territoriales
+const asignaciones = computed(() => {
+  if (!Array.isArray(props.node?.asignaciones_territoriales)) {
+    return [];
+  }
+  return props.node.asignaciones_territoriales;
+});
+
+const visibleAsignaciones = computed(() => asignaciones.value.slice(0, props.maxVisibleBadges));
+
+const remainingCount = computed(() => Math.max(0, asignaciones.value.length - props.maxVisibleBadges));
+
+const getAmbitoIcon = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return Landmark;
+    case 'edificio':
+      return Building2;
+    case 'piso':
+      return Layers;
+    case 'espacio':
+      return DoorClosed;
+    default:
+      return Building2;
+  }
+};
+
+const getAmbitoBadgeClass = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200/80';
+    case 'edificio':
+      return 'bg-blue-50 text-blue-700 border-blue-200/80';
+    case 'piso':
+      return 'bg-teal-50 text-teal-700 border-teal-200/80';
+    case 'espacio':
+      return 'bg-purple-50 text-purple-700 border-purple-200/80';
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200';
+  }
+};
+
+const getAmbitoLabel = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return 'Sede';
+    case 'edificio':
+      return 'Pabellón';
+    case 'piso':
+      return 'Piso';
+    case 'espacio':
+      return 'Espacio';
+    default:
+      return 'Ámbito';
+  }
+};
+
+const formatTooltip = (asig) => {
+  const label = getAmbitoLabel(asig?.ambito);
+  const texto = asig?.badge_texto || asig?.badge || asig?.nombre_ambito || 'Ámbito sin especificar';
+  const resp = asig?.tipo_responsabilidad ? ` (${asig.tipo_responsabilidad})` : '';
+  return `${label}: ${texto}${resp}`;
+};
+
+const remainingTooltip = computed(() => {
+  if (remainingCount.value <= 0) return '';
+  const extras = asignaciones.value.slice(props.maxVisibleBadges);
+  return (
+    'Otros ámbitos a cargo:\n' +
+    extras.map((a) => `• ${a.badge_texto || a.badge || a.nombre_ambito || a.ambito}`).join('\n')
+  );
+});
 
 
 const getInitials = (nombre = '', apellido = '') => {

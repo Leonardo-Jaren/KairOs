@@ -23,7 +23,7 @@ describe('authStore - hasPermission y ROLE_BASE_PERMISSIONS', () => {
     expect(store.hasPermission('auditoria', 'eliminar')).toBe(true);
   });
 
-  it('docente solo tiene ver en software y ver/crear/editar en incidencias por defecto', () => {
+  it('docente solo tiene ver en software y ver/crear en incidencias por defecto', () => {
     store.user = { rol: 'docente' };
 
     expect(store.hasPermission('espacios', 'ver')).toBe(false);
@@ -37,7 +37,7 @@ describe('authStore - hasPermission y ROLE_BASE_PERMISSIONS', () => {
 
     expect(store.hasPermission('incidencias', 'ver')).toBe(true);
     expect(store.hasPermission('incidencias', 'crear')).toBe(true);
-    expect(store.hasPermission('incidencias', 'editar')).toBe(true);
+    expect(store.hasPermission('incidencias', 'editar')).toBe(false);
     expect(store.hasPermission('incidencias', 'eliminar')).toBe(false);
   });
 
@@ -112,7 +112,7 @@ describe('authStore - hasPermission y ROLE_BASE_PERMISSIONS', () => {
     expect(ROLE_BASE_PERMISSIONS.docente.espacios.ver).toBe(false);
     expect(ROLE_BASE_PERMISSIONS.docente.equipos.ver).toBe(false);
     expect(ROLE_BASE_PERMISSIONS.docente.software.ver).toBe(true);
-    expect(ROLE_BASE_PERMISSIONS.docente.incidencias.editar).toBe(true);
+    expect(ROLE_BASE_PERMISSIONS.docente.incidencias.editar).toBe(false);
   });
 
   it('fetchProfile actualiza el usuario y permisos en Pinia y localStorage', async () => {

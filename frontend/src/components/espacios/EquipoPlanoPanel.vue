@@ -21,7 +21,10 @@ defineProps({
   equipment: { type: Object, default: null },
   activeMaintenances: { type: Array, default: () => [] },
   maintenanceLoading: { type: Boolean, default: false },
+  activeIncidencias: { type: Array, default: () => [] },
+  incidenciaLoading: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: false },
+  canReport: { type: Boolean, default: false },
 });
 
 defineEmits(['close', 'report', 'edit', 'delete', 'manage']);
@@ -117,6 +120,24 @@ const statusClasses = {
                 </article>
               </section>
 
+              <section v-if="incidenciaLoading || activeIncidencias.length" class="mt-4 rounded-2xl border border-danger-200 bg-danger-50/50 p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-extrabold text-slate-900">Incidencias abiertas</p>
+                  <span v-if="activeIncidencias.length" class="rounded-full bg-danger-100 px-2.5 py-1 text-[10px] font-bold text-danger-800">
+                    {{ activeIncidencias.length }} reporte{{ activeIncidencias.length === 1 ? '' : 's' }}
+                  </span>
+                </div>
+                <p v-if="incidenciaLoading" class="mt-3 text-xs text-slate-400">Consultando incidencias...</p>
+                <article v-for="incidencia in activeIncidencias" v-else :key="incidencia.id" class="mt-3 rounded-xl border border-danger-100 bg-white p-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wide text-danger-700">{{ incidencia.estado_display }}</span>
+                    <span class="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{{ incidencia.prioridad_display }}</span>
+                  </div>
+                  <p class="mt-2 text-sm leading-5 text-slate-700">{{ incidencia.descripcion }}</p>
+                  <p class="mt-1 text-[11px] text-slate-400">Reportó {{ incidencia.reportado_por || 'Usuario no disponible' }}</p>
+                </article>
+              </section>
+
               <section v-if="canEdit" class="mt-6 grid grid-cols-2 gap-2">
                 <BaseButton variant="ghost" :full-width="false" @click="$emit('edit')">
                   <template #icon><Pencil :size="16" /></template>
@@ -133,7 +154,7 @@ const statusClasses = {
                 Hardware y software
               </BaseButton>
 
-              <section class="mt-6 rounded-2xl border border-warning-200 bg-warning-50/60 p-4">
+              <section v-if="canReport" class="mt-6 rounded-2xl border border-warning-200 bg-warning-50/60 p-4">
                 <div class="flex gap-3">
                   <ShieldAlert :size="21" class="mt-0.5 shrink-0 text-warning-600" />
                   <div>

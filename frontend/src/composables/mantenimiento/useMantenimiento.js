@@ -8,11 +8,23 @@ import { getApiErrorMessage } from '@/utils/api-errors';
 
 const emptyForm = () => ({
   equipo_id: '',
+  incidencia_id: '',
   fecha: '',
   tipo_mantenimiento: 'preventivo',
   estado: 'pendiente',
   descripcion: '',
   tecnico_id: '',
+  diagnostico: '',
+  trabajo_realizado: '',
+  resultado_equipo: '',
+});
+
+const emptyFinalizeForm = () => ({
+  diagnostico: '',
+  trabajo_realizado: '',
+  prueba_realizada: false,
+  observacion_prueba: '',
+  resultado_equipo: '',
 });
 
 export function useMantenimiento(
@@ -23,12 +35,19 @@ export function useMantenimiento(
   const mantenimientos = ref([]);
   const loading = ref(false);
   const saving = ref(false);
+  const finalizing = ref(false);
   const modalOpen = ref(false);
+  const finalizeModalOpen = ref(false);
+  const detailOpen = ref(false);
   const deleteModalOpen = ref(false);
   const editingTicket = ref(null);
+  const finalizingTicket = ref(null);
+  const selectedTicket = ref(null);
   const pendingDelete = ref(null);
   const form = reactive(emptyForm());
+  const finalizeForm = reactive(emptyFinalizeForm());
   const formErrors = reactive({});
+  const finalizeErrors = reactive({});
   const toast = reactive({ show: false, message: '', type: 'success' });
   const filters = reactive({ search: '', estado: '', tipo_mantenimiento: '', page: 1, page_size: 8 });
   const pagination = reactive({ total: 0, totalPages: 1 });
@@ -45,7 +64,10 @@ export function useMantenimiento(
   const tecnicoOptions = ref([]);
 
   const isEditing = computed(() => Boolean(editingTicket.value));
-  const canDelete = computed(() => authStore.user?.rol === 'admin');
+  const canCreate = computed(() => authStore.hasPermission('mantenimiento', 'crear'));
+  const canEdit = computed(() => authStore.hasPermission('mantenimiento', 'editar'));
+  const canDeleteEffective = computed(() => authStore.hasPermission('mantenimiento', 'eliminar'));
+  const canDelete = canDeleteEffective;
 
   const tipoOptions = [
     { value: 'preventivo', label: 'Preventivo' },
@@ -54,9 +76,28 @@ export function useMantenimiento(
 
   const estadoOptions = [
     { value: 'pendiente', label: 'Pendiente' },
-    { value: 'en_proceso', label: 'En mantenimiento' },
-    { value: 'resuelto', label: 'Terminado' },
-    { value: 'cancelado', label: 'Fuera de servicio' },
+    { value: 'en_proceso', label: 'En atención' },
+    { value: 'resuelto', label: 'Finalizado' },
+    { value: 'cancelado', label: 'Cancelado' },
+  ];
+
+  const estadoEdicionOptions = [
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'en_proceso', label: 'En atención' },
+    { value: 'cancelado', label: 'Cancelado' },
+  ];
+
+  const resultadoEquipoOptions = [
+    { value: 'en_uso', label: 'En uso' },
+    { value: 'en_mantenimiento', label: 'En mantenimiento' },
+    { value: 'dañado', label: 'Dañado' },
+    { value: 'de_baja', label: 'De baja' },
+  ];
+
+  const resultadoFinalOptions = [
+    { value: 'en_uso', label: 'Funcional / en uso' },
+    { value: 'dañado', label: 'Dañado' },
+    { value: 'de_baja', label: 'De baja' },
   ];
 
   const equipoSelectOptions = computed(() => equipoOptions.value.map((equipo) => ({
@@ -111,6 +152,11 @@ export function useMantenimiento(
     Object.keys(formErrors).forEach((key) => delete formErrors[key]);
   };
 
+  const resetFinalizeForm = () => {
+    Object.assign(finalizeForm, emptyFinalizeForm());
+    Object.keys(finalizeErrors).forEach((key) => delete finalizeErrors[key]);
+  };
+
   const openCreate = () => {
     editingTicket.value = null;
     resetForm();
@@ -122,13 +168,95 @@ export function useMantenimiento(
     resetForm();
     Object.assign(form, {
       equipo_id: ticket.equipo?.id ?? '',
+      incidencia_id: ticket.incidencia_origen_id ?? '',
       fecha: ticket.fecha,
       tipo_mantenimiento: ticket.tipo_mantenimiento,
       estado: ticket.estado,
       descripcion: ticket.descripcion,
       tecnico_id: ticket.tecnicos?.[0]?.id ?? '',
+      diagnostico: ticket.diagnostico ?? '',
+      trabajo_realizado: ticket.trabajo_realizado ?? '',
+      resultado_equipo: ticket.resultado_equipo ?? '',
     });
     modalOpen.value = true;
+  };
+
+  const openFinalize = (ticket) => {
+    finalizingTicket.value = ticket;
+    resetFinalizeForm();
+    finalizeModalOpen.value = true;
+  };
+
+  const closeFinalize = () => {
+    finalizeModalOpen.value = false;
+    finalizingTicket.value = null;
+    resetFinalizeForm();
+  };
+
+  const openDetail = (ticket) => {
+    selectedTicket.value = ticket;
+    detailOpen.value = true;
+  };
+
+  const closeDetail = () => {
+    detailOpen.value = false;
+    selectedTicket.value = null;
+  };
+
+  const startMaintenance = async (ticket) => {
+    if (!ticket) return false;
+    finalizing.value = true;
+    try {
+      await service.iniciar(ticket.id);
+      showToast(`Mantenimiento #${ticket.id} en atención.`);
+      await loadData();
+      return true;
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudo iniciar el mantenimiento.'), 'error');
+      return false;
+    } finally {
+      finalizing.value = false;
+    }
+  };
+
+  const validateFinalize = () => {
+    Object.keys(finalizeErrors).forEach((key) => delete finalizeErrors[key]);
+    if (!finalizeForm.diagnostico.trim()) finalizeErrors.diagnostico = 'Registra el diagnóstico.';
+    if (!finalizeForm.trabajo_realizado.trim()) finalizeErrors.trabajo_realizado = 'Registra el trabajo realizado.';
+    if (!finalizeForm.prueba_realizada) finalizeErrors.prueba_realizada = 'Confirma que realizaste la prueba.';
+    if (!finalizeForm.resultado_equipo) finalizeErrors.resultado_equipo = 'Selecciona el resultado del equipo.';
+    return Object.keys(finalizeErrors).length === 0;
+  };
+
+  const finalizeMaintenance = async () => {
+    if (!validateFinalize() || !finalizingTicket.value) return false;
+    finalizing.value = true;
+    try {
+      const result = await service.finalizar(finalizingTicket.value.id, {
+        diagnostico: finalizeForm.diagnostico.trim(),
+        trabajo_realizado: finalizeForm.trabajo_realizado.trim(),
+        prueba_realizada: finalizeForm.prueba_realizada,
+        observacion_prueba: finalizeForm.observacion_prueba.trim(),
+        resultado_equipo: finalizeForm.resultado_equipo,
+      });
+      if (result.incidencia?.cerrada_automaticamente) {
+        showToast(
+          `Mantenimiento finalizado. Equipo marcado como funcional. INC-${result.incidencia.id} cerrada automáticamente.`,
+        );
+      } else if (result.siguiente_accion === 'crear_correctivo') {
+        showToast('Mantenimiento finalizado. La incidencia requiere otra intervención.', 'error');
+      } else {
+        showToast('Mantenimiento finalizado correctamente.');
+      }
+      closeFinalize();
+      await loadData();
+      return result;
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudo finalizar el mantenimiento.'), 'error');
+      return false;
+    } finally {
+      finalizing.value = false;
+    }
   };
 
   const closeModal = () => {
@@ -144,6 +272,9 @@ export function useMantenimiento(
     if (!form.tipo_mantenimiento) formErrors.tipo_mantenimiento = 'Selecciona el tipo de mantenimiento.';
     if (!form.estado) formErrors.estado = 'Selecciona el estado.';
     if (!form.descripcion.trim()) formErrors.descripcion = 'Describe el problema o la actividad realizada.';
+    if (isEditing.value && form.estado === 'resuelto' && !form.diagnostico.trim()) formErrors.diagnostico = 'Registra el diagnóstico.';
+    if (isEditing.value && form.estado === 'resuelto' && !form.trabajo_realizado.trim()) formErrors.trabajo_realizado = 'Registra el trabajo realizado.';
+    if (isEditing.value && form.estado === 'resuelto' && !form.resultado_equipo) formErrors.resultado_equipo = 'Indica el resultado del equipo.';
     return Object.keys(formErrors).length === 0;
   };
 
@@ -153,11 +284,15 @@ export function useMantenimiento(
 
     const payload = {
       equipo_id: Number(form.equipo_id),
+      incidencia_id: form.incidencia_id ? Number(form.incidencia_id) : null,
       fecha: form.fecha,
       tipo_mantenimiento: form.tipo_mantenimiento,
       estado: form.estado,
       descripcion: form.descripcion.trim(),
       tecnicos_ids: form.tecnico_id ? [Number(form.tecnico_id)] : [],
+      diagnostico: form.diagnostico.trim(),
+      trabajo_realizado: form.trabajo_realizado.trim(),
+      resultado_equipo: form.resultado_equipo || null,
     };
 
     try {
@@ -229,27 +364,46 @@ export function useMantenimiento(
     mantenimientos,
     loading,
     saving,
+    finalizing,
     modalOpen,
+    finalizeModalOpen,
+    detailOpen,
     deleteModalOpen,
     editingTicket,
+    finalizingTicket,
+    selectedTicket,
     pendingDelete,
     form,
+    finalizeForm,
     formErrors,
+    finalizeErrors,
     filters,
     pagination,
     stats,
     toast,
     isEditing,
     canDelete,
+    canCreate,
+    canEdit,
+    canDeleteEffective,
     tipoOptions,
     estadoOptions,
+    estadoEdicionOptions,
     equipoSelectOptions,
     tecnicoSelectOptions,
+    resultadoEquipoOptions,
+    resultadoFinalOptions,
     loadMantenimientos,
     loadStats,
     loadOpciones,
     openCreate,
     openEdit,
+    openFinalize,
+    closeFinalize,
+    openDetail,
+    closeDetail,
+    startMaintenance,
+    finalizeMaintenance,
     closeModal,
     submit,
     askDelete,

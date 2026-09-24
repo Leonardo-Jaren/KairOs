@@ -1,6 +1,7 @@
 from django.db.models import Count, Q
 
 from equipos.models import Equipo
+from incidencias.models import Incidencia
 from mantenimiento.models import Mantenimiento, TecnicoMantenimiento
 from shared.base import BaseRepository
 from usuarios.models import PerfilTecnico, Usuario
@@ -15,7 +16,10 @@ class MantenimientoRepository(BaseRepository):
         """Retorna mantenimientos vigentes con equipo y tecnicos precargados."""
         return self.model.objects.filter(is_deleted=False).select_related(
             'equipo',
+            'equipo__espacio',
             'reportado_por',
+            'incidencia_origen',
+            'verificado_por',
         ).prefetch_related(
             'tecnicos_asignados__tecnico__usuario',
         )
@@ -33,6 +37,7 @@ class MantenimientoRepository(BaseRepository):
         estado: str = '',
         tipo_mantenimiento: str = '',
         equipo_id: int | None = None,
+        espacio_ids: set[int] | None = None,
     ):
         """Aplica los filtros disponibles en la pantalla de mantenimiento."""
         queryset = self.get_all()
@@ -52,15 +57,38 @@ class MantenimientoRepository(BaseRepository):
             queryset = queryset.filter(tipo_mantenimiento=tipo_mantenimiento)
         if equipo_id is not None:
             queryset = queryset.filter(equipo_id=equipo_id)
+        if espacio_ids is not None:
+            queryset = queryset.filter(equipo__espacio_id__in=espacio_ids)
 
         return queryset
 
     def get_equipo_by_id(self, equipo_id: int) -> Equipo | None:
         """Obtiene un equipo vigente disponible para asignar un ticket."""
         try:
-            return Equipo.objects.get(id=equipo_id, is_deleted=False)
+            return Equipo.objects.select_related('espacio').get(id=equipo_id, is_deleted=False)
         except Equipo.DoesNotExist:
             return None
+
+    def get_incidencia_by_id(self, incidencia_id: int) -> Incidencia | None:
+        """Obtiene una incidencia vigente para vincular una orden."""
+        try:
+            return Incidencia.objects.select_related('equipo', 'espacio').get(
+                id=incidencia_id,
+                is_deleted=False,
+            )
+        except Incidencia.DoesNotExist:
+            return None
+
+    def has_active_for_equipo(self, equipo_id: int, exclude_id: int | None = None) -> bool:
+        """Indica si el equipo conserva otra orden de mantenimiento activa."""
+        queryset = self.model.objects.filter(
+            equipo_id=equipo_id,
+            is_deleted=False,
+            estado__in=['pendiente', 'en_proceso'],
+        )
+        if exclude_id is not None:
+            queryset = queryset.exclude(id=exclude_id)
+        return queryset.exists()
 
     def get_tecnicos_por_ids(self, tecnico_ids: list[int]):
         """Obtiene los perfiles tecnicos vigentes solicitados."""

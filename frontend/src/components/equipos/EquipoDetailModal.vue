@@ -1,6 +1,6 @@
 <script setup>
 import { shallowRef, watch } from 'vue';
-import { AppWindow, CalendarDays, KeyRound, Pencil, Plus, Trash2 } from '@lucide/vue';
+import { AlertTriangle, AppWindow, CalendarDays, KeyRound, Pencil, Plus, Trash2, Wrench } from '@lucide/vue';
 
 import AuditTimelineList from '@/components/historial/AuditTimelineList.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
@@ -12,6 +12,8 @@ import BaseToast from '@/components/toasts/BaseToast.vue';
 import { TIPO_OPTIONS, getTipoIcon, useComponentes } from '@/composables/equipos/useComponentes';
 import { useSoftwareEquipo } from '@/composables/equipos/useSoftwareEquipo';
 import historialService from '@/services/historial.service';
+import incidenciasService from '@/services/incidencias.service';
+import mantenimientoService from '@/services/mantenimiento.service';
 
 const props = defineProps({
   open:     { type: Boolean, default: false },
@@ -25,6 +27,9 @@ const activeTab        = shallowRef('info');
 const timelineEvents   = shallowRef([]);
 const timelineLoading  = shallowRef(false);
 const timelineLoaded   = shallowRef(false);
+const supportIncidencias = shallowRef([]);
+const supportMaintenances = shallowRef([]);
+const supportLoading = shallowRef(false);
 
 const {
   componentes, loading: compLoading, saving, formOpen, deleteOpen, pendingDelete,
@@ -72,13 +77,33 @@ watch(() => props.equipo, (eq) => {
   activeTab.value      = 'info';
   timelineEvents.value = [];
   timelineLoaded.value = false;
+  supportIncidencias.value = [];
+  supportMaintenances.value = [];
   reset();
   resetSoftware();
   if (eq) {
     cargar(eq.id);
     loadSoftware(eq.id);
+    loadSupport(eq.id);
   }
 }, { immediate: true });
+
+async function loadSupport(equipoId) {
+  supportLoading.value = true;
+  try {
+    const [incidencias, mantenimientos] = await Promise.all([
+      incidenciasService.listar({ equipo_id: equipoId, page_size: 20 }),
+      mantenimientoService.listar({ equipo_id: equipoId, page_size: 20 }),
+    ]);
+    supportIncidencias.value = incidencias.results ?? incidencias;
+    supportMaintenances.value = mantenimientos.results ?? mantenimientos;
+  } catch {
+    supportIncidencias.value = [];
+    supportMaintenances.value = [];
+  } finally {
+    supportLoading.value = false;
+  }
+}
 
 function switchTab(key) {
   if (activeTab.value !== key) closeForm();
@@ -107,6 +132,7 @@ const tabs = [
   { key: 'info',       label: 'Información' },
   { key: 'componentes', label: 'Componentes' },
   { key: 'software', label: 'Software' },
+  { key: 'support', label: 'Soporte' },
   { key: 'timeline',   label: 'Línea de Tiempo' },
 ];
 </script>
@@ -365,6 +391,53 @@ const tabs = [
           <p class="text-sm text-slate-600">¿Retirar <strong class="text-slate-900">{{ pendingSoftwareDelete?.producto_software_nombre }}</strong> de este equipo?</p>
           <template #footer><BaseButton variant="ghost" :full-width="false" @click="cancelDeleteSoftware">Cancelar</BaseButton><BaseButton variant="danger" :loading="softwareSaving" :full-width="false" @click="confirmDeleteSoftware">Retirar</BaseButton></template>
         </BaseModal>
+      </div>
+
+      <!-- Soporte -->
+      <div v-else-if="activeTab === 'support'" class="flex flex-col gap-5">
+        <div class="flex flex-wrap gap-2">
+          <RouterLink :to="{ path: '/incidencias', query: { equipo_id: equipo?.id } }" class="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-danger-50 px-3 text-xs font-bold text-danger-700 hover:bg-danger-100">
+            <AlertTriangle :size="14" /> Ver incidencias
+          </RouterLink>
+          <RouterLink :to="{ path: '/mantenimiento', query: { equipo_id: equipo?.id } }" class="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-warning-50 px-3 text-xs font-bold text-warning-700 hover:bg-warning-100">
+            <Wrench :size="14" /> Ver mantenimientos
+          </RouterLink>
+        </div>
+        <div v-if="supportLoading" class="py-8 text-center text-sm text-slate-400">Cargando soporte...</div>
+        <template v-else>
+          <section>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <h3 class="flex items-center gap-2 text-sm font-extrabold text-slate-900"><AlertTriangle :size="16" class="text-danger-600" /> Incidencias</h3>
+              <span class="rounded-full bg-danger-50 px-2.5 py-1 text-[10px] font-bold text-danger-700">{{ supportIncidencias.filter((item) => !['cerrado', 'cancelado', 'duplicado'].includes(item.estado)).length }} abiertas</span>
+            </div>
+            <p v-if="!supportIncidencias.length" class="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">No hay incidencias registradas para este equipo.</p>
+            <ul v-else class="space-y-2">
+              <li v-for="incidencia in supportIncidencias" :key="`inc-${incidencia.id}`" class="rounded-xl border border-slate-200 p-3">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-xs font-bold text-slate-800">INC-{{ incidencia.id }}</span>
+                  <span class="text-[10px] font-bold uppercase tracking-wide text-danger-700">{{ incidencia.estado_display }}</span>
+                </div>
+                <p class="mt-1 text-xs leading-5 text-slate-600">{{ incidencia.descripcion }}</p>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <h3 class="flex items-center gap-2 text-sm font-extrabold text-slate-900"><Wrench :size="16" class="text-warning-600" /> Mantenimientos</h3>
+              <span class="rounded-full bg-warning-50 px-2.5 py-1 text-[10px] font-bold text-warning-700">{{ supportMaintenances.filter((item) => ['pendiente', 'en_proceso'].includes(item.estado)).length }} activos</span>
+            </div>
+            <p v-if="!supportMaintenances.length" class="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">No hay mantenimientos registrados para este equipo.</p>
+            <ul v-else class="space-y-2">
+              <li v-for="ticket in supportMaintenances" :key="`mant-${ticket.id}`" class="rounded-xl border border-slate-200 p-3">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-xs font-bold text-slate-800">{{ ticket.tipo_mantenimiento_display }}</span>
+                  <span class="text-[10px] font-bold uppercase tracking-wide text-primary-600">{{ ticket.estado_display }}</span>
+                </div>
+                <p class="mt-1 text-xs leading-5 text-slate-600">{{ ticket.descripcion }}</p>
+              </li>
+            </ul>
+          </section>
+        </template>
       </div>
 
       <!-- Línea de tiempo -->

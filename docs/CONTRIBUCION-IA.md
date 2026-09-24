@@ -187,3 +187,36 @@ Requisitos previos: [GitHub CLI](https://cli.github.com/) (`gh`) autenticado (`g
 - [ ] URLs registradas en `backend/server/urls.py` si es endpoint nuevo
 - [ ] Documentacion en `docs/` si es flujo funcional
 - [ ] Rama y PR siguen convencion del equipo
+
+## 10. Reglas de dominio para incidencias, mantenimiento y equipos
+
+Las reglas siguientes son obligatorias para cualquier agente que modifique
+estos módulos. No deben resolverse únicamente en la interfaz: la autorización,
+las transiciones y la consistencia equipo-espacio se validan en backend.
+
+- Una incidencia representa una falla no planificada sobre un equipo. Crear un
+  reporte siempre inicia `pendiente` y no crea automáticamente mantenimiento.
+- El mantenimiento correctivo es una orden de trabajo opcional relacionada con
+  la incidencia; el preventivo es independiente. Una incidencia puede tener
+  varias órdenes. Un correctivo vinculado que termina con prueba confirmada y
+  resultado `en_uso` cierra automáticamente la incidencia; un resultado no
+  funcional la mantiene abierta.
+- Las incidencias permiten `pendiente -> en_proceso -> resuelto -> cerrado`,
+  además de cancelación o duplicidad desde `pendiente`/`en_proceso`, y regreso
+  de `resuelto` a `en_proceso`. Resolver exige resolución; cerrar exige
+  resolución; cancelar o duplicar exige motivo.
+- Los mantenimientos permiten `pendiente -> en_proceso -> resuelto` o
+  cancelación. Resolver exige diagnóstico, trabajo realizado, prueba de
+  funcionamiento y resultado final. Cancelar una orden no equivale a dejar el
+  equipo fuera de servicio. Las acciones guiadas son
+  `POST /mantenimiento/{id}/iniciar/` y `POST /mantenimiento/{id}/finalizar/`.
+- El backend comprueba que el equipo vigente pertenece al espacio recibido y
+  conserva ese espacio como ubicación histórica de la incidencia.
+- `docente` y `usuario` reportan y consultan solo sus incidencias. `tecnico`,
+  `responsable`, `admin` y `superadmin` operan incidencias y correctivos según
+  sus espacios autorizados. Las acciones frontend deben consultar
+  `hasPermission`.
+- La implementación respeta `ViewSet -> Serializer -> Service -> Repository ->
+  Model`, conserva registros mediante borrado lógico y exige pruebas de
+  autorización, transiciones, relación entre módulos y estado operativo del
+  equipo junto con la documentación correspondiente.

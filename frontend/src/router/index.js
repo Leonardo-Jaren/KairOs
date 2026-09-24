@@ -65,7 +65,7 @@ const routes = [
         path: '/espacios/mapa',
         name: 'CampusTecnologico',
         component: () => import('@/views/espacios/CampusTecnologicoView.vue'),
-        meta: { title: 'Mapa tecnológico', modulo: 'espacios' },
+        meta: { title: 'Espacios', modulo: 'espacios' },
       },
       {
         path: '/espacios/:id',

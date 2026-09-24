@@ -704,7 +704,7 @@ class RolPermisosBaseTests(TestCase):
 
         self.assertTrue(permisos['incidencias']['ver'])
         self.assertTrue(permisos['incidencias']['crear'])
-        self.assertTrue(permisos['incidencias']['editar'])
+        self.assertFalse(permisos['incidencias']['editar'])
         self.assertFalse(permisos['incidencias']['eliminar'])
 
     def test_usuario_permisos_base(self):

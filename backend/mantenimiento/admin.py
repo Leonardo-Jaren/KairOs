@@ -11,10 +11,10 @@ class TecnicoMantenimientoInline(admin.TabularInline):
 class MantenimientoAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'equipo', 'fecha', 'tipo_mantenimiento',
-        'estado', 'reportado_por', 'descripcion_corta',
+        'estado', 'incidencia_origen', 'resultado_equipo', 'reportado_por', 'descripcion_corta',
     )
-    list_filter = ('tipo_mantenimiento', 'estado', 'fecha')
-    search_fields = ('equipo__codigo', 'descripcion')
+    list_filter = ('tipo_mantenimiento', 'estado', 'resultado_equipo', 'fecha')
+    search_fields = ('equipo__codigo', 'descripcion', 'incidencia_origen__descripcion')
     ordering = ('-fecha',)
     inlines = [TecnicoMantenimientoInline]
 

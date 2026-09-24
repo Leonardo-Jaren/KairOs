@@ -1,7 +1,8 @@
 <script setup>
 import {
   AlertTriangle, ArrowRight, DoorOpen, FlaskConical, Grid3X3, Info, Minus,
-  MonitorCog, Move, Pencil, Plus, Presentation, Route, Save, Trash2, Wrench, X,
+  Layers, MonitorCog, Move, Pencil, Plus, Presentation, Route, Save, Trash2, UserCheck,
+  UserRoundCheck, Wrench, X,
 } from '@lucide/vue';
 import { computed } from 'vue';
 
@@ -12,6 +13,8 @@ const props = defineProps({
   floor: { type: Object, required: true },
   editing: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: false },
+  layoutEditable: { type: Boolean, default: true },
+  embedded: { type: Boolean, default: false },
   saving: { type: Boolean, default: false },
   selectedSpaceId: { type: [Number, String], default: null },
   tool: { type: String, default: 'move' },
@@ -21,7 +24,7 @@ const props = defineProps({
 const emit = defineEmits([
   'start-edit', 'save', 'cancel', 'select-space', 'cell-click', 'set-tool',
   'resize', 'update-columns', 'add-row', 'remove-row', 'create-space',
-  'edit-space', 'delete-space',
+  'edit-space', 'delete-space', 'assign-technician',
 ]);
 
 const columnOptions = [8, 10, 12, 14, 16].map((value) => ({
@@ -36,33 +39,86 @@ const roomIcon = (type) => ({
   oficina: DoorOpen,
 }[type] ?? Grid3X3);
 
-const spaceMap = computed(() => new Map(
-  props.floor.allSpaces.map((space) => [Number(space.id), space]),
+// Propiedades computadas defensivas del contexto territorial
+const floorKey = computed(() => String(props.floor?.piso ?? props.floor?.key ?? '').trim());
+
+const floorEdificioId = computed(() => (
+  props.floor?.edificio_id
+  ?? props.floor?.allSpaces?.[0]?.edificio_id
+  ?? props.floor?.allSpaces?.[0]?.edificio?.id
+  ?? null
 ));
-const visibleIds = computed(() => new Set(props.floor.spaces.map((space) => Number(space.id))));
-const rooms = computed(() => props.floor.layout.ambientes
+
+const floorLocalId = computed(() => (
+  props.floor?.local_id
+  ?? props.floor?.allSpaces?.[0]?.local_id
+  ?? props.floor?.allSpaces?.[0]?.edificio?.local_id
+  ?? null
+));
+
+const floorEdificioNombre = computed(() => (
+  props.floor?.edificio_nombre
+  ?? props.floor?.allSpaces?.[0]?.pabellon
+  ?? props.floor?.allSpaces?.[0]?.edificio?.nombre
+  ?? ''
+));
+
+const floorEncargado = computed(() => props.floor?.encargado ?? null);
+
+const handleAssignClick = () => {
+  emit('assign-technician', {
+    floor: props.floor,
+    piso: floorKey.value,
+    edificio_id: floorEdificioId.value,
+    local_id: floorLocalId.value,
+    edificio_nombre: floorEdificioNombre.value,
+    encargado: floorEncargado.value,
+  });
+};
+
+const getDirectTooltip = (space) => {
+  if (!space.encargados_directos?.length) return '';
+  return `Encargados directos:\n${space.encargados_directos.map((e) => `• ${e.usuario_nombre} (${e.tipo_responsabilidad_display || e.tipo_responsabilidad || 'Encargado'})`).join('\n')}`;
+};
+
+const getInheritedTooltip = (space) => {
+  if (!space.encargados_heredados?.length) return '';
+  return `Encargados heredados:\n${space.encargados_heredados.map((e) => `• ${e.usuario_nombre} (${e.origen || e.ambito_display || 'Superior'})`).join('\n')}`;
+};
+
+const spaceMap = computed(() => new Map(
+  (props.floor?.allSpaces || []).map((space) => [Number(space.id), space]),
+));
+const visibleIds = computed(() => new Set((props.floor?.spaces || []).map((space) => Number(space.id))));
+const rooms = computed(() => (props.floor?.layout?.ambientes || [])
   .map((room) => ({ ...room, space: spaceMap.value.get(Number(room.espacio_id)) }))
   .filter((room) => room.space));
 const selectedRoom = computed(() => rooms.value.find((room) => (
   Number(room.espacio_id) === Number(props.selectedSpaceId)
 )));
 const corridorKeys = computed(() => new Set(
-  props.floor.layout.pasillos.map((cell) => `${cell.fila}-${cell.columna}`),
+  (props.floor?.layout?.pasillos || []).map((cell) => `${cell.fila}-${cell.columna}`),
 ));
 const cells = computed(() => {
   const result = [];
-  for (let row = 1; row <= props.floor.layout.filas; row += 1) {
-    for (let column = 1; column <= props.floor.layout.columnas; column += 1) {
+  const filas = props.floor?.layout?.filas || 0;
+  const columnas = props.floor?.layout?.columnas || 0;
+  for (let row = 1; row <= filas; row += 1) {
+    for (let column = 1; column <= columnas; column += 1) {
       result.push({ row, column, key: `${row}-${column}` });
     }
   }
   return result;
 });
-const gridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(${props.floor.layout.columnas}, minmax(50px, 1fr))`,
-  gridTemplateRows: `repeat(${props.floor.layout.filas}, 72px)`,
-  minWidth: `${Math.max(560, props.floor.layout.columnas * 58)}px`,
-}));
+const gridStyle = computed(() => {
+  const filas = props.floor?.layout?.filas || 1;
+  const columnas = props.floor?.layout?.columnas || 1;
+  return {
+    gridTemplateColumns: `repeat(${columnas}, minmax(50px, 1fr))`,
+    gridTemplateRows: `repeat(${filas}, 72px)`,
+    minWidth: `${Math.max(560, columnas * 58)}px`,
+  };
+});
 const roomStyle = (room) => ({
   gridColumn: `${room.columna} / span ${room.ancho}`,
   gridRow: `${room.fila} / span ${room.alto}`,
@@ -73,7 +129,7 @@ const cellStyle = (cell) => ({
 });
 const isCorridorLabel = (cell) => (
   corridorKeys.value.has(cell.key)
-  && cell.column === Math.ceil(props.floor.layout.columnas / 2)
+  && cell.column === Math.ceil((props.floor?.layout?.columnas || 1) / 2)
 );
 const roomStatus = (space) => {
   const damaged = Number(space.resumen_equipos?.dañado) || 0;
@@ -110,17 +166,73 @@ const roomTone = (space) => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+  <section class="overflow-hidden bg-white" :class="embedded ? '' : 'rounded-2xl border border-slate-200'">
     <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/85 px-3 py-3 sm:px-4">
-      <div class="flex items-center gap-3">
-        <span class="grid size-10 place-items-center rounded-xl bg-secondary-950 text-xs font-black text-primary-300">{{ floor.key }}</span>
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="grid size-10 place-items-center rounded-xl bg-secondary-950 text-xs font-black text-primary-300">{{ floorKey || floor?.key }}</span>
         <div>
-          <h3 class="text-sm font-extrabold text-slate-900">{{ floor.label }}</h3>
-          <p class="text-[10px] text-slate-400">{{ floor.allSpaces.length }} ambiente{{ floor.allSpaces.length === 1 ? '' : 's' }} · {{ floor.labs }} tecnológicos · {{ floor.aulas }} aulas</p>
+          <h3 class="text-sm font-extrabold text-slate-900">{{ floor?.label }}</h3>
+          <p class="text-[10px] text-slate-400">{{ (floor?.allSpaces || []).length }} ambiente{{ (floor?.allSpaces || []).length === 1 ? '' : 's' }} · {{ floor?.labs || 0 }} tecnológicos · {{ floor?.aulas || 0 }} aulas</p>
+        </div>
+
+        <!-- Chip del Técnico de Piso -->
+        <div class="ml-1 flex items-center">
+          <!-- Caso A: Con técnico asignado -->
+          <div
+            v-if="floorEncargado"
+            data-testid="floor-technician-badge"
+            class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-2.5 py-1 text-xs shadow-2xs"
+          >
+            <span class="grid size-6 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+              <UserRoundCheck :size="13" />
+            </span>
+            <div class="flex flex-col text-left">
+              <span class="text-[8.5px] font-bold uppercase tracking-wider text-emerald-700">
+                {{ floorEncargado.badge_texto || 'Encargado del piso' }}
+              </span>
+              <span class="text-xs font-extrabold text-slate-900 line-clamp-1">
+                {{ floorEncargado.usuario_nombre || floorEncargado.usuario?.nombre_completo || 'Técnico asignado' }}
+              </span>
+            </div>
+            <button
+              v-if="canEdit && !editing"
+              type="button"
+              data-testid="edit-floor-technician"
+              class="ml-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100/90 transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500"
+              title="Cambiar técnico encargado"
+              @click="handleAssignClick"
+            >
+              <Pencil :size="11" />
+              <span class="hidden sm:inline">Cambiar</span>
+            </button>
+          </div>
+
+          <!-- Caso B: Sin técnico asignado -->
+          <div
+            v-else
+            data-testid="floor-technician-empty"
+            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100/80 px-2.5 py-1 text-xs text-slate-500 shadow-2xs"
+          >
+            <span class="grid size-6 place-items-center rounded-lg bg-slate-200/80 text-slate-500">
+              <Wrench :size="12" />
+            </span>
+            <span class="text-xs font-medium text-slate-600">Sin encargado asignado</span>
+            <button
+              v-if="canEdit && !editing"
+              type="button"
+              data-testid="assign-floor-technician"
+              class="ml-1 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-bold text-primary-700 shadow-2xs hover:bg-primary-50 transition-colors focus-visible:outline-2 focus-visible:outline-primary-500"
+              title="Asignar encargado a este piso"
+              @click="handleAssignClick"
+            >
+              <Plus :size="11" />
+              <span>Asignar</span>
+            </button>
+          </div>
         </div>
       </div>
       <div class="flex flex-wrap gap-2">
-        <BaseButton v-if="canEdit && !editing" size="sm" variant="secondary" :full-width="false" @click="emit('start-edit')">
+        <BaseButton v-if="canEdit && layoutEditable && !editing" size="sm" variant="secondary" :full-width="false" @click="emit('start-edit')">
           <template #icon><Pencil :size="15" /></template>Diseñar piso
         </BaseButton>
         <BaseButton v-if="canEdit && !editing" size="sm" variant="accent" :full-width="false" @click="emit('create-space')">
@@ -229,14 +341,61 @@ const roomTone = (space) => {
         >
           <button v-if="editing" type="button" class="flex size-full min-h-0 flex-col justify-between p-2 text-left" @click="emit('select-space', room.espacio_id)">
             <span class="flex items-start justify-between gap-2"><span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white/75"><component :is="roomIcon(room.space.tipo)" :size="17" /></span><span class="flex flex-col items-end gap-1"><span class="rounded-full bg-white/75 px-2 py-0.5 text-[9px] font-bold">{{ room.space.cantidad_equipos }} PC</span><span v-if="roomStatus(room.space)" class="inline-flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-extrabold" :title="roomStatus(room.space).label"><component :is="roomStatus(room.space).icon" :size="10" />{{ roomStatus(room.space).count }}</span></span></span>
-            <span class="min-w-0"><strong class="block truncate font-mono text-xs">{{ room.space.codigo_espacio }}</strong><span v-if="room.ancho > 1" class="block truncate text-[10px] opacity-70">{{ room.space.tipo_display }}</span></span>
+            <span class="min-w-0">
+              <strong class="block truncate font-mono text-xs">{{ room.space.codigo_espacio }}</strong>
+              <span v-if="room.ancho > 1" class="block truncate text-[10px] opacity-70">{{ room.space.tipo_display }}</span>
+              <span
+                v-if="room.space.encargados_directos && room.space.encargados_directos.length"
+                data-testid="space-direct-encargado"
+                class="mt-1 inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[8.5px] font-bold text-slate-800 shadow-2xs"
+                :title="getDirectTooltip(room.space)"
+              >
+                <UserCheck :size="10" class="text-primary-600 shrink-0" />
+                <span class="truncate max-w-[85px]">{{ room.space.encargados_directos[0].usuario_nombre }}</span>
+                <span v-if="room.space.encargados_directos.length > 1" class="text-[7.5px] text-slate-500 font-extrabold">+{{ room.space.encargados_directos.length - 1 }}</span>
+              </span>
+              <span
+                v-else-if="room.space.encargados_heredados && room.space.encargados_heredados.length"
+                data-testid="space-inherited-encargado"
+                class="mt-1 inline-flex items-center gap-1 rounded bg-white/75 px-1.5 py-0.5 text-[8.5px] font-medium text-slate-600 shadow-2xs"
+                :title="getInheritedTooltip(room.space)"
+              >
+                <Layers :size="10" class="text-slate-400 shrink-0" />
+                <span class="truncate max-w-[80px]">{{ room.space.encargados_heredados[0].usuario_nombre }}</span>
+                <span class="text-[7px] text-slate-400 font-semibold">(Heredado)</span>
+              </span>
+            </span>
           </button>
           <template v-else>
             <RouterLink :to="{ path: `/espacios/${room.space.id}`, query: contextQuery }" class="flex size-full min-h-0 flex-col justify-between p-2 pr-9">
               <span class="flex items-start justify-between gap-2"><span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white/75"><component :is="roomIcon(room.space.tipo)" :size="17" /></span><span class="flex flex-col items-end gap-1"><span class="rounded-full bg-white/75 px-2 py-0.5 text-[9px] font-bold">{{ room.space.cantidad_equipos }} PC</span><span v-if="roomStatus(room.space)" class="inline-flex items-center gap-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-extrabold" :title="roomStatus(room.space).label"><component :is="roomStatus(room.space).icon" :size="10" />{{ roomStatus(room.space).count }}</span></span></span>
-              <span class="min-w-0"><strong class="block truncate font-mono text-xs">{{ room.space.codigo_espacio }}</strong><span v-if="room.ancho > 1" class="block truncate text-[10px] opacity-70">{{ room.space.tipo_display }}</span><span v-if="room.alto > 1" class="mt-1 inline-flex items-center gap-1 text-[9px] font-bold">Abrir plano <ArrowRight :size="11" /></span></span>
+              <span class="min-w-0">
+                <strong class="block truncate font-mono text-xs">{{ room.space.codigo_espacio }}</strong>
+                <span v-if="room.ancho > 1" class="block truncate text-[10px] opacity-70">{{ room.space.tipo_display }}</span>
+                <span
+                  v-if="room.space.encargados_directos && room.space.encargados_directos.length"
+                  data-testid="space-direct-encargado"
+                  class="mt-1 inline-flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[8.5px] font-bold text-slate-800 shadow-2xs"
+                  :title="getDirectTooltip(room.space)"
+                >
+                  <UserCheck :size="10" class="text-primary-600 shrink-0" />
+                  <span class="truncate max-w-[85px]">{{ room.space.encargados_directos[0].usuario_nombre }}</span>
+                  <span v-if="room.space.encargados_directos.length > 1" class="text-[7.5px] text-slate-500 font-extrabold">+{{ room.space.encargados_directos.length - 1 }}</span>
+                </span>
+                <span
+                  v-else-if="room.space.encargados_heredados && room.space.encargados_heredados.length"
+                  data-testid="space-inherited-encargado"
+                  class="mt-1 inline-flex items-center gap-1 rounded bg-white/75 px-1.5 py-0.5 text-[8.5px] font-medium text-slate-600 shadow-2xs"
+                  :title="getInheritedTooltip(room.space)"
+                >
+                  <Layers :size="10" class="text-slate-400 shrink-0" />
+                  <span class="truncate max-w-[80px]">{{ room.space.encargados_heredados[0].usuario_nombre }}</span>
+                  <span class="text-[7px] text-slate-400 font-semibold">(Heredado)</span>
+                </span>
+                <span v-if="room.alto > 1" class="mt-1 inline-flex items-center gap-1 text-[9px] font-bold">Abrir plano <ArrowRight :size="11" /></span>
+              </span>
             </RouterLink>
-            <div v-if="canEdit" class="absolute right-1.5 top-1.5 flex flex-col gap-1 rounded-lg bg-white/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <div v-if="canEdit" class="absolute right-1.5 top-1.5 flex flex-col gap-1 rounded-lg bg-white/90 p-0.5 shadow-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
               <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-primary-50 hover:text-primary-600" aria-label="Editar ambiente" @click="emit('edit-space', room.space)"><Pencil :size="12" /></button>
               <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-danger-50 hover:text-danger-600" aria-label="Desactivar ambiente" @click="emit('delete-space', room.space)"><Trash2 :size="12" /></button>
             </div>

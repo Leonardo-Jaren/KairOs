@@ -26,6 +26,8 @@ class EspacioService(AuditableMixin, BaseService):
         pabellon: str = '',
         edificio: str = '',
         edificio_id: int | None = None,
+        local_id: int | None = None,
+        piso: str = '',
     ):
         return self.repository.listar(
             busqueda=busqueda.strip(),
@@ -34,6 +36,8 @@ class EspacioService(AuditableMixin, BaseService):
             pabellon=pabellon.strip(),
             edificio=edificio.strip(),
             edificio_id=edificio_id,
+            local_id=local_id,
+            piso=piso.strip(),
         )
 
     # ── Hooks de lógica de negocio ─────────────────────────────────────────────

@@ -17,6 +17,16 @@ class Incidencia(BaseModel):
         ('pendiente', 'Pendiente'),
         ('en_proceso', 'En Proceso'),
         ('resuelto', 'Resuelto'),
+        ('cerrado', 'Cerrado'),
+        ('cancelado', 'Cancelado'),
+        ('duplicado', 'Duplicado'),
+    ]
+
+    PRIORIDAD_CHOICES = [
+        ('baja', 'Baja'),
+        ('media', 'Media'),
+        ('alta', 'Alta'),
+        ('critica', 'Crítica'),
     ]
 
     espacio = models.ForeignKey(
@@ -46,7 +56,31 @@ class Incidencia(BaseModel):
         default='pendiente',
         verbose_name='Estado',
     )
-    fecha_resolucion = models.DateField(
+    prioridad = models.CharField(
+        max_length=20,
+        choices=PRIORIDAD_CHOICES,
+        default='media',
+        verbose_name='Prioridad',
+    )
+    asignado_a = models.ForeignKey(
+        'usuarios.PerfilTecnico',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='incidencias_asignadas',
+        verbose_name='Técnico asignado',
+    )
+    resolucion = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Resolución',
+    )
+    motivo_cierre = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Motivo de cierre',
+    )
+    fecha_resolucion = models.DateTimeField(
         null=True,
         blank=True,
         verbose_name='Fecha de resolución',
@@ -60,8 +94,10 @@ class Incidencia(BaseModel):
         indexes = [
             models.Index(fields=['estado'], name='idx_incidencia_estado'),
             models.Index(fields=['tipo_incidencia'], name='idx_incidencia_tipo'),
+            models.Index(fields=['prioridad'], name='idx_incidencia_prioridad'),
             models.Index(fields=['espacio'], name='idx_incidencia_espacio'),
             models.Index(fields=['equipo'], name='idx_incidencia_equipo'),
+            models.Index(fields=['asignado_a'], name='idx_incidencia_asignado'),
         ]
 
     def __str__(self):

@@ -9,7 +9,7 @@ Este documento define la arquitectura y las reglas de codificación para todo el
 
 ## 🏗️ 1. Estructura de Directorios y Separación de Responsabilidades
 
-El frontend está construido sobre **Vue 3 (Vite) + Tailwind CSS v4** y se organiza bajo una arquitectura limpia en capas:
+El frontend está construido sobre **Vue 3 (Vite) + Tailwind CSS v4** y se organiza bajo una arquitectura limpia en capas, tratando que se trabaje por componentes y llegar a rondar las 300 lineas de codigo, si sobre pasa es necesario crear mas componentes para una arquitectura limpia:
 
 ### Carpetas Principales (`src/`)
 *   **`src/components/`**: Los componentes de la interfaz de usuario se agrupan en subcarpetas específicas según su categoría o tipo de control (p. ej., `buttons/`, `inputs/`, `tables/`, `selects/`, `toasts/`, `icons/`).
@@ -92,4 +92,93 @@ Cuando el usuario indique **"sube los cambios"**, **"crea el PR"**, **"haz el PR
      .\scripts\create-pr-and-project.ps1 -Descripcion "<slug>" -Modulo "<modulo>" -HistoriaTitulo "<titulo>"
      ```
    - O bien, realizar la secuencia de Git (`git checkout -b <rama>`, `git add .`, `git commit -m "..."`, `git push -u origin <rama>`) y crear el Pull Request con `gh pr create` apuntando a `main`, aplicando el contenido y formato de [`.github/pull_request_template.md`](.github/pull_request_template.md).
+
+---
+
+## 6. Lógica de incidencias y mantenimiento
+
+Esta sección es obligatoria para cualquier agente o desarrollador que modifique
+incidencias, mantenimientos o equipos.
+
+### 6.1 Modelo de dominio
+
+- Una **incidencia** es una falla o degradación no planificada que afecta o
+  puede afectar la disponibilidad de un equipo de cómputo.
+- Un reporte crea una incidencia en estado `pendiente`; no crea automáticamente
+  una orden de mantenimiento.
+- Un **mantenimiento correctivo** es una orden de trabajo que puede originarse
+  desde una incidencia. Una incidencia puede tener varios mantenimientos.
+- Un **mantenimiento preventivo** es independiente de las incidencias. Si
+  durante su ejecución se encuentra una avería, se registra una incidencia
+  separada y, si corresponde, una orden correctiva relacionada.
+- Una incidencia puede resolverse sin mantenimiento. Un mantenimiento
+  correctivo vinculado que termina con `prueba_realizada` y resultado `en_uso`
+  cierra automáticamente la incidencia en la misma transacción. Si el equipo
+  queda `dañado` o `de_baja`, la incidencia permanece en proceso y sugiere otra
+  intervención.
+
+### 6.2 Estados y transiciones
+
+Las incidencias usan `pendiente`, `en_proceso`, `resuelto`, `cerrado`,
+`cancelado` y `duplicado`. Solo son válidas estas transiciones:
+
+```text
+pendiente -> en_proceso | cancelado | duplicado
+en_proceso -> resuelto | cancelado | duplicado
+resuelto -> cerrado | en_proceso
+```
+
+Resolver exige `resolucion`; cerrar conserva una resolución; cancelar o marcar
+como duplicada exige `motivo_cierre`. Una incidencia terminal no se edita. Al
+volver de `resuelto` a `en_proceso` se limpia `fecha_resolucion`.
+
+Los mantenimientos usan `pendiente`, `en_proceso`, `resuelto` y `cancelado`:
+
+```text
+pendiente -> en_proceso | cancelado
+en_proceso -> resuelto | cancelado
+```
+
+Una orden resuelta exige `diagnostico`, `trabajo_realizado`,
+`prueba_realizada` y un `resultado_equipo` final (`en_uso`, `dañado` o
+`de_baja`). `cancelado` no significa que el equipo esté fuera de servicio. El
+estado de la orden y el estado operativo del equipo se almacenan por separado.
+
+### 6.3 Equipo, espacio y permisos
+
+- Toda incidencia se registra sobre un equipo vigente y el backend debe
+  comprobar que ese equipo pertenece al espacio enviado.
+- El espacio conservado en la incidencia es histórico; un traslado posterior
+  del equipo no lo cambia.
+- `docente` y `usuario` pueden crear incidencias y consultar únicamente las
+  propias; no pueden editar, borrar ni cambiar estados.
+- `tecnico`, `responsable`, `admin` y `superadmin` realizan triage, asignación,
+  cambios de estado, resolución y creación de correctivos dentro de sus
+  espacios autorizados.
+- La autorización se valida en backend y las vistas frontend deben usar
+  permisos efectivos (`hasPermission`), no comparaciones aisladas de roles.
+- Se conserva el historial mediante borrado lógico; para una incidencia
+  operativa se prefieren `cancelado`, `duplicado` o `cerrado`.
+
+### 6.4 Capas obligatorias y pruebas
+
+La implementación debe respetar:
+
+```text
+ViewSet -> Serializer -> Service -> Repository -> Model
+```
+
+Las relaciones se exponen mediante `GET /incidencias/{id}/mantenimientos/` y
+el correctivo puede crearse con `POST /incidencias/{id}/crear-mantenimiento/`.
+Las órdenes se inician con `POST /mantenimiento/{id}/iniciar/` y se finalizan
+con `POST /mantenimiento/{id}/finalizar/`; la interfaz no usa el lápiz para
+resolver una orden. La finalización funcional cierra automáticamente la
+incidencia vinculada y la finalización no funcional conserva la incidencia
+abierta para otra intervención.
+El payload acepta `incidencia_id` únicamente para correctivos del mismo equipo
+y con una incidencia que no esté cerrada, cancelada o duplicada.
+
+Todo cambio en este flujo debe incluir pruebas de autorización, transiciones,
+validación equipo-espacio, relación incidencia-mantenimiento y actualización
+del estado operativo del equipo, además de la documentación funcional y de API.
 
