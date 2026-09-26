@@ -1,31 +1,37 @@
 <template>
-  <div class="flex flex-col gap-5">
-    <header
-      class="flex flex-col justify-between gap-4 xl:flex-row xl:items-end"
-    >
-      <div>
-        <p
-          class="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-600"
-        >
-          Gestión territorial
+  <div class="flex min-w-0 flex-col gap-3 sm:gap-4 lg:min-h-[calc(100vh-9rem)]">
+    <header class="flex flex-col gap-2 sm:gap-3 shrink-0">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary-600">
+          Infraestructura territorial
         </p>
-        <h1
-          class="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl"
-        >
-          Mapa de infraestructura
-        </h1>
-        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          Explora cada ciudad y entra en sus locales, pabellones y pisos sin mezclar ubicaciones.
-        </p>
+        <VistaEspaciosSwitch active="mapa" @change="changeView" />
       </div>
-      <div class="flex gap-2">
+      <div class="flex min-w-0 flex-col justify-between gap-2 xl:flex-row xl:items-end">
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+            Espacios y Sedes
+          </h1>
+          <p class="mt-1 max-w-3xl text-sm leading-5 text-slate-500 sm:mt-2 sm:leading-6">
+            Explora cada ciudad y entra en sus locales, pabellones y pisos sin mezclar ubicaciones.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
         <BaseButton
-          v-if="explorerLevel !== 'cities'"
-          variant="ghost"
+          variant="secondary"
+          size="sm"
           :full-width="false"
           :disabled="Boolean(editingFloor || floorSaving)"
-          @click="goBack"
-        ><template #icon><ArrowLeft :size="18" /></template>Volver</BaseButton>
+          @click="router.push('/espacios/usuarios')"
+        ><template #icon><Users :size="16" /></template>Usuarios por espacio</BaseButton>
+        <BaseButton
+          v-if="canEdit && (explorerLevel === 'cities' || explorerLevel === 'locals')"
+          variant="accent"
+          size="sm"
+          :full-width="false"
+          :disabled="Boolean(editingFloor || floorSaving)"
+          @click="openCreateLocal"
+        ><template #icon><Plus :size="16" /></template>Nuevo local</BaseButton>
         <button
           v-if="canEdit && explorerLevel === 'buildings' && localActivo"
           type="button"
@@ -49,62 +55,45 @@
           ><template #icon><Plus :size="18" /></template>Agregar
           pabellón</BaseButton
         >
+        </div>
       </div>
     </header>
-    <nav
-      class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400"
-      aria-label="Ubicación actual"
-    >
-      <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none" :disabled="explorerLevel === 'cities'" @click="showCities">Infraestructura</button>
-      <template v-if="selectedCity">
-        <ChevronRight :size="14" aria-hidden="true" />
-        <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none disabled:text-slate-700" :disabled="explorerLevel === 'locals'" @click="showLocals">{{ selectedCity === '__legacy__' ? 'Registros anteriores' : selectedCity }}</button>
-      </template>
-      <template v-if="selectedLocalId">
-        <ChevronRight :size="14" aria-hidden="true" />
-        <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none disabled:text-slate-700" :disabled="explorerLevel === 'buildings'" @click="showBuildings">{{ selectedLocalName }}</button>
-      </template>
-      <template v-if="selectedBuildingId">
-        <ChevronRight :size="14" aria-hidden="true" />
-        <button type="button" class="min-h-11 rounded-lg px-2 hover:bg-slate-100 hover:text-primary-700 disabled:pointer-events-none disabled:text-slate-700" :disabled="explorerLevel === 'floors'" @click="showFloors">{{ edificioActivo?.nombre }}</button>
-      </template>
-      <template v-if="activeFloor">
-        <ChevronRight :size="14" aria-hidden="true" />
-        <span class="px-2 font-bold text-slate-700" aria-current="page">{{ activeFloor.label }}</span>
-      </template>
-    </nav>
+    <RutaEspacios :items="locationItems" @navigate="navigateLocation" />
     <TerritorioSelector
-      v-if="!selectedLocalId"
+      v-if="!hasSelectedLocal"
+      class="flex-1 min-h-0"
       :city="selectedCity"
       :city-cards="cityCards"
       :local-cards="cityLocalCards"
-      :can-edit="canEdit"
+      :search="territorySearch"
+      :loading="loading"
       :disabled="Boolean(editingFloor || floorSaving)"
       @select-city="selectCity"
       @select-local="selectLocalCard"
-      @create-local="openCreateLocal"
+      @update:search="territorySearch = $event"
     />
-    <div v-if="loading" class="grid gap-3 sm:grid-cols-3">
-      <div
-        v-for="item in 3"
-        :key="item"
-        class="h-24 animate-pulse rounded-2xl bg-slate-100"
-      />
-    </div>
-    <div
-      v-else-if="error"
-      class="rounded-2xl border border-danger-200 bg-danger-50 p-5 text-sm text-danger-700"
-    >
-      <p>{{ error }}</p>
-      <BaseButton
-        class="mt-3"
-        variant="danger"
-        :full-width="false"
-        @click="loadCampus"
-        >Reintentar</BaseButton
-      >
-    </div>
     <template v-else>
+      <div v-if="loading" class="grid gap-3 sm:grid-cols-3">
+        <div
+          v-for="item in 3"
+          :key="item"
+          class="h-24 animate-pulse rounded-2xl bg-slate-100"
+        />
+      </div>
+      <div
+        v-else-if="error"
+        class="rounded-2xl border border-danger-200 bg-danger-50 p-5 text-sm text-danger-700"
+      >
+        <p>{{ error }}</p>
+        <BaseButton
+          class="mt-3"
+          variant="danger"
+          :full-width="false"
+          @click="loadCampus"
+          >Reintentar</BaseButton
+        >
+      </div>
+      <template v-else>
       <PabellonSelector
         v-if="explorerLevel === 'buildings'"
         :local="localActivo"
@@ -238,13 +227,11 @@
             <div
               class="sticky top-20 z-10 -mx-3 border-y border-slate-100 bg-white/95 px-3 py-3 backdrop-blur lg:static lg:mx-0 lg:w-full lg:max-w-xs lg:border-0 lg:bg-transparent lg:p-0"
             >
-              <BaseInput
+              <EspaciosSearch
                 id="campus-search"
                 v-model="search"
-                appearance="light"
                 placeholder="Buscar ambiente, tipo o piso"
-                ><template #icon><Search :size="16" /></template
-              ></BaseInput>
+              />
             </div>
           </div>
           <div class="mt-3 sm:mt-6">
@@ -272,11 +259,13 @@
               @create-space="openCreateSpace(activeFloor.key)"
               @edit-space="openEditSpace"
               @delete-space="askDeleteSpace"
+              @assign-technician="openAssignTechnicianModal"
             />
           </div>
         </div>
       </section>
     </template>
+  </template>
 
     <BaseModal
       :open="localModalOpen"
@@ -588,6 +577,59 @@
         ></template
       ></BaseModal
     >
+    <BaseModal
+      :open="technicianModalOpen"
+      :title="technicianForm.assignment_id ? 'Cambiar técnico de piso' : 'Asignar técnico de piso'"
+      :description="`Asigna el técnico referente para el ${technicianTarget?.piso ? 'Piso ' + technicianTarget.piso : 'piso'} de ${technicianTarget?.edificio_nombre || 'pabellón'}.`"
+      size="sm"
+      @close="technicianModalOpen = false"
+    >
+      <form id="technician-form" class="space-y-4" @submit.prevent="submitTechnicianAssignment">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-500">Ámbito territorial</span>
+            <span class="rounded bg-primary-100 px-2 py-0.5 font-bold text-primary-800">Piso de Pabellón</span>
+          </div>
+          <p class="mt-1 font-semibold text-slate-800">
+            {{ technicianTarget?.edificio_nombre }} · Piso {{ technicianTarget?.piso }}
+          </p>
+        </div>
+
+        <BaseSelect
+          id="floor-technician-user"
+          v-model="technicianForm.usuario_id"
+          label="Técnico encargado"
+          :options="technicianOptions"
+          placeholder="Seleccionar técnico..."
+          required
+        />
+
+        <BaseSelect
+          id="floor-technician-resp"
+          v-model="technicianForm.tipo_responsabilidad"
+          label="Tipo de responsabilidad"
+          :options="[
+            { value: 'tecnico', label: 'Técnico encargado' },
+            { value: 'responsable', label: 'Responsable' },
+          ]"
+        />
+      </form>
+      <template #footer>
+        <BaseButton
+          variant="ghost"
+          :full-width="false"
+          @click="technicianModalOpen = false"
+        >Cancelar</BaseButton>
+        <BaseButton
+          type="submit"
+          form="technician-form"
+          variant="accent"
+          :loading="technicianSaving"
+          :disabled="!technicianForm.usuario_id"
+          :full-width="false"
+        >{{ technicianForm.assignment_id ? 'Guardar cambios' : 'Asignar técnico' }}</BaseButton>
+      </template>
+    </BaseModal>
     <BaseToast
       :show="toast.show"
       :message="toast.message"
@@ -598,24 +640,28 @@
 </template>
 
 <script setup>
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from "vue-router";
 import {
-  ArrowLeft,
   Building2,
-  ChevronRight,
   Layers3,
   MapPin,
   MonitorCog,
   Pencil,
   Plus,
-  Search,
   Trash2,
+  Users,
 } from "@lucide/vue";
 import BaseButton from "@/components/buttons/BaseButton.vue";
 import CroquisPiso from "@/components/espacios/CroquisPiso.vue";
 import PabellonSelector from "@/components/espacios/PabellonSelector.vue";
 import PisoSelector from "@/components/espacios/PisoSelector.vue";
 import TerritorioSelector from "@/components/espacios/TerritorioSelector.vue";
+import EspaciosSearch from '@/components/espacios/EspaciosSearch.vue';
+import RutaEspacios from '@/components/espacios/RutaEspacios.vue';
+import VistaEspaciosSwitch from '@/components/espacios/VistaEspaciosSwitch.vue';
+import { viewLocation } from '@/composables/espacios/espaciosNavigation';
+import { formatFloor } from '@/utils/formatters';
 import BaseInput from "@/components/inputs/BaseInput.vue";
 import BaseTextarea from "@/components/inputs/BaseTextarea.vue";
 import BaseModal from "@/components/modals/BaseModal.vue";
@@ -628,6 +674,7 @@ import { useCampusTecnologico } from "@/composables/espacios/useCampusTecnologic
 
 const route = useRoute();
 const router = useRouter();
+const territorySearch = ref('');
 const state = useCampusTecnologico(
   espaciosService,
   edificiosService,
@@ -722,8 +769,42 @@ const {
   showLocals,
   showBuildings,
   showFloors,
-  goBack,
+  technicianModalOpen,
+  technicianSaving,
+  technicianLoading,
+  technicianTarget,
+  technicianOptions,
+  technicianForm,
+  openAssignTechnicianModal,
+  submitTechnicianAssignment,
 } = state;
+watch(selectedCity, () => { territorySearch.value = ''; });
+
+const hasSelectedLocal = computed(() => Boolean(selectedLocalId.value || route.query.local));
+
+const locationItems = computed(() => {
+  const items = [{ label: 'Ciudades' }];
+  const city = selectedCity.value || route.query.ciudad;
+  if (city) items.push({ label: city === '__legacy__' ? 'Registros anteriores' : city });
+  if (hasSelectedLocal.value) items.push({ label: selectedLocalName.value || 'Local' });
+  if (selectedBuildingId.value || route.query.pabellon) items.push({ label: edificioActivo.value?.nombre || 'Pabellón' });
+  if (activeFloor.value) items.push({ label: activeFloor.value.label });
+  else if (route.query.piso) items.push({ label: formatFloor(route.query.piso) });
+  return items;
+});
+
+const navigateLocation = (index) => {
+  if (index === 0) showCities();
+  else if (index === 1) showLocals();
+  else if (index === 2) showBuildings();
+  else if (index === 3) showFloors();
+};
+
+const changeView = (view) => {
+  if (view !== 'mapa' && !editingFloor.value && !floorSaving.value) {
+    router.push(viewLocation(view, route.query, selectedCity.value));
+  }
+};
 
 const goToSpace = (space) => {
   const buildingId = space?.edificio_id ?? space?.edificio?.id;

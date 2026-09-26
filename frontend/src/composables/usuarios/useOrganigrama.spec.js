@@ -274,4 +274,157 @@ describe('useOrganigrama', () => {
     composable.onTouchEnd();
     expect(composable.isDragging.value).toBe(false);
   });
+
+  describe('Asignaciones Territoriales en Organigrama', () => {
+    const mockTerritorialData = {
+      sede: { id: 1, codigo: 'LOC-01', nombre: 'Campus Central Huánuco' },
+      total_nodos: 3,
+      arbol: [
+        {
+          id: 1,
+          nombre: 'Ada Admin',
+          rol: 'admin',
+          is_active: true,
+          asignaciones_territoriales: [],
+          children: [
+            {
+              id: 2,
+              nombre: 'Carlos Responsable',
+              rol: 'responsable',
+              is_active: true,
+              asignaciones_territoriales: [
+                {
+                  id: 10,
+                  ambito: 'sede',
+                  badge_texto: 'Responsable · Campus Central',
+                  tipo_responsabilidad: 'responsable',
+                },
+              ],
+              children: [
+                {
+                  id: 3,
+                  nombre: 'Tomás Técnico',
+                  rol: 'tecnico',
+                  is_active: true,
+                  asignaciones_territoriales: [
+                    {
+                      id: 11,
+                      ambito: 'piso',
+                      badge_texto: 'Encargado Piso 2 · Pabellón A',
+                      tipo_responsabilidad: 'tecnico',
+                    },
+                  ],
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    it('preserva asignaciones_territoriales en los nodos del árbol al cargar el organigrama', async () => {
+      const service = createMockService(mockTerritorialData);
+      const composable = useOrganigrama(service);
+
+      await composable.loadOrganigrama();
+
+      const rootNode = composable.arbol.value[0];
+      expect(rootNode.asignaciones_territoriales).toEqual([]);
+
+      const responsableNode = rootNode.children[0];
+      expect(responsableNode.asignaciones_territoriales).toHaveLength(1);
+      expect(responsableNode.asignaciones_territoriales[0].ambito).toBe('sede');
+
+      const tecnicoNode = responsableNode.children[0];
+      expect(tecnicoNode.asignaciones_territoriales).toHaveLength(1);
+      expect(tecnicoNode.asignaciones_territoriales[0].badge_texto).toBe('Encargado Piso 2 · Pabellón A');
+    });
+
+    it('conserva asignaciones_territoriales en la vista "todos"', async () => {
+      const service = createMockService(mockTerritorialData);
+      const composable = useOrganigrama(service);
+
+      await composable.loadOrganigrama();
+      composable.setActiveView('todos');
+
+      const rootNode = composable.displayArbol.value[0];
+      const target = composable.findNodeById(3, composable.displayArbol.value);
+      expect(target).not.toBeNull();
+      expect(target.asignaciones_territoriales).toHaveLength(1);
+      expect(target.asignaciones_territoriales[0].badge_texto).toBe('Encargado Piso 2 · Pabellón A');
+    });
+
+    it('soporta nodos con múltiples asignaciones territoriales (Piso + Edificio)', async () => {
+      const multiData = {
+        sede: { id: 1, codigo: 'LOC-01', nombre: 'Sede' },
+        total_nodos: 1,
+        arbol: [
+          {
+            id: 10,
+            nombre: 'Multi Tech',
+            rol: 'tecnico',
+            is_active: true,
+            asignaciones_territoriales: [
+              { id: 1, ambito: 'edificio', badge_texto: 'Encargado Pabellón A', tipo_responsabilidad: 'tecnico' },
+              { id: 2, ambito: 'piso', badge_texto: 'Encargado Piso 1 · Pabellón A', tipo_responsabilidad: 'tecnico' },
+            ],
+            children: [],
+          },
+        ],
+      };
+
+      const composable = useOrganigrama(createMockService(multiData));
+      await composable.loadOrganigrama();
+
+      const node = composable.arbol.value[0];
+      expect(node.asignaciones_territoriales).toHaveLength(2);
+      expect(composable.hasTerritorialAssignments(node)).toBe(true);
+      expect(composable.getTerritorialBadges(node).map((a) => a.badge_texto)).toEqual([
+        'Encargado Pabellón A',
+        'Encargado Piso 1 · Pabellón A',
+      ]);
+    });
+
+    it('openDrawer transfiere intacto el array de asignaciones a selectedUser', async () => {
+      const service = createMockService(mockTerritorialData);
+      const composable = useOrganigrama(service);
+
+      await composable.loadOrganigrama();
+      const tecnico = composable.findNodeById(3);
+
+      composable.openDrawer(tecnico);
+      expect(composable.drawerOpen.value).toBe(true);
+      expect(composable.selectedUser.value?.id).toBe(3);
+      expect(composable.selectedUser.value?.asignaciones_territoriales).toHaveLength(1);
+      expect(composable.selectedUser.value?.asignaciones_territoriales[0].badge_texto).toBe('Encargado Piso 2 · Pabellón A');
+    });
+
+    it('findNodeById localiza nodos anidados por ID recursivamente', () => {
+      const composable = useOrganigrama(createMockService(mockTerritorialData));
+      composable.arbol.value = mockTerritorialData.arbol;
+
+      expect(composable.findNodeById(1)?.nombre).toBe('Ada Admin');
+      expect(composable.findNodeById(2)?.nombre).toBe('Carlos Responsable');
+      expect(composable.findNodeById(3)?.nombre).toBe('Tomás Técnico');
+      expect(composable.findNodeById(999)).toBeNull();
+    });
+
+    it('assignSupervisor resincroniza selectedUser en el drawer si corresponde al usuario editado', async () => {
+      const service = createMockService(mockTerritorialData);
+      const userService = createMockUserService();
+      const composable = useOrganigrama(service, userService);
+
+      await composable.loadOrganigrama();
+      const tecnico = composable.findNodeById(3);
+      composable.openDrawer(tecnico);
+
+      expect(composable.selectedUser.value?.id).toBe(3);
+
+      await composable.assignSupervisor(3, 1);
+
+      expect(userService.actualizar).toHaveBeenCalledWith(3, { supervisor_id: 1 });
+      expect(composable.selectedUser.value?.id).toBe(3);
+    });
+  });
 });

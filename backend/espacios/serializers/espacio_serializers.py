@@ -1,8 +1,10 @@
+from django.db.models import Q
 from rest_framework import serializers
 
 from equipos.models import Equipo
-from espacios.models import Edificio, Espacio
+from espacios.models import Edificio, Espacio, EspacioUsuario
 from espacios.serializers.edificio_serializers import EdificioResumenSerializer
+from espacios.serializers.espacio_usuario_serializers import UsuarioResumenSerializer
 from usuarios.models import Usuario
 
 
@@ -49,11 +51,66 @@ class EquipoEspacioSerializer(serializers.ModelSerializer):
         ]
 
 
+class EncargadoTerritorialSerializer(serializers.ModelSerializer):
+    """Representa un encargado asignado a un ámbito territorial (directo o heredado)."""
+
+    usuario = UsuarioResumenSerializer(read_only=True)
+    usuario_id = serializers.IntegerField(source='usuario.id', read_only=True)
+    usuario_nombre = serializers.SerializerMethodField()
+    usuario_email = serializers.CharField(source='usuario.correo', read_only=True)
+    tipo_responsabilidad_display = serializers.CharField(
+        source='get_tipo_responsabilidad_display',
+        read_only=True,
+    )
+    ambito_display = serializers.CharField(
+        source='get_ambito_display',
+        read_only=True,
+    )
+    origen = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EspacioUsuario
+        fields = [
+            'id',
+            'usuario',
+            'usuario_id',
+            'usuario_nombre',
+            'usuario_email',
+            'tipo_responsabilidad',
+            'tipo_responsabilidad_display',
+            'ambito',
+            'ambito_display',
+            'origen',
+            'badge_texto',
+            'activo',
+        ]
+
+    def get_usuario_nombre(self, obj: EspacioUsuario) -> str:
+        if not obj.usuario:
+            return ''
+        return f'{obj.usuario.nombre} {obj.usuario.apellido}'.strip()
+
+    def get_origen(self, obj: EspacioUsuario) -> str:
+        """Determina la procedencia territorial del encargado."""
+        if obj.ambito == EspacioUsuario.AMBITO_PISO:
+            edif_nombre = obj.edificio.nombre if obj.edificio else 'Pabellón'
+            return f'Piso {obj.piso} · {edif_nombre}' if obj.piso else edif_nombre
+        if obj.ambito == EspacioUsuario.AMBITO_EDIFICIO:
+            return obj.edificio.nombre if obj.edificio else 'Edificio'
+        if obj.ambito == EspacioUsuario.AMBITO_SEDE:
+            return obj.local.nombre if obj.local else 'Sede Central'
+        if obj.espacio:
+            return obj.espacio.codigo_espacio
+        return ''
+
+
 class EspacioSerializer(serializers.ModelSerializer):
-    """Representa un espacio con sus indicadores operativos."""
+    """Representa un espacio con sus indicadores operativos y cadena de mandos territoriales."""
 
     tipo_display = serializers.CharField(source='get_tipo_display')
     responsable = serializers.SerializerMethodField()
+    encargados_directos = serializers.SerializerMethodField()
+    encargados_heredados = serializers.SerializerMethodField()
     cantidad_equipos = serializers.SerializerMethodField()
     resumen_equipos = serializers.SerializerMethodField()
     edificio = EdificioResumenSerializer(read_only=True)
@@ -72,24 +129,147 @@ class EspacioSerializer(serializers.ModelSerializer):
             'piso',
             'activo',
             'responsable',
+            'encargados_directos',
+            'encargados_heredados',
             'cantidad_equipos',
             'resumen_equipos',
             'created_at',
             'updated_at',
         ]
 
-    def get_responsable(self, obj: Espacio):
-        asignaciones = getattr(obj, 'asignaciones_activas', [])
-        asignacion = next(
-            (
-                item for item in asignaciones
-                if item.tipo_responsabilidad == 'responsable'
-            ),
-            asignaciones[0] if asignaciones else None,
+    def _get_asignaciones_directas(self, obj: Espacio) -> list[EspacioUsuario]:
+        """Obtiene las asignaciones vinculadas directamente al espacio físico."""
+        directas = getattr(obj, 'asignaciones_activas', None)
+        if directas is None:
+            directas = list(
+                obj.asignaciones_usuario.filter(
+                    is_deleted=False,
+                    activo=True,
+                ).select_related('usuario', 'espacio')
+            )
+        return [
+            a for a in directas
+            if a.activo and not a.is_deleted and (a.ambito == EspacioUsuario.AMBITO_ESPACIO or a.espacio_id == obj.id)
+        ]
+
+    def _get_asignaciones_heredadas(self, obj: Espacio) -> list[EspacioUsuario]:
+        """
+        Retorna las asignaciones de niveles superiores que cubren este espacio:
+        1. Piso: donde edificio_id == obj.edificio_id y piso == obj.piso
+        2. Edificio: donde edificio_id == obj.edificio_id
+        3. Sede: donde local_id == obj.edificio.local_id
+        """
+        edificio = getattr(obj, 'edificio', None)
+        if not edificio:
+            return []
+
+        # Caso Optimizado: Si ya se precargaron en el Repositorio
+        if hasattr(edificio, 'asignaciones_edificio_activas'):
+            asignaciones_edificio = getattr(edificio, 'asignaciones_edificio_activas', [])
+            piso_str = str(obj.piso).strip() if obj.piso else ''
+
+            asig_piso = [
+                a for a in asignaciones_edificio
+                if a.activo and not a.is_deleted
+                and a.ambito == EspacioUsuario.AMBITO_PISO
+                and str(a.piso).strip() == piso_str
+            ]
+            asig_edificio = [
+                a for a in asignaciones_edificio
+                if a.activo and not a.is_deleted
+                and a.ambito == EspacioUsuario.AMBITO_EDIFICIO
+            ]
+
+            local = getattr(edificio, 'local', None)
+            asig_sede = []
+            if local and hasattr(local, 'asignaciones_sede_activas'):
+                asig_sede = [
+                    a for a in getattr(local, 'asignaciones_sede_activas', [])
+                    if a.activo and not a.is_deleted
+                    and a.ambito == EspacioUsuario.AMBITO_SEDE
+                ]
+            elif local:
+                asig_sede = list(
+                    EspacioUsuario.objects.filter(
+                        is_deleted=False,
+                        activo=True,
+                        ambito=EspacioUsuario.AMBITO_SEDE,
+                        local_id=local.id,
+                    ).select_related('usuario', 'local')
+                )
+
+            return asig_piso + asig_edificio + asig_sede
+
+        # Caso Fallback: consulta directa optimizada en una sola query
+        piso_str = str(obj.piso).strip() if obj.piso else ''
+        condiciones = Q(
+            ambito=EspacioUsuario.AMBITO_EDIFICIO,
+            edificio_id=edificio.id,
         )
-        if asignacion is None:
-            return None
-        return ResponsableEspacioSerializer(asignacion.usuario).data
+        if piso_str:
+            condiciones |= Q(
+                ambito=EspacioUsuario.AMBITO_PISO,
+                edificio_id=edificio.id,
+                piso=piso_str,
+            )
+        local_id = edificio.local_id
+        if local_id:
+            condiciones |= Q(
+                ambito=EspacioUsuario.AMBITO_SEDE,
+                local_id=local_id,
+            )
+
+        heredadas = list(
+            EspacioUsuario.objects.filter(
+                condiciones,
+                is_deleted=False,
+                activo=True,
+            ).select_related('usuario', 'edificio', 'local')
+        )
+
+        orden_ambito = {
+            EspacioUsuario.AMBITO_PISO: 1,
+            EspacioUsuario.AMBITO_EDIFICIO: 2,
+            EspacioUsuario.AMBITO_SEDE: 3,
+        }
+        heredadas.sort(key=lambda a: (orden_ambito.get(a.ambito, 99), a.tipo_responsabilidad))
+        return heredadas
+
+    def get_encargados_directos(self, obj: Espacio):
+        directas = self._get_asignaciones_directas(obj)
+        return EncargadoTerritorialSerializer(directas, many=True).data
+
+    def get_encargados_heredados(self, obj: Espacio):
+        heredadas = self._get_asignaciones_heredadas(obj)
+        return EncargadoTerritorialSerializer(heredadas, many=True).data
+
+    def get_responsable(self, obj: Espacio):
+        """
+        Resuelve al responsable del espacio:
+        1. Encargado directo (preferencia rol 'responsable', o primer directo).
+        2. Fallback a encargado heredado operativo más específico (Piso -> Edificio -> Sede).
+        """
+        directas = self._get_asignaciones_directas(obj)
+        if directas:
+            asignacion = next(
+                (item for item in directas if item.tipo_responsabilidad == 'responsable'),
+                directas[0],
+            )
+            if asignacion and asignacion.usuario:
+                return ResponsableEspacioSerializer(asignacion.usuario).data
+
+        heredadas = self._get_asignaciones_heredadas(obj)
+        for ambito_objetivo in [EspacioUsuario.AMBITO_PISO, EspacioUsuario.AMBITO_EDIFICIO, EspacioUsuario.AMBITO_SEDE]:
+            candidatos = [a for a in heredadas if a.ambito == ambito_objetivo]
+            if candidatos:
+                asignacion = next(
+                    (item for item in candidatos if item.tipo_responsabilidad == 'responsable'),
+                    candidatos[0],
+                )
+                if asignacion and asignacion.usuario:
+                    return ResponsableEspacioSerializer(asignacion.usuario).data
+
+        return None
 
     def get_cantidad_equipos(self, obj: Espacio) -> int:
         return len(getattr(obj, 'equipos_vigentes', []))

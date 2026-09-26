@@ -197,10 +197,20 @@ Tabla asociativa de instalaciones de software por equipo (`software.SoftwareInst
 | `id` | BigSerial | NO | Auto | PK | Identificador único del ticket |
 | `equipo_id` | BigInt | NO | - | FK (`equipos.id`, CASCADE) | Equipo intervenido |
 | `reportado_por_id` | BigInt | SÍ | NULL | FK (`usuarios.id`, SET NULL) | Usuario solicitante |
+| `incidencia_origen_id` | BigInt | SÍ | NULL | FK (`incidencias.id`, SET NULL), índice `idx_mant_incidencia` | Incidencia que originó el correctivo; solo aplica a correctivos |
 | `fecha` | Date | NO | - | Index (`idx_mant_fecha`) | Fecha de emisión de la orden |
 | `tipo_mantenimiento` | VarChar(20) | NO | - | Check: `preventivo`, `correctivo` | Tipo de intervención técnica |
-| `estado` | VarChar(20) | NO | `'pendiente'`| Check: `pendiente`, `en_proceso`, `resuelto`, `cancelado` | Estado de resolución |
-| `descripcion` | Text | NO | - | - | Diagnóstico o tareas preventivas |
+| `estado` | VarChar(20) | NO | `'pendiente'`| Check: `pendiente`, `en_proceso`, `resuelto`, `cancelado` | Estado de la orden; no equivale al estado del equipo |
+| `descripcion` | Text | NO | - | - | Motivo o alcance de la orden |
+| `diagnostico` | Text | NO | `''` | Obligatorio al resolver | Diagnóstico técnico |
+| `trabajo_realizado` | Text | NO | `''` | Obligatorio al resolver | Intervención ejecutada |
+| `resultado_equipo` | VarChar(20) | SÍ | NULL | `en_uso`, `en_mantenimiento`, `dañado`, `de_baja` | Estado operativo resultante |
+| `prueba_realizada` | Boolean | NO | `False` | Obligatoria al finalizar | Confirma que se ejecutó una prueba de funcionamiento |
+| `observacion_prueba` | Text | NO | `''` | - | Evidencia u observación opcional de la prueba |
+| `verificado_por_id` | BigInt | SÍ | NULL | FK (`usuarios.id`, SET NULL) | Usuario que confirmó la prueba |
+| `fecha_verificacion` | Timestamp | SÍ | NULL | - | Fecha y hora de verificación |
+| `fecha_inicio` | Timestamp | SÍ | NULL | - | Inicio de atención |
+| `fecha_fin` | Timestamp | SÍ | NULL | - | Fin de atención |
 | `is_deleted` | Boolean | NO | `False` | - | Borrado lógico |
 
 ---
@@ -230,9 +240,17 @@ Reporte y atención de averías en infraestructura y terminales (`incidencias.In
 | `equipo_id` | BigInt | NO | - | FK (`equipos.id`, CASCADE) | Equipo afectado |
 | `tipo_incidencia` | VarChar(20) | NO | - | Check: `hardware`, `software` | Naturaleza de la avería |
 | `descripcion` | Text | NO | - | - | Detalle de la falla observada |
-| `estado` | VarChar(20) | NO | `'pendiente'`| Check: `pendiente`, `en_proceso`, `resuelto` | Ciclo de vida del reporte |
-| `fecha_resolucion` | Date | SÍ | NULL | - | Fecha en que se solucionó |
+| `estado` | VarChar(20) | NO | `'pendiente'`| Check: `pendiente`, `en_proceso`, `resuelto`, `cerrado`, `cancelado`, `duplicado` | Ciclo de vida del reporte |
+| `prioridad` | VarChar(20) | NO | `'media'` | `baja`, `media`, `alta`, `critica`; índice `idx_incidencia_prioridad` | Urgencia operativa |
+| `asignado_a_id` | BigInt | SÍ | NULL | FK (`perfil_tecnico.id`, SET NULL), índice `idx_incidencia_asignado` | Técnico responsable del triage |
+| `resolucion` | Text | NO | `''` | Obligatoria al resolver/cerrar | Explicación de la solución |
+| `motivo_cierre` | Text | NO | `''` | Obligatorio al cancelar/duplicar | Motivo de cierre no resolutivo |
+| `fecha_resolucion` | Timestamp | SÍ | NULL | - | Fecha y hora de resolución |
 | `is_deleted` | Boolean | NO | `False` | - | Borrado lógico |
+
+Relación funcional: `incidencias.id` se relaciona con cero o muchos
+`mantenimiento.incidencia_origen_id`. La ubicación guardada en `espacio_id` no
+se recalcula cuando el equipo cambia de espacio.
 
 ---
 

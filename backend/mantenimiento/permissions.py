@@ -22,7 +22,13 @@ class CanManageMantenimiento(permissions.BasePermission):
         if request.user.rol == ROL_SUPERADMIN or request.user.is_superuser:
             return True
 
-        accion = HasModulePermission.ACCIONES_MAP.get(request.method, 'ver')
+        # Iniciar y finalizar son transiciones operativas de una orden
+        # existente; requieren editar, no el permiso de crear órdenes nuevas.
+        accion = (
+            'editar'
+            if getattr(view, 'action', None) in {'iniciar', 'finalizar'}
+            else HasModulePermission.ACCIONES_MAP.get(request.method, 'ver')
+        )
         return request.user.tiene_permiso('mantenimiento', accion)
 
 

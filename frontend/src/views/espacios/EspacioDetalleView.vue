@@ -222,7 +222,9 @@
 
     <EquipoPlanoPanel
       :equipment="equipmentDetailOpen || equipmentModalOpen || equipmentDeleteOpen ? null : selectedEquipo"
-      :active-maintenances="activeMaintenances" :maintenance-loading="maintenanceLoading" :can-edit="canEdit"
+      :active-maintenances="activeMaintenances" :maintenance-loading="maintenanceLoading"
+      :active-incidencias="activeIncidencias" :incidencia-loading="incidenciaLoading"
+      :can-edit="canEdit" :can-report="canReport"
       @close="selectedEquipo = null" @report="openReport" @edit="openEditEquipment" @delete="askDeleteEquipment"
       @manage="equipmentDetailOpen = true" />
 
@@ -249,14 +251,12 @@
       @close="closeReport">
       <form id="failure-form" class="flex flex-col gap-4" @submit.prevent="submitReport">
         <div class="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm leading-6 text-warning-800">
-          <strong>Ticket correctivo:</strong> describe lo observado y define si el equipo debe ingresar a mantenimiento
-          inmediatamente.
+          <strong>Incidencia:</strong> describe lo observado. El reporte quedará pendiente; si eliges atención inmediata,
+          se generará un mantenimiento correctivo relacionado.
         </div>
         <BaseTextarea id="failure-description" v-model="reportForm.descripcion" appearance="light"
           label="Descripción de la falla" placeholder="Ej: El equipo enciende, pero no muestra imagen en el monitor..."
           :rows="4" :error="reportErrors.descripcion" />
-        <BaseSelect id="failure-reporter" v-model="reportForm.reportado_por_id" label="Reportado por"
-          :options="reporterOptions" :error="reportErrors.reportado_por_id" />
         <div class="grid gap-4 sm:grid-cols-2">
           <BaseSelect id="failure-attention" v-model="reportForm.atencion" label="Acción" :options="attentionOptions" />
           <BaseSelect id="failure-technician" v-model="reportForm.tecnico_id" label="Técnico responsable (opcional)"
@@ -299,13 +299,14 @@ import { formatBuildingName, formatFloor } from '@/utils/formatters';
 
 const route = useRoute();
 const {
-  espacio, equipos, loading, saving, error, editing, canEdit, columns, rows, cells,
+  espacio, equipos, loading, saving, error, editing, canEdit, canReport, columns, rows, cells,
   statusSummary, teacherEquipment, selectedPosition, selectedLayoutEquipment,
   selectedPositionId, selectedEquipo,
   equipmentDetailOpen, equipmentModalOpen, equipmentDeleteOpen, pendingEquipmentDelete,
   equipmentSaving, equipmentForm, equipmentErrors, isEditingEquipment,
-  activeMaintenances, maintenanceLoading, reportOpen, reportSaving, reportForm,
-  reportErrors, technicianOptions, reporterOptions, equipmentTypeOptions,
+  activeMaintenances, maintenanceLoading, activeIncidencias, incidenciaLoading,
+  reportOpen, reportSaving, reportForm,
+  reportErrors, technicianOptions, equipmentTypeOptions,
   acquisitionModeOptions, equipmentStatusOptions, toast,
   startEditing, cancelEditing, reflowPositions, addRow, removeRow, handleCellClick,
   handleDrop, toggleTeacher, saveLayout, openReport, closeReport, submitReport,

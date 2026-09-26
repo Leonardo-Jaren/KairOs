@@ -77,11 +77,14 @@ Base URL en entorno local: `http://localhost:8000/api/v1`
 
 | Método | Endpoint | Roles Permitidos | Descripción | Payload / Parámetros |
 |--------|----------|------------------|-------------|----------------------|
-| `GET` | `/mantenimiento/` | `admin`, `tecnico` | Listado de órdenes de mantenimiento preventivo y correctivo. | Query: `?estado=pendiente&tipo_mantenimiento=correctivo` |
-| `POST` | `/mantenimiento/` | `admin`, `tecnico` | Creación de una orden de mantenimiento con asignación técnica. | `{"equipo": 12, "tipo_mantenimiento": "correctivo", "descripcion": "...", "tecnicos_ids": [1, 2]}` |
-| `GET` | `/mantenimiento/{id}/` | `admin`, `tecnico` | Detalle del ticket de mantenimiento, acciones ejecutadas y técnicos. | - |
-| `PATCH` | `/mantenimiento/{id}/` | `admin`, `tecnico` | Actualización de estado del ticket (`en_proceso`, `resuelto`, `cancelado`). | `{"estado": "resuelto"}` |
-| `GET` | `/mantenimiento/tecnicos-disponibles/` | `admin`, `tecnico` | Lista de personal técnico activo para asignación en tickets. | - |
+| `GET` | `/mantenimiento/` | `tecnico`, `responsable`, `admin`, `superadmin` | Listado de órdenes dentro del alcance del actor. | Query: `?estado=pendiente&tipo_mantenimiento=correctivo&equipo_id=22` |
+| `POST` | `/mantenimiento/` | `tecnico`, `responsable`, `admin`, `superadmin` | Crea una orden preventiva o correctiva. | `{"equipo_id": 22, "incidencia_id": 15, "tipo_mantenimiento": "correctivo", "descripcion": "Diagnóstico y reparación", "tecnicos_ids": [4]}` |
+| `GET` | `/mantenimiento/{id}/` | Operativos con alcance | Detalle con incidencia de origen, diagnóstico, trabajo, resultado y técnicos. | - |
+| `PATCH` | `/mantenimiento/{id}/` | Operativos con alcance | Actualiza datos administrativos y conserva compatibilidad con clientes existentes. Las finalizaciones deben usar la acción guiada. | `{"descripcion": "Diagnóstico y reparación", "tecnicos_ids": [4]}` |
+| `POST` | `/mantenimiento/{id}/iniciar/` | Operativos con alcance y permiso `editar` | Pasa una orden `pendiente` a `en_proceso` y actualiza el equipo a `en_mantenimiento`. | `{}` |
+| `POST` | `/mantenimiento/{id}/finalizar/` | Operativos con alcance y permiso `editar` | Finaliza una orden con verificación, resultado del equipo y cierre automático de la incidencia si el correctivo queda funcional. | `{"diagnostico": "Fuente defectuosa", "trabajo_realizado": "Reemplazo", "prueba_realizada": true, "observacion_prueba": "Arranque correcto", "resultado_equipo": "en_uso"}` |
+| `GET` | `/mantenimiento/tecnicos-disponibles/` | Operativos | Técnicos activos para asignación. | - |
+| `GET` | `/mantenimiento/estadisticas/` | Operativos | Indicadores limitados al alcance territorial. | - |
 
 ---
 
@@ -89,11 +92,14 @@ Base URL en entorno local: `http://localhost:8000/api/v1`
 
 | Método | Endpoint | Roles Permitidos | Descripción | Payload / Parámetros |
 |--------|----------|------------------|-------------|----------------------|
-| `GET` | `/incidencias/` | `admin`, `tecnico`, `docente` | Listado de fallas reportadas por docentes o soporte. | Query: `?estado=pendiente&tipo_incidencia=hardware` |
-| `POST` | `/incidencias/` | `admin`, `tecnico`, `docente` | Reporte de nueva falla sobre un equipo o laboratorio. | `{"espacio": 17, "equipo": 22, "tipo_incidencia": "hardware", "descripcion": "..."}` |
-| `PATCH` | `/incidencias/{id}/` | `admin`, `tecnico` | Actualización de estado o resolución de la incidencia. | `{"estado": "resuelto", "fecha_resolucion": "2026-09-14"}` |
-| `GET` | `/incidencias/espacios-opciones/` | Todos | Opciones de espacios para selector de reportes. | - |
-| `GET` | `/incidencias/equipos-opciones/` | Todos | Opciones de equipos filtrados por espacio. | Query: `?espacio_id=17` |
+| `GET` | `/incidencias/` | Todos los roles autenticados según alcance | Cola de fallas filtrable por prioridad, espacio, equipo, tipo y estado. Reportantes solo ven propias. | Query: `?estado=pendiente&prioridad=alta&espacio_id=17&equipo_id=22` |
+| `POST` | `/incidencias/` | `docente`, `usuario`, operativos | Reporte de nueva falla; siempre inicia `pendiente`. | `{"espacio": 17, "equipo": 22, "tipo_incidencia": "hardware", "prioridad": "media", "descripcion": "..."}` |
+| `PATCH` | `/incidencias/{id}/` | Operativos con alcance | Triage, prioridad, técnico, resolución y transición válida. | `{"estado": "resuelto", "resolucion": "Se reemplazó la fuente"}` |
+| `GET` | `/incidencias/{id}/mantenimientos/` | Según alcance | Mantenimientos relacionados con la incidencia. | - |
+| `POST` | `/incidencias/{id}/crear-mantenimiento/` | Operativos con alcance | Crea un correctivo para el mismo equipo y puede asignar técnicos. | `{"descripcion": "Diagnóstico y reparación", "tecnicos_ids": [4]}` |
+| `GET` | `/incidencias/espacios-opciones/` | Según alcance | Espacios válidos para el selector. | - |
+| `GET` | `/incidencias/equipos-opciones/` | Según alcance | Equipos vigentes del espacio seleccionado. | Query: `?espacio_id=17` |
+| `GET` | `/incidencias/tecnicos-disponibles/` | Operativos | Técnicos para triage y correctivos. | - |
 
 ---
 

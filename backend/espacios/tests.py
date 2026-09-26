@@ -182,6 +182,32 @@ class EspacioAPITests(APITestCase):
         self.assertEqual(response.data['total'], 1)
         self.assertEqual(response.data['activos'], 1)
 
+    def test_list_filters_by_local_id_and_piso(self):
+        from espacios.models import Local, Edificio
+        self.client.force_authenticate(self.admin)
+        local1 = Local.objects.create(codigo='LOC-TEST-1', nombre='Sede 1', ciudad='Huánuco', tipo='campus')
+        local2 = Local.objects.create(codigo='LOC-TEST-2', nombre='Sede 2', ciudad='Tingo María', tipo='filial')
+        ed1 = Edificio.objects.create(codigo='ED-1', nombre='Pabellón A', local=local1)
+        ed2 = Edificio.objects.create(codigo='ED-2', nombre='Pabellón B', local=local2)
+
+        esp1 = Espacio.objects.create(codigo_espacio='LAB-L1-P1', tipo='laboratorio', edificio=ed1, piso='1')
+        esp2 = Espacio.objects.create(codigo_espacio='LAB-L1-P2', tipo='laboratorio', edificio=ed1, piso='2')
+        esp3 = Espacio.objects.create(codigo_espacio='LAB-L2-P1', tipo='laboratorio', edificio=ed2, piso='1')
+
+        # Filtrar por local_id
+        res_local = self.client.get(self.list_url, {'local_id': local1.id})
+        self.assertEqual(res_local.status_code, 200)
+        codigos_local = [item['codigo_espacio'] for item in res_local.data['results']]
+        self.assertIn('LAB-L1-P1', codigos_local)
+        self.assertIn('LAB-L1-P2', codigos_local)
+        self.assertNotIn('LAB-L2-P1', codigos_local)
+
+        # Filtrar por piso
+        res_piso = self.client.get(self.list_url, {'local_id': local1.id, 'piso': '2'})
+        self.assertEqual(res_piso.status_code, 200)
+        codigos_piso = [item['codigo_espacio'] for item in res_piso.data['results']]
+        self.assertEqual(codigos_piso, ['LAB-L1-P2'])
+
     def test_admin_saves_interactive_layout(self):
         espacio = Espacio.objects.create(**self.payload)
         equipo = Equipo.objects.create(

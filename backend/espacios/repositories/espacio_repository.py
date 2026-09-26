@@ -13,23 +13,43 @@ class EspacioRepository(BaseRepository):
 
     def get_all(self):
         """Retorna espacios vigentes con responsables y equipos precargados."""
-        asignaciones = EspacioUsuario.objects.filter(
+        asignaciones_directas = EspacioUsuario.objects.filter(
             is_deleted=False,
             activo=True,
         ).select_related('usuario').order_by('tipo_responsabilidad', 'usuario__nombre')
+        asignaciones_edificio = EspacioUsuario.objects.filter(
+            is_deleted=False,
+            activo=True,
+            ambito__in=[EspacioUsuario.AMBITO_EDIFICIO, EspacioUsuario.AMBITO_PISO],
+        ).select_related('usuario', 'edificio').order_by('tipo_responsabilidad', 'usuario__nombre')
+        asignaciones_sede = EspacioUsuario.objects.filter(
+            is_deleted=False,
+            activo=True,
+            ambito=EspacioUsuario.AMBITO_SEDE,
+        ).select_related('usuario', 'local').order_by('tipo_responsabilidad', 'usuario__nombre')
         equipos = Equipo.objects.filter(is_deleted=False).order_by('codigo')
         return self.model.objects.filter(is_deleted=False).select_related(
             'edificio__local',
         ).prefetch_related(
             Prefetch(
                 'asignaciones_usuario',
-                queryset=asignaciones,
+                queryset=asignaciones_directas,
                 to_attr='asignaciones_activas',
             ),
             Prefetch(
                 'equipos',
                 queryset=equipos,
                 to_attr='equipos_vigentes',
+            ),
+            Prefetch(
+                'edificio__asignaciones_edificio',
+                queryset=asignaciones_edificio,
+                to_attr='asignaciones_edificio_activas',
+            ),
+            Prefetch(
+                'edificio__local__asignaciones_sede',
+                queryset=asignaciones_sede,
+                to_attr='asignaciones_sede_activas',
             ),
         )
 
@@ -48,6 +68,8 @@ class EspacioRepository(BaseRepository):
         pabellon: str = '',
         edificio: str = '',
         edificio_id: int | None = None,
+        local_id: int | None = None,
+        piso: str = '',
     ):
         """Aplica los filtros disponibles en la pantalla de espacios."""
         queryset = self.get_all()
@@ -74,6 +96,10 @@ class EspacioRepository(BaseRepository):
             )
         if edificio_id is not None:
             queryset = queryset.filter(edificio_id=edificio_id)
+        if local_id is not None:
+            queryset = queryset.filter(edificio__local_id=local_id)
+        if piso:
+            queryset = queryset.filter(piso=piso)
         return queryset
 
     def get_by_codigo(

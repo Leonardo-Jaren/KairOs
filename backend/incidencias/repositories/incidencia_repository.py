@@ -4,6 +4,7 @@ from equipos.models import Equipo
 from espacios.models import Espacio
 from incidencias.models import Incidencia
 from shared.base import BaseRepository
+from usuarios.models import PerfilTecnico
 
 
 class IncidenciaRepository(BaseRepository):
@@ -14,8 +15,8 @@ class IncidenciaRepository(BaseRepository):
     def get_all(self):
         """Retorna incidencias vigentes con sus relaciones precargadas."""
         return self.model.objects.filter(is_deleted=False).select_related(
-            'espacio', 'equipo', 'created_by'
-        )
+            'espacio', 'equipo', 'created_by', 'asignado_a__usuario'
+        ).prefetch_related('mantenimientos')
 
     def get_by_id(self, id: int) -> Incidencia | None:
         """Busca una incidencia vigente por identificador."""
@@ -31,7 +32,10 @@ class IncidenciaRepository(BaseRepository):
         equipo_id: int | None = None,
         tipo_incidencia: str = '',
         estado: str = '',
+        prioridad: str = '',
+        asignado_a_id: int | None = None,
         reportado_por_id: int | None = None,
+        espacio_ids: set[int] | None = None,
     ):
         """Aplica los filtros disponibles en la pantalla de incidencias."""
         queryset = self.get_all()
@@ -50,16 +54,28 @@ class IncidenciaRepository(BaseRepository):
             queryset = queryset.filter(tipo_incidencia=tipo_incidencia)
         if estado:
             queryset = queryset.filter(estado=estado)
+        if prioridad:
+            queryset = queryset.filter(prioridad=prioridad)
+        if asignado_a_id is not None:
+            queryset = queryset.filter(asignado_a_id=asignado_a_id)
         if reportado_por_id is not None:
             queryset = queryset.filter(created_by_id=reportado_por_id)
+        if espacio_ids is not None:
+            queryset = queryset.filter(espacio_id__in=espacio_ids)
 
         return queryset
 
-    def get_estadisticas(self, reportado_por_id: int | None = None) -> dict:
+    def get_estadisticas(
+        self,
+        reportado_por_id: int | None = None,
+        espacio_ids: set[int] | None = None,
+    ) -> dict:
         """Calcula indicadores generales del modulo de incidencias."""
         incidencias = self.model.objects.filter(is_deleted=False)
         if reportado_por_id is not None:
             incidencias = incidencias.filter(created_by_id=reportado_por_id)
+        if espacio_ids is not None:
+            incidencias = incidencias.filter(espacio_id__in=espacio_ids)
         return incidencias.aggregate(
             total=Count('id'),
             pendientes=Count('id', filter=Q(estado='pendiente')),
@@ -67,23 +83,69 @@ class IncidenciaRepository(BaseRepository):
             resueltas=Count('id', filter=Q(estado='resuelto')),
         )
 
-    def get_espacios_opciones(self):
+    def get_espacios_opciones(self, espacio_ids: set[int] | None = None):
         """Retorna espacios vigentes para poblar el select del formulario de incidencias."""
+        queryset = Espacio.objects.filter(is_deleted=False, activo=True)
+        if espacio_ids is not None:
+            queryset = queryset.filter(id__in=espacio_ids)
         return list(
-            Espacio.objects.filter(is_deleted=False, activo=True)
+            queryset
             .order_by('codigo_espacio')
             .values('id', 'codigo_espacio', 'pabellon', 'tipo')
         )
 
-    def get_equipos_opciones(self, espacio_id: int | None = None):
+    def get_equipos_opciones(
+        self,
+        espacio_id: int | None = None,
+        espacio_ids: set[int] | None = None,
+    ):
         """Retorna equipos vigentes para poblar el select del formulario de incidencias."""
         queryset = Equipo.objects.filter(is_deleted=False)
         if espacio_id is not None:
             queryset = queryset.filter(espacio_id=espacio_id)
+        if espacio_ids is not None:
+            queryset = queryset.filter(espacio_id__in=espacio_ids)
         return list(
             queryset.order_by('codigo')
             .values('id', 'codigo', 'marca', 'modelo', 'tipo_equipo', 'espacio_id')
         )
+
+    def get_tecnicos_disponibles(self):
+        """Retorna perfiles tecnicos activos para asignar incidencias."""
+        perfiles = PerfilTecnico.objects.filter(
+            is_deleted=False,
+            usuario__is_active=True,
+        ).select_related('usuario').order_by('usuario__nombre', 'usuario__apellido')
+        return [
+            {
+                'id': perfil.id,
+                'usuario_id': perfil.usuario_id,
+                'nombre_completo': f'{perfil.usuario.nombre} {perfil.usuario.apellido}'.strip(),
+                'area': perfil.area,
+            }
+            for perfil in perfiles
+        ]
+
+    def get_equipo_by_id(self, equipo_id: int):
+        """Obtiene un equipo vigente para validar el reporte."""
+        try:
+            return Equipo.objects.select_related('espacio').get(
+                id=equipo_id,
+                is_deleted=False,
+            )
+        except Equipo.DoesNotExist:
+            return None
+
+    def get_tecnico_by_id(self, tecnico_id: int):
+        """Obtiene un técnico vigente para asignar una incidencia."""
+        try:
+            return PerfilTecnico.objects.select_related('usuario').get(
+                id=tecnico_id,
+                is_deleted=False,
+                usuario__is_active=True,
+            )
+        except PerfilTecnico.DoesNotExist:
+            return None
 
     def soft_delete(self, instance: Incidencia, actor) -> None:
         """Elimina logicamente la incidencia."""

@@ -1,40 +1,29 @@
 <template>
   <Teleport to="body">
-    <div>
-    <!-- Backdrop oscuro con transición de opacidad -->
-    <transition
-      enter-active-class="transition-opacity duration-300 ease-out"
+    <Transition
+      enter-active-class="transition-opacity duration-200 ease-out"
       enter-from-class="opacity-0"
       enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-200 ease-in"
+      leave-active-class="transition-opacity duration-150 ease-in"
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
       <div
         v-if="open"
-        class="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-xs"
-        @click="$emit('close')"
-      />
-    </transition>
-
-    <!-- Ficha de usuario como modal centrado -->
-    <transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="scale-95 opacity-0"
-      enter-to-class="scale-100 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="scale-100 opacity-100"
-      leave-to-class="scale-95 opacity-0"
-    >
-      <aside
-        v-if="open && user"
-        class="fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[min(640px,calc(100dvh-3rem))] sm:w-[calc(100%-2rem)]"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="`Ficha de ${user.nombre_completo || user.nombre}`"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-3 backdrop-blur-xs sm:p-4"
         tabindex="-1"
         @keydown.esc="$emit('close')"
+        @click.self="$emit('close')"
       >
+        <aside
+          v-if="user"
+          class="flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl h-[min(580px,calc(100dvh-2rem))] sm:h-[min(560px,calc(100dvh-3rem))]"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="`Ficha de ${user.nombre_completo || user.nombre}`"
+          tabindex="-1"
+          @click.stop
+        >
         <!-- Encabezado de la ficha -->
         <header class="flex shrink-0 items-start justify-between border-b border-slate-200 p-4 sm:p-6">
           <div class="flex items-center gap-3">
@@ -136,17 +125,46 @@
             </div>
 
             <div>
-              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Supervisor Directo</p>
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Supervisor Directo</p>
+                <!-- Badge de modo de asociación jerárquica -->
+                <span
+                  v-if="user.supervisor_nombre || user.supervisor"
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border"
+                  :class="
+                    isSupervisorAutoAsociado
+                      ? 'bg-blue-50 text-blue-700 border-blue-200/80'
+                      : 'bg-slate-100 text-slate-600 border-slate-200/80'
+                  "
+                  :title="
+                    isSupervisorAutoAsociado
+                      ? 'Supervisor auto-asociado automáticamente por el responsable de sede'
+                      : 'Supervisor jerárquico asignado formalmente'
+                  "
+                >
+                  <Sparkles v-if="isSupervisorAutoAsociado" :size="10" class="text-blue-600" />
+                  <UserCheck v-else :size="10" class="text-slate-500" />
+                  {{ isSupervisorAutoAsociado ? 'Auto-asociado por sede' : 'Jerarquía formal' }}
+                </span>
+              </div>
+
               <div v-if="user.supervisor_nombre || user.supervisor" class="mt-2 flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-                <div class="grid size-8 place-items-center rounded-lg bg-slate-100 font-bold text-xs text-slate-700">
+                <div class="relative grid size-8 place-items-center rounded-lg bg-slate-100 font-bold text-xs text-slate-700">
                   {{ (user.supervisor_nombre || user.supervisor?.nombre_completo || 'S').charAt(0) }}
+                  <span
+                    v-if="isSupervisorAutoAsociado"
+                    class="absolute -top-1 -right-1 flex size-3 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xs"
+                    title="Vinculado automáticamente por el responsable de sede"
+                  >
+                    <Sparkles :size="7" />
+                  </span>
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-xs font-bold text-slate-800">
                     {{ user.supervisor_nombre || user.supervisor?.nombre_completo }}
                   </p>
                   <p class="text-[11px] text-slate-400 font-mono">
-                    {{ user.supervisor?.rol || 'Supervisor jerárquico' }}
+                    {{ user.supervisor?.rol ? roleLabels[user.supervisor.rol] || user.supervisor.rol : 'Supervisor jerárquico' }}
                   </p>
                 </div>
               </div>
@@ -174,6 +192,102 @@
                 Sin sedes físicas asociadas actualmente.
               </p>
             </div>
+
+            <!-- Sección: Asignaciones Territoriales Activas -->
+            <div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Asignaciones Territoriales
+                </p>
+                <span
+                  v-if="(user.asignaciones_territoriales || []).length"
+                  class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 border border-slate-200"
+                >
+                  {{ user.asignaciones_territoriales.length }} {{ user.asignaciones_territoriales.length === 1 ? 'ámbito' : 'ámbitos' }}
+                </span>
+              </div>
+
+              <!-- Listado de asignaciones si existen -->
+              <div
+                v-if="(user.asignaciones_territoriales || []).length"
+                class="mt-2 space-y-2"
+                data-testid="org-drawer-territorial-list"
+              >
+                <div
+                  v-for="asig in user.asignaciones_territoriales"
+                  :key="asig.id || asig.badge_texto || asig.badge"
+                  class="flex items-start justify-between gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-xs hover:border-slate-300 transition-colors"
+                >
+                  <div class="flex items-start gap-3 min-w-0">
+                    <div
+                      class="grid size-9 shrink-0 place-items-center rounded-xl text-xs font-bold"
+                      :class="getAmbitoIconContainerClass(asig.ambito)"
+                    >
+                      <component :is="getAmbitoIcon(asig.ambito)" :size="16" />
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <!-- Badge de Ámbito -->
+                        <span
+                          class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border"
+                          :class="getAmbitoBadgeClass(asig.ambito)"
+                        >
+                          {{ getAmbitoLabel(asig.ambito) }}
+                        </span>
+
+                        <!-- Badge de Responsabilidad -->
+                        <span
+                          class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold border"
+                          :class="getResponsabilidadBadgeClass(asig.tipo_responsabilidad)"
+                        >
+                          <component :is="getResponsabilidadIcon(asig.tipo_responsabilidad)" :size="10" />
+                          {{ getResponsabilidadLabel(asig.tipo_responsabilidad) }}
+                        </span>
+                      </div>
+
+                      <!-- Nombre de la ubicación física -->
+                      <p class="mt-1 text-xs font-bold text-slate-800 leading-snug break-words">
+                        {{ asig.badge_texto || asig.badge || asig.nombre_ambito || 'Ámbito territorial sin especificar' }}
+                      </p>
+
+                      <!-- Detalle secundario opcional (piso, pabellón) -->
+                      <p
+                        v-if="asig.piso || asig.edificio_id || asig.espacio_id"
+                        class="mt-0.5 text-[11px] text-slate-400 font-mono"
+                      >
+                        <span v-if="asig.piso">Piso {{ asig.piso }}</span>
+                        <span v-if="asig.piso && asig.espacio_id"> · </span>
+                        <span v-if="asig.espacio_id">Espacio #{{ asig.espacio_id }}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Estado Activo / Inactivo -->
+                  <div class="shrink-0 pt-0.5">
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      :class="
+                        asig.activo !== false
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      "
+                    >
+                      <span
+                        class="size-1.5 rounded-full"
+                        :class="asig.activo !== false ? 'bg-emerald-500' : 'bg-slate-400'"
+                      />
+                      {{ asig.activo !== false ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estado vacío cuando no tiene asignaciones -->
+              <p v-else class="mt-1 text-xs text-slate-500 italic">
+                Sin asignaciones territoriales asociadas a su cargo.
+              </p>
+            </div>
           </section>
 
           <!-- Pestaña 2: Equipo a su cargo -->
@@ -192,18 +306,19 @@
               </button>
             </div>
 
-            <div v-if="loadingEquipo" class="flex justify-center py-8">
-              <div class="size-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            <div v-if="loadingEquipo" class="flex min-h-[280px] flex-col items-center justify-center py-12">
+              <div class="size-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+              <p class="mt-3 text-xs font-semibold text-slate-500">Cargando personal subordinado...</p>
             </div>
 
-            <div v-else-if="subordinados.length === 0" class="py-8 text-center rounded-2xl border border-dashed border-slate-200 p-6">
+            <div v-else-if="subordinados.length === 0" class="flex min-h-[280px] flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed border-slate-200 p-6">
               <Users :size="28" class="mx-auto text-slate-300" />
               <p class="mt-2 text-xs font-semibold text-slate-700">No tiene personas a su cargo</p>
               <p class="mt-0.5 text-[11px] text-slate-400">No se encontraron subordinados directos registrados.</p>
               <button
                 v-if="canAddSubordinate"
                 type="button"
-                class="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 hover:text-primary-700 underline"
+                class="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 hover:text-primary-700 underline cursor-pointer"
                 @click="$emit('add-subordinate', user)"
               >
                 <UserPlus :size="13" />
@@ -259,12 +374,13 @@
 
           <!-- Pestaña 3: Actividad reciente (Auditoría) -->
           <section v-else-if="activeTab === 'actividad'" class="space-y-4">
-            <div v-if="loadingActividad" class="flex justify-center py-8">
-              <div class="size-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+            <div v-if="loadingActividad" class="flex min-h-[280px] flex-col items-center justify-center py-12">
+              <div class="size-7 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+              <p class="mt-3 text-xs font-semibold text-slate-500">Cargando actividad reciente...</p>
             </div>
 
-            <div v-else-if="actividad.length === 0" class="py-8 text-center">
-              <Clock :size="28" class="mx-auto text-slate-300" />
+            <div v-else-if="actividad.length === 0" class="flex min-h-[280px] flex-col items-center justify-center py-12 text-center">
+              <Clock :size="32" class="mx-auto text-slate-300" />
               <p class="mt-2 text-xs font-semibold text-slate-700">Sin actividad reciente registrada</p>
               <p class="mt-0.5 text-[11px] text-slate-400">No se encontraron eventos de auditoría para este usuario.</p>
             </div>
@@ -341,8 +457,8 @@
           </div>
         </footer>
       </aside>
-    </transition>
     </div>
+  </Transition>
   </Teleport>
 </template>
 
@@ -351,14 +467,22 @@ import { computed, ref, watch } from 'vue';
 import {
   Building2,
   Clock,
+  DoorClosed,
+  GraduationCap,
   Info,
   KeyRound,
+  Landmark,
+  Layers,
   Mail,
   Pencil,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
   UserPlus,
   Users,
-  X,
   UserX,
+  Wrench,
+  X,
 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
@@ -454,6 +578,8 @@ const subordinados = ref([]);
 const actividad = ref([]);
 const loadingEquipo = ref(false);
 const loadingActividad = ref(false);
+const equipoLoaded = ref(false);
+const actividadLoaded = ref(false);
 
 const getInitials = (nombre = '', apellido = '') => {
   const n = (nombre || '').trim().charAt(0);
@@ -476,12 +602,14 @@ const formatDate = (dateStr) => {
   }
 };
 
-const cargarEquipo = async () => {
+const cargarEquipo = async (force = false) => {
   activeTab.value = 'equipo';
   if (!props.user?.id) return;
+  if (equipoLoaded.value && !force) return;
   loadingEquipo.value = true;
   try {
     subordinados.value = await permisosService.obtenerSubordinados(props.user.id);
+    equipoLoaded.value = true;
   } catch {
     if (!subordinados.value.length && props.user?.children?.length) {
       subordinados.value = props.user.children;
@@ -491,12 +619,14 @@ const cargarEquipo = async () => {
   }
 };
 
-const cargarActividad = async () => {
+const cargarActividad = async (force = false) => {
   activeTab.value = 'actividad';
   if (!props.user?.id) return;
+  if (actividadLoaded.value && !force) return;
   loadingActividad.value = true;
   try {
     actividad.value = await permisosService.obtenerActividad(props.user.id, { limit: 15 });
+    actividadLoaded.value = true;
   } catch {
     actividad.value = [];
   } finally {
@@ -510,10 +640,13 @@ watch(
     activeTab.value = 'detalles';
     subordinados.value = [];
     actividad.value = [];
+    equipoLoaded.value = false;
+    actividadLoaded.value = false;
     if (newUser) {
       // Precarga previa si está disponible en el objeto
       if (newUser.children) {
         subordinados.value = newUser.children;
+        equipoLoaded.value = true;
       }
     }
   },
@@ -544,5 +677,124 @@ const avatarClasses = {
   tecnico: 'bg-emerald-100 text-emerald-800',
   docente: 'bg-sky-100 text-sky-800',
   usuario: 'bg-slate-100 text-slate-700',
+};
+
+// Logica de deteccion de auto-asociacion de supervisor
+const isSupervisorAutoAsociado = computed(() => {
+  if (!props.user?.supervisor_id && !props.user?.supervisor && !props.user?.supervisor_nombre) {
+    return false;
+  }
+  if (props.user?.supervisor_auto_asociado !== undefined) {
+    return Boolean(props.user.supervisor_auto_asociado);
+  }
+  if (props.user?.supervisor_origen === 'auto') {
+    return true;
+  }
+  // Heuristica de respaldo: Tecnico con asignaciones territoriales cuyo supervisor es responsable de sede
+  const isTecnico = props.user?.rol === 'tecnico';
+  const hasTerritorial =
+    Array.isArray(props.user?.asignaciones_territoriales) &&
+    props.user.asignaciones_territoriales.length > 0;
+  const supRol = props.user?.supervisor?.rol;
+  return isTecnico && hasTerritorial && (!supRol || supRol === 'responsable');
+});
+
+const getAmbitoIcon = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return Landmark;
+    case 'edificio':
+      return Building2;
+    case 'piso':
+      return Layers;
+    case 'espacio':
+      return DoorClosed;
+    default:
+      return Building2;
+  }
+};
+
+const getAmbitoIconContainerClass = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return 'bg-indigo-50 text-indigo-600';
+    case 'edificio':
+      return 'bg-blue-50 text-blue-600';
+    case 'piso':
+      return 'bg-teal-50 text-teal-600';
+    case 'espacio':
+      return 'bg-purple-50 text-purple-600';
+    default:
+      return 'bg-slate-100 text-slate-600';
+  }
+};
+
+const getAmbitoBadgeClass = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200/80';
+    case 'edificio':
+      return 'bg-blue-50 text-blue-700 border-blue-200/80';
+    case 'piso':
+      return 'bg-teal-50 text-teal-700 border-teal-200/80';
+    case 'espacio':
+      return 'bg-purple-50 text-purple-700 border-purple-200/80';
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200';
+  }
+};
+
+const getAmbitoLabel = (ambito) => {
+  switch (ambito) {
+    case 'sede':
+      return 'Sede';
+    case 'edificio':
+      return 'Pabellón';
+    case 'piso':
+      return 'Piso';
+    case 'espacio':
+      return 'Espacio';
+    default:
+      return 'Ámbito';
+  }
+};
+
+const getResponsabilidadLabel = (rol) => {
+  switch (rol) {
+    case 'responsable':
+      return 'Responsable';
+    case 'tecnico':
+      return 'Técnico';
+    case 'docente':
+      return 'Docente';
+    default:
+      return rol || 'Asignado';
+  }
+};
+
+const getResponsabilidadBadgeClass = (rol) => {
+  switch (rol) {
+    case 'responsable':
+      return 'bg-blue-50 text-blue-700 border-blue-200/80';
+    case 'tecnico':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
+    case 'docente':
+      return 'bg-amber-50 text-amber-700 border-amber-200/80';
+    default:
+      return 'bg-purple-50 text-purple-700 border-purple-200/80';
+  }
+};
+
+const getResponsabilidadIcon = (rol) => {
+  switch (rol) {
+    case 'responsable':
+      return ShieldCheck;
+    case 'tecnico':
+      return Wrench;
+    case 'docente':
+      return GraduationCap;
+    default:
+      return UserCheck;
+  }
 };
 </script>
