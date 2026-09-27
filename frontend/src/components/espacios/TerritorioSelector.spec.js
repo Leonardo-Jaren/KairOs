@@ -16,6 +16,7 @@ describe('TerritorioSelector', () => {
     const wrapper = mount(TerritorioSelector, { props: { cityCards } });
 
     expect(wrapper.get('[aria-label="Ciudades disponibles"]')).toBeTruthy();
+    expect(wrapper.find('svg[role="img"]').exists()).toBe(true);
     expect(wrapper.find('[aria-label="Locales disponibles"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('Paso 1');
 
@@ -57,7 +58,7 @@ describe('TerritorioSelector', () => {
     expect(wrapper.get('[aria-label="Locales disponibles"]').text()).not.toContain('Campus Central');
   });
 
-  it('sustituye el mapa de ciudades por los locales de la ciudad con tarjetas unificadas', async () => {
+  it('al elegir una ciudad sustituye las tarjetas de sedes por el esquema axonométrico', async () => {
     const wrapper = mount(TerritorioSelector, {
       props: {
         city: 'Huánuco',
@@ -70,16 +71,14 @@ describe('TerritorioSelector', () => {
     });
 
     expect(wrapper.find('[aria-label="Ciudades disponibles"]').exists()).toBe(false);
+    expect(wrapper.find('[aria-label="Mapa cartográfico oficial del departamento de Huánuco con sedes universitarias"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Esquema axonométrico');
+    expect(wrapper.text()).toContain('no representa distancias');
+
     const buttons = wrapper.findAll('[aria-label="Locales disponibles"] button');
     expect(buttons).toHaveLength(2);
-    expect(buttons[0].classes()).toContain('h-full');
-    expect(buttons[0].classes()).toContain('flex-1');
-    expect(buttons[1].classes()).toContain('h-full');
-    expect(buttons[1].classes()).toContain('flex-1');
-
-    expect(buttons[0].text()).toContain('Campus principal.');
-    expect(buttons[1].text()).toContain('Campus con infraestructura tecnológica distribuida en pabellones y pisos.');
-    expect(wrapper.text()).not.toContain('Tipo de ubicación');
+    expect(buttons[0].text()).toContain('Campus Central');
+    expect(buttons[0].text()).toContain('HCO-CENTRAL');
 
     await buttons[0].trigger('click');
     expect(wrapper.emitted('select-local')?.[0]).toEqual([1]);
