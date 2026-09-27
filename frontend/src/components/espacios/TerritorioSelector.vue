@@ -8,6 +8,7 @@ import {
   MapPin,
 } from '@lucide/vue';
 import EspaciosSearch from '@/components/espacios/EspaciosSearch.vue';
+import SedesAxonometrico from '@/components/espacios/SedesAxonometrico.vue';
 import {
   HUANUCO_PROVINCES,
   CITY_COORDINATES,
@@ -106,6 +107,18 @@ const totalLocalesCount = computed(() => (
 
 const totalPabellonesCount = computed(() => (
   props.cityCards.reduce((acc, c) => acc + (c.buildingCount || 0), 0)
+));
+
+const selectedCitySummary = computed(() => props.cityCards.find((card) => (
+  String(card.value) === String(props.city)
+  || String(card.label).toLocaleLowerCase('es') === String(props.city).toLocaleLowerCase('es')
+)));
+const selectedCityLocalCount = computed(() => (
+  selectedCitySummary.value?.localCount ?? props.localCards.length
+));
+const selectedCityBuildingCount = computed(() => (
+  selectedCitySummary.value?.buildingCount
+  ?? props.localCards.reduce((total, local) => total + Number(local.buildingCount ?? 0), 0)
 ));
 </script>
 
@@ -382,53 +395,16 @@ const totalPabellonesCount = computed(() => (
       <div class="mb-4 max-w-2xl">
         <EspaciosSearch id="map-local-search" :model-value="search" placeholder="Buscar local" @update:model-value="emit('update:search', $event)" />
       </div>
-      <ul v-if="filteredLocals.length" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Locales disponibles">
-        <li v-for="local in filteredLocals" :key="local.id" class="flex flex-col h-full">
-          <button
-            type="button"
-            class="group flex flex-1 h-full w-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100 disabled:opacity-50 motion-reduce:transform-none"
-            :disabled="disabled"
-            @click="emit('select-local', local.id)"
-          >
-            <div class="flex flex-1 flex-col">
-              <div class="flex w-full items-start justify-between gap-3">
-                <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary-950 text-primary-300 shadow-sm">
-                  <Building2 :size="20" aria-hidden="true" />
-                </span>
-                <span class="rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary-700">
-                  {{ local.tipoLabel }}
-                </span>
-              </div>
-              <strong class="mt-3 block truncate text-base font-extrabold text-slate-950 group-hover:text-primary-600 transition-colors" :title="local.nombre">
-                {{ local.nombre }}
-              </strong>
-              <span class="mt-0.5 block font-mono text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                {{ local.codigo }}
-              </span>
-              <p class="mt-2 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-slate-500">
-                {{ (local.descripcion && local.descripcion.trim()) || `${local.tipoLabel || 'Sede'} con infraestructura tecnológica distribuida en pabellones y pisos.` }}
-              </p>
-            </div>
-
-            <div class="mt-4 flex w-full items-center justify-between border-t border-slate-100 pt-3 text-xs font-semibold text-slate-600 shrink-0">
-              <span class="flex items-center gap-1.5">
-                <span class="size-2 rounded-full bg-primary-500" />
-                {{ local.buildingCount }} {{ local.buildingCount === 1 ? 'pabellón' : 'pabellones' }}
-              </span>
-              <span class="flex items-center gap-1 font-bold text-primary-600 group-hover:underline">
-                Explorar local
-                <ChevronRight :size="16" class="transition-transform group-hover:translate-x-1 motion-reduce:transform-none" aria-hidden="true" />
-              </span>
-            </div>
-          </button>
-        </li>
-      </ul>
-
-      <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
-        <Building2 :size="32" class="mx-auto text-slate-300" aria-hidden="true" />
-        <p class="mt-3 text-sm font-semibold text-slate-600">{{ localCards.length ? 'No hay locales que coincidan con la búsqueda.' : 'Esta ciudad todavía no tiene locales registrados.' }}</p>
-        <p v-if="!localCards.length" class="mt-1 text-xs text-slate-400">Agrega un local para clasificar y organizar sus pabellones.</p>
-      </div>
+      <SedesAxonometrico
+        :city="city"
+        :local-cards="filteredLocals"
+        :total-local-count="selectedCityLocalCount"
+        :total-building-count="selectedCityBuildingCount"
+        :search="search"
+        :loading="loading"
+        :disabled="disabled"
+        @select-local="emit('select-local', $event)"
+      />
     </div>
 
     <!-- Alerta cuando la edición del croquis está en curso -->

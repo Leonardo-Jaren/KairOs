@@ -3,13 +3,13 @@
 | Campo | Valor |
 |-------|-------|
 | Módulo | Espacios |
-| Versión | 2.0 |
-| Fecha | 2026-09-18 |
+| Versión | 2.1 |
+| Fecha | 2026-09-26 |
 | Estado | En revisión |
 
 ## Propósito y alcance
 
-`/espacios/mapa` facilita el acceso a la operación del campus a partir de su ubicación física: ciudad → tipo de ubicación → local → pabellón → piso → ambiente → equipos. Desde el plano del ambiente se conservan los flujos existentes de componentes, software y mantenimiento. No se duplican esos módulos dentro del mapa.
+`/espacios/mapa` conserva el mapa departamental interactivo para elegir una ciudad y facilita el recorrido por la jerarquía ciudad → local → pabellón → piso → ambiente → equipos. Después de elegir una ciudad, sus locales se presentan como módulos axonométricos conectados a la ciudad. El diagrama expresa relaciones jerárquicas y no ubicaciones, distancias ni coordenadas geográficas. Desde el plano del ambiente se conservan los flujos existentes de componentes, software y mantenimiento. No se duplican esos módulos dentro del mapa.
 
 Un local representa un recinto físico, por ejemplo el campus central o una sede. Una ciudad puede contener varios locales y cada local una cantidad distinta de pabellones. El comando opcional `seed_datos_prueba` crea cuatro locales demostrativos y reparte ocho pabellones entre ellos para verificar el aislamiento visual. Son escenarios de prueba y no reglas que limiten la cantidad de pabellones.
 
@@ -21,12 +21,13 @@ Un local representa un recinto físico, por ejemplo el campus central o una sede
 
 ## Flujo principal
 
-1. Abrir el mapa y elegir la ciudad.
-2. Elegir el tipo de ubicación disponible en la ciudad: campus, sede, anexo u otro.
-3. Elegir el local y luego el pabellón, sin autoseleccionar silenciosamente opciones posteriores.
-4. Elegir un piso en el selector visual y consultar su croquis existente.
-5. Abrir el plano de un ambiente y continuar en las operaciones existentes de equipos, componentes, software y mantenimiento.
-6. Cambiar cualquier nivel conservando un contexto coherente y limpiando las selecciones descendientes.
+1. Abrir el mapa departamental existente y elegir una ciudad.
+2. Consultar las sedes de esa ciudad en el diagrama axonométrico, conectadas visualmente con la ciudad elegida.
+3. Si hay más de tres sedes, recorrerlas en páginas de hasta tres módulos; la búsqueda filtra los resultados y vuelve a la primera página.
+4. Elegir una sede y luego el pabellón, sin autoseleccionar silenciosamente opciones posteriores.
+5. Elegir un piso en el selector visual y consultar su croquis existente.
+6. Abrir el plano de un ambiente y continuar en las operaciones existentes de equipos, componentes, software y mantenimiento.
+7. Cambiar cualquier nivel conservando un contexto coherente y limpiando las selecciones descendientes.
 
 ## Administración y modelo de datos
 
@@ -66,6 +67,10 @@ Se conserva el diseño de **Pisos y ambientes**, incluida la distribución visua
 ## Criterios de aceptación
 
 - Los pabellones se presentan únicamente dentro del local al que pertenecen, sin mezclar ciudades o tipos de ubicación.
+- El mapa departamental inicial y su selección de ciudades se conservan sin cambios.
+- Después de seleccionar una ciudad, cada local se presenta como un módulo axonométrico seleccionable conectado con la ciudad; el diagrama no asigna coordenadas ni distancias físicas.
+- El diagrama muestra hasta tres locales por página y ofrece paginación cuando hay más; en pantallas pequeñas apila los módulos verticalmente.
+- Seleccionar un módulo conserva el identificador y el flujo de navegación existentes para abrir el local y sus pabellones.
 - Los indicadores y opciones de ambientes se calculan con el alcance del local seleccionado.
 - Un local vacío no hereda el pabellón activo del local anterior.
 - Los registros anteriores permanecen accesibles y pueden asignarse a un local.
@@ -97,7 +102,7 @@ Las migraciones `0008_local_edificio_local`, `0009_local_tipo` y `0013_ciudad_ca
 ## Validación de la implementación
 
 - Backend: 118 pruebas aprobadas, incluidas permisos, migración y preservación de croquis al reasignar.
-- Frontend: 91 pruebas aprobadas, incluida la nueva cascada ciudad → tipo → local → pabellón y la regresión del selector de pisos sin desplazamiento horizontal, además de local vacío, registros anteriores, paginación e historial de navegación.
+- Frontend: 379 pruebas aprobadas en la suite, incluidas las regresiones del mapa de ciudades y las pruebas de selección, búsqueda y paginación del esquema axonométrico.
 - Build de producción verificado y revisión visual en navegador de la ruta, selectores, métricas, pabellones y pisos con datos reales.
 - Se conserva el croquis y su lógica de distribución. El navegador de pisos se extrae a un componente reutilizable y el enlace al detalle mantiene el contexto completo del mapa.
 
