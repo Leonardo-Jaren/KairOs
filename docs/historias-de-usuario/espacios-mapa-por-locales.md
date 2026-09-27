@@ -4,21 +4,25 @@
 |-------|-------|
 | Módulo | Espacios |
 | Prioridad | Alta |
-| Fecha | 2026-09-14 |
+| Fecha | 2026-09-26 |
 | Estado | En revisión |
 
 ## Historia
 
-**Como** administrador o técnico, **quiero** elegir una ciudad, un local y su pabellón antes de recorrer pisos y ambientes, **para** trabajar con los equipos del lugar correcto desde el mapa tecnológico.
+**Como** administrador o técnico, **quiero** elegir una ciudad y abrir sus sedes desde un esquema axonométrico conectado, **para** recorrer la jerarquía de espacios sin confundirla con ubicaciones geográficas exactas.
 
 ## Descripción
 
-La navegación debe responder a la estructura real de cada local, tanto si contiene un pabellón como si contiene varios. El croquis por pisos y el plano de equipos mantienen su diseño y operaciones actuales. El mapa organiza el acceso a esas operaciones sin duplicar los demás módulos.
+El mapa departamental y la selección de ciudades mantienen su presentación actual. Después de elegir una ciudad, sus sedes se muestran como módulos axonométricos conectados a la ciudad; la disposición representa la jerarquía, no una ubicación física ni coordenadas. El croquis por pisos y el plano de equipos mantienen su diseño y operaciones actuales. El esquema organiza el acceso a esas operaciones sin duplicar los demás módulos ni requerir datos geográficos nuevos.
 
 ## Criterios de aceptación
 
 - Dado un local con un pabellón, al elegirlo se muestran sus pisos directamente.
 - Dado un local con siete pabellones, al elegirlo aparecen únicamente sus pabellones y sus indicadores.
+- Dada una ciudad, el mapa departamental existente permanece intacto; sus sedes se muestran después como módulos conectados y seleccionables.
+- Dada una ciudad con más de tres sedes, el esquema pagina los módulos en grupos de hasta tres y la búsqueda permite encontrarlos.
+- Dado un dispositivo estrecho, los módulos se apilan verticalmente y siguen siendo seleccionables con teclado y pantalla táctil.
+- Dado un esquema axonométrico, sus posiciones no se interpretan como coordenadas, orientación ni distancia entre sedes.
 - Dado otro local de Tingo María con dos pabellones, al cambiar de ciudad y local no quedan ambientes del lugar anterior.
 - Dado un local vacío, se muestra una invitación a agregar un pabellón para el administrador.
 - Dado un pabellón anterior sin ubicación, se puede consultar en Sin local asignado y asignarlo mediante su formulario.
