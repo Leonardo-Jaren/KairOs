@@ -58,6 +58,9 @@ describe('PabellonSelector', () => {
     expect(wrapper.text()).toContain('Pabellón Administrativo');
     expect(wrapper.text()).toContain('22 equipos');
     expect(wrapper.text()).toContain('2 pabellones disponibles');
+    expect(wrapper.text()).toContain('Laboratorios TI');
+    expect(wrapper.text()).toContain('Salud Operativa');
+    expect(wrapper.text()).not.toContain('Niveles físicos');
   });
 
   it('emite select al pulsar el botón de recorrer pabellón', async () => {
@@ -139,5 +142,34 @@ describe('PabellonSelector', () => {
     const buttons = wrapper.findAll('button');
     const disabledButtons = buttons.filter((b) => b.attributes('disabled') !== undefined);
     expect(disabledButtons.length).toBeGreaterThan(0);
+  });
+
+  it('muestra el botón de volver cuando canReturn es true y emite back', async () => {
+    const wrapper = mount(PabellonSelector, {
+      props: {
+        local: sampleLocal,
+        buildings: sampleBuildings,
+        canReturn: true,
+        returnLabel: 'Volver a ciudades',
+      },
+    });
+
+    const backBtn = wrapper.findAll('button').find((b) => b.text().includes('Volver a ciudades'));
+    expect(backBtn).toBeDefined();
+    await backBtn.trigger('click');
+    expect(wrapper.emitted('back')).toHaveLength(1);
+  });
+
+  it('oculta el botón de volver cuando canReturn es false por restricción territorial', () => {
+    const wrapper = mount(PabellonSelector, {
+      props: {
+        local: sampleLocal,
+        buildings: sampleBuildings,
+        canReturn: false,
+      },
+    });
+
+    const backBtn = wrapper.findAll('button').find((b) => b.text().includes('Volver'));
+    expect(backBtn).toBeUndefined();
   });
 });

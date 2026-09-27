@@ -14,7 +14,7 @@
             Espacios y Sedes
           </h1>
           <p class="mt-1 max-w-2xl text-sm text-slate-500">
-            Explora la jerarquía territorial de campus, pabellones y pisos o consulta el inventario general de ambientes.
+            {{ pageDescription }}
           </p>
         </div>
 
@@ -30,17 +30,36 @@
           Usuarios por espacio
         </BaseButton>
 
+        <BaseExportExcelButton
+          size="sm"
+          :loading="isExporting"
+          :label="exportExcelLabel"
+          :tooltip="exportExcelTooltip"
+          @export="exportInventarioExcel"
+        />
+
         <!-- Botón de acción principal contextual -->
         <template v-if="canEdit">
           <BaseButton
-            v-if="currentView === 'jerarquia' && !selectedSedeId"
+            v-if="currentView === 'jerarquia' && !selectedCity && !selectedSedeId"
             variant="accent"
             size="sm"
             :full-width="false"
-            @click="openCreateSede"
+            @click="openCreateSede({ createCity: true })"
           >
             <template #icon><Plus :size="16" /></template>
-             Nuevo local
+            Crear ciudad
+          </BaseButton>
+
+          <BaseButton
+            v-else-if="currentView === 'jerarquia' && selectedCity && !selectedSedeId"
+            variant="accent"
+            size="sm"
+            :full-width="false"
+            @click="openCreateSede({ city: selectedCity })"
+          >
+            <template #icon><Plus :size="16" /></template>
+            Nueva sede
           </BaseButton>
 
           <BaseButton
@@ -62,7 +81,7 @@
             @click="openCreateEspacio({ sedeId: selectedSedeId, edificioId: selectedEdificioId })"
           >
             <template #icon><Plus :size="16" /></template>
-            Agregar ambiente
+            Nuevo ambiente
           </BaseButton>
 
           <BaseButton
@@ -83,7 +102,11 @@
     <RutaEspacios v-if="currentView === 'jerarquia'" :items="locationItems" @navigate="navigateLocation" />
 
     <!-- Indicadores Estadísticos Superiores (Bento StatCards) -->
-    <section class="order-3 grid grid-cols-2 gap-2 sm:gap-4 lg:order-none lg:grid-cols-4" aria-label="Resumen de infraestructura">
+    <section
+      v-if="currentView === 'inventario' || (!selectedCity && !selectedSedeId && !selectedEdificioId)"
+      class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4"
+      aria-label="Resumen de infraestructura"
+    >
       <StatCard label="Espacios registrados" :value="stats.total" tone="blue">
         <template #icon><Building2 :size="20" /></template>
       </StatCard>
@@ -104,17 +127,16 @@
         <EspaciosSearch id="search-sedes" v-model="searchQuery" :placeholder="selectedCity ? 'Buscar local' : 'Buscar ciudad o local'" />
       </div>
       <!-- Las ciudades son el primer nivel en ambas formas de exploración. -->
-      <div v-if="!selectedCity && !selectedSedeId" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Ciudades disponibles">
-        <button v-for="item in filteredCityCards" :key="item.label" type="button" class="flex min-h-24 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-xs transition-colors hover:border-primary-400 hover:bg-primary-50/40 focus-visible:outline-2 focus-visible:outline-primary-500" @click="selectCity(item.label)">
-          <span class="min-w-0"><strong class="block text-base font-bold text-slate-900">{{ item.label }}</strong><span class="text-xs text-slate-600">{{ item.localCount }} {{ item.localCount === 1 ? 'local' : 'locales' }} · {{ item.buildingCount }} {{ item.buildingCount === 1 ? 'pabellón' : 'pabellones' }}</span></span>
-          <ChevronRight :size="18" class="shrink-0 text-primary-600" aria-hidden="true" />
-        </button>
-        <p v-if="!filteredCityCards.length" class="text-sm text-slate-500">No hay ciudades que coincidan con la búsqueda.</p>
-      </div>
+      <CiudadesSelector
+        v-if="!selectedCity && !selectedSedeId"
+        :ciudades="filteredCityCards"
+        @select="selectCity"
+      />
       <!-- Nivel 1: Lista de Sedes -->
       <SedesBentoGrid
         v-else-if="!selectedSedeId"
         :sedes="citySedes"
+        :city="selectedCity"
         :loading="loading"
         :can-edit="canEdit"
         @select-sede="selectSede"
@@ -153,17 +175,27 @@
 
     <!-- ================= CONTENIDO: VISTA INVENTARIO ================= -->
     <section v-else class="flex min-w-0 flex-col gap-5">
-      <div v-if="inventoryScopeLabel" class="flex flex-wrap items-center gap-2 text-sm text-slate-700">
-        <span>Ubicación: <strong>{{ inventoryScopeLabel }}</strong></span>
-        <button type="button" class="min-h-11 rounded-lg px-3 font-semibold text-primary-700 hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-primary-500" @click="clearInventoryScope">Ver todos</button>
-      </div>
       <!-- Barra de filtros de inventario -->
       <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-        <form class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_190px_170px_auto]" @submit.prevent>
+        <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(200px,1.4fr)_150px_160px_140px_140px_auto]" @submit.prevent>
           <EspaciosSearch
             id="spaces-search"
             v-model="inventoryFilters.search"
             placeholder="Buscar por código, pabellón, piso o responsable"
+          />
+          <BaseSelect
+            id="spaces-city"
+            v-model="inventoryFilters.ciudad"
+            :options="cityFilterOptions"
+            placeholder="Todas las ciudades"
+            @update:model-value="selectInventoryCity($event)"
+          />
+          <BaseSelect
+            id="spaces-sede"
+            v-model="inventoryFilters.sede"
+            :options="sedeFilterOptions"
+            placeholder="Todas las sedes"
+            @update:model-value="selectInventorySede($event)"
           />
           <BaseSelect
             id="spaces-type"
@@ -320,6 +352,10 @@
     <SedeFormModal
       :open="sedeModalOpen"
       :is-editing="isEditingSede"
+      :creation-mode="sedeCreationMode"
+      :city="selectedCity"
+      :city-locked="Boolean(selectedCity && !selectedSedeId)"
+      :city-options="cityOptions"
       :form="sedeForm"
       :errors="sedeErrors"
       :saving="saving"
@@ -501,7 +537,6 @@ import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Building2,
-  ChevronRight,
   Eye,
   FlaskConical,
   Info,
@@ -513,6 +548,7 @@ import {
 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BasePagination from '@/components/pagination/BasePagination.vue';
 import BaseSelect from '@/components/selects/BaseSelect.vue';
@@ -523,6 +559,7 @@ import EntityDetailModal from '@/components/shared/EntityDetailModal.vue';
 
 import EdificioFormModal from '@/components/espacios/EdificioFormModal.vue';
 import EdificiosBentoGrid from '@/components/espacios/EdificiosBentoGrid.vue';
+import CiudadesSelector from '@/components/espacios/CiudadesSelector.vue';
 import EspacioFormModal from '@/components/espacios/EspacioFormModal.vue';
 import PisoTecnicoModal from '@/components/espacios/PisoTecnicoModal.vue';
 import PisosVerticalesView from '@/components/espacios/PisosVerticalesView.vue';
@@ -552,7 +589,7 @@ const router = useRouter();
 const {
   loading, saving, currentView, searchQuery,
   selectedCity, selectedSedeId, selectedEdificioId, selectedSede, selectedEdificio,
-  cityCards, sedesList, edificiosDeSede, pisosDeEdificio, stats,
+  cityCards, cityOptions, sedesList, edificiosDeSede, pisosDeEdificio, stats,
   canEdit, typeOptions, sedeTipoOptions, allLocalesOptions,
   edificiosOptionsForSede, pisosExistentesEnEdificio,
   toast, detailEspacio,
@@ -561,7 +598,7 @@ const {
   closeToast,
 
   sedeModalOpen, isEditingSede, sedeForm, sedeErrors, deleteSedeModalOpen, pendingDeleteSede,
-  openCreateSede, openEditSede, closeSedeModal, submitSede, askDeleteSede, confirmDeleteSede,
+  sedeCreationMode, openCreateSede, openEditSede, closeSedeModal, submitSede, askDeleteSede, confirmDeleteSede,
 
   edificioModalOpen, isEditingEdificio, edificioForm, edificioErrors, deleteEdificioModalOpen, pendingDeleteEdificio,
   openCreateEdificio, openEditEdificio, closeEdificioModal, submitEdificio, askDeleteEdificio, confirmDeleteEdificio,
@@ -573,12 +610,31 @@ const {
   technicianLoading, technicianSaving, openAssignTechnicianModal, submitTechnicianAssignment,
 
   inventoryFilters, paginatedInventoryEspacios, inventoryPagination,
-  changeInventoryPage, clearInventoryFilters, clearInventoryScope,
+  changeInventoryPage, clearInventoryFilters,
+  selectInventoryCity, selectInventorySede,
+  cityFilterOptions, sedeFilterOptions,
+  exportExcelLabel, exportExcelTooltip,
+  isExporting, exportInventarioExcel,
 } = useEspaciosJerarquia();
 
 const filteredCityCards = computed(() => cityCards.value.filter((city) => (
   city.label.toLocaleLowerCase('es').includes(searchQuery.value.trim().toLocaleLowerCase('es'))
 )));
+const pageDescription = computed(() => {
+  if (currentView.value === 'inventario') {
+    return 'Busca y filtra todos los ambientes registrados en la infraestructura.';
+  }
+  if (selectedEdificio.value) {
+    return `Consulta las aulas y ambientes de ${selectedEdificio.value.nombre}.`;
+  }
+  if (selectedSede.value) {
+    return `Elige un pabellón de ${selectedSede.value.nombre} para explorar sus pisos y ambientes.`;
+  }
+  if (selectedCity.value) {
+    return `Selecciona una sede disponible en ${selectedCity.value}.`;
+  }
+  return 'Explora la infraestructura por ciudad, sede, pabellón y ambiente.';
+});
 const citySedes = computed(() => sedesList.value.filter((sede) => sede.ciudad === selectedCity.value));
 const locationItems = computed(() => {
   const items = [{ label: 'Ciudades' }];
@@ -594,10 +650,6 @@ const navigateLocation = (index) => {
   else if (index === 2) resetToEdificios();
   else if (index === 3) router.push({ query: { ...route.query, piso: undefined } });
 };
-const inventoryScopeLabel = computed(() => {
-  if (currentView.value !== 'inventario') return '';
-  return selectedEdificio.value?.nombre || selectedSede.value?.nombre || selectedCity.value;
-});
 watch(() => route.query, () => { inventoryFilters.page = 1; });
 const changeView = (view) => {
   if (view === 'mapa') {

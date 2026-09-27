@@ -33,7 +33,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from espacios.models import Edificio, Espacio, EspacioUsuario, Local
+from espacios.models import Ciudad, Edificio, Espacio, EspacioUsuario, Local
 from usuarios.models import Usuario, UsuarioSede
 
 
@@ -58,10 +58,11 @@ class ChallengerM2SpacesOrganigramaTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
 
         # 1. Primary Campus (Sede A)
+        ciudad_huanuco = Ciudad.objects.create(nombre='Huánuco')
         self.sede_a = Local.objects.create(
             codigo='CHALL-LOC-A',
             nombre='Campus Central Huánuco',
-            ciudad='Huánuco',
+            ciudad=ciudad_huanuco,
             tipo='campus',
             activo=True,
         )
@@ -79,10 +80,11 @@ class ChallengerM2SpacesOrganigramaTests(APITestCase):
         )
 
         # 2. Remote Campus (Sede B)
+        ciudad_tingo = Ciudad.objects.create(nombre='Tingo María')
         self.sede_b = Local.objects.create(
             codigo='CHALL-LOC-B',
             nombre='Sede Tingo María',
-            ciudad='Tingo María',
+            ciudad=ciudad_tingo,
             tipo='sede',
             activo=True,
         )

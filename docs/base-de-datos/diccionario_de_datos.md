@@ -41,7 +41,22 @@ Extensión de perfil para usuarios con rol de soporte técnico (`usuarios.Perfil
 
 ---
 
-## 3. Tabla: `locales`
+## 3. Tabla: `ciudades`
+
+Catálogo normalizado de ciudades (`espacios.Ciudad`), relacionado con uno o más locales.
+
+| Campo | Tipo SQL | Nulo | Por Defecto | Restricciones / Claves | Descripción |
+|-------|----------|------|-------------|------------------------|-------------|
+| `id` | BigSerial | NO | Auto | PK | Identificador único de la ciudad |
+| `nombre` | VarChar(100) | NO | - | - | Nombre visible de la ciudad |
+| `nombre_normalizado` | VarChar(100) | NO | - | Unique | Clave sin tildes, sin distinción de mayúsculas y con espacios normalizados |
+| `is_deleted` | Boolean | NO | `False` | - | Borrado lógico |
+| `created_at` | Timestamp | NO | Auto | - | Fecha de registro |
+| `updated_at` | Timestamp | NO | Auto | - | Fecha de última modificación |
+
+---
+
+## 4. Tabla: `locales`
 
 Sedes físicas territoriales donde se agrupan los edificios (`espacios.Local`).
 
@@ -50,7 +65,7 @@ Sedes físicas territoriales donde se agrupan los edificios (`espacios.Local`).
 | `id` | BigSerial | NO | Auto | PK | Identificador único del local |
 | `codigo` | VarChar(50) | NO | - | Unique, Index (`idx_local_codigo`) | Código único institucional (ej: `LOC-01`) |
 | `nombre` | VarChar(100) | NO | - | Index (`idx_local_nombre`) | Nombre de la sede (ej: `Local Central`) |
-| `ciudad` | VarChar(100) | NO | - | Index (`idx_local_ciudad`) | Ciudad geográfica (ej: `Huánuco`, `Tingo María`) |
+| `ciudad_id` | BigInt | SÍ | NULL | FK (`ciudades.id`, PROTECT) | Ciudad del catálogo a la que pertenece el local |
 | `descripcion` | Text | NO | `''` | - | Notas y detalles de la sede |
 | `activo` | Boolean | NO | `True` | Index (`idx_local_activo`) | Estado operativo del local |
 | `is_deleted` | Boolean | NO | `False` | - | Borrado lógico |
@@ -59,7 +74,7 @@ Sedes físicas territoriales donde se agrupan los edificios (`espacios.Local`).
 
 ---
 
-## 4. Tabla: `edificios`
+## 5. Tabla: `edificios`
 
 Bloques físicos del campus tecnológico (`espacios.Edificio`).
 
@@ -76,7 +91,7 @@ Bloques físicos del campus tecnológico (`espacios.Edificio`).
 
 ---
 
-## 5. Tabla: `espacios`
+## 6. Tabla: `espacios`
 
 Laboratorios, oficinas, aulas y salas de cómputo (`espacios.Espacio`).
 
@@ -94,7 +109,7 @@ Laboratorios, oficinas, aulas y salas de cómputo (`espacios.Espacio`).
 
 ---
 
-## 6. Tabla: `espacios_usuarios`
+## 7. Tabla: `espacios_usuarios`
 
 Asignación y corresponsabilidad de usuarios y docentes en laboratorios (`espacios.EspacioUsuario`).
 
@@ -109,7 +124,7 @@ Asignación y corresponsabilidad de usuarios y docentes en laboratorios (`espaci
 
 ---
 
-## 7. Tabla: `equipos`
+## 8. Tabla: `equipos`
 
 Inventario de terminales y dispositivos de cómputo (`equipos.Equipo`).
 
@@ -134,7 +149,7 @@ Inventario de terminales y dispositivos de cómputo (`equipos.Equipo`).
 
 ---
 
-## 8. Tabla: `componentes`
+## 9. Tabla: `componentes`
 
 Componentes internos desmontables (`equipos.Componente`).
 
@@ -153,7 +168,7 @@ Componentes internos desmontables (`equipos.Componente`).
 
 ---
 
-## 9. Tabla: `productos_software`
+## 10. Tabla: `productos_software`
 
 Catálogo maestro de aplicaciones y licenciamiento (`software.ProductoSoftware`).
 
@@ -172,7 +187,7 @@ Catálogo maestro de aplicaciones y licenciamiento (`software.ProductoSoftware`)
 
 ---
 
-## 10. Tabla: `software_instalado`
+## 11. Tabla: `software_instalado`
 
 Tabla asociativa de instalaciones de software por equipo (`software.SoftwareInstalado`).
 
@@ -188,7 +203,7 @@ Tabla asociativa de instalaciones de software por equipo (`software.SoftwareInst
 
 ---
 
-## 11. Tabla: `mantenimiento`
+## 12. Tabla: `mantenimiento`
 
 Órdenes de servicio técnico preventivo y correctivo (`mantenimiento.Mantenimiento`).
 
@@ -215,7 +230,7 @@ Tabla asociativa de instalaciones de software por equipo (`software.SoftwareInst
 
 ---
 
-## 12. Tabla: `tecnico_mantenimiento`
+## 13. Tabla: `tecnico_mantenimiento`
 
 Asignación de uno o más técnicos a una orden de mantenimiento (`mantenimiento.TecnicoMantenimiento`).
 
@@ -229,7 +244,7 @@ Asignación de uno o más técnicos a una orden de mantenimiento (`mantenimiento
 
 ---
 
-## 13. Tabla: `incidencias`
+## 14. Tabla: `incidencias`
 
 Reporte y atención de averías en infraestructura y terminales (`incidencias.Incidencia`).
 
@@ -254,7 +269,7 @@ se recalcula cuando el equipo cambia de espacio.
 
 ---
 
-## 14. Tabla: `historial`
+## 15. Tabla: `historial`
 
 Log inmutable de auditoría global (`historial.Historial`).
 

@@ -19,6 +19,13 @@ const componentesService = {
   async eliminar(id) {
     await api.delete(`/api/v1/equipos/componentes/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/equipos/componentes/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default componentesService;

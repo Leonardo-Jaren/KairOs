@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import espaciosService from '@/services/espacios.service';
 import edificiosService from '@/services/edificios.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -25,10 +26,11 @@ export function useEspacios(service = espaciosService, buildingService = edifici
   const pendingDelete = ref(null);
   const form = reactive(emptyForm());
   const formErrors = reactive({});
-  const filters = reactive({ search: '', tipo: '', activo: '', page: 1, page_size: 10 });
+  const filters = reactive({ search: '', tipo: '', activo: '', edificio_id: '', page: 1, page_size: 10 });
   const pagination = reactive({ total: 0, totalPages: 1 });
   const stats = reactive({ total: 0, activos: 0, laboratorios: 0, equipos: 0 });
   const toast = reactive({ show: false, message: '', type: 'success' });
+  const { isExporting, exportExcel } = useExcelExport();
   const buildings = ref([]);
 
   const canEdit = computed(() => authStore.user?.rol === 'admin');
@@ -157,13 +159,26 @@ export function useEspacios(service = espaciosService, buildingService = edifici
     }
   };
   const { applyFilters, resetFilters } = useAutoFilters(filters, loadSpaces, {
-    immediateKeys: ['tipo', 'activo'],
+    immediateKeys: ['tipo', 'activo', 'edificio_id'],
   });
-  const clearFilters = () => resetFilters({ search: '', tipo: '', activo: '' });
+  const clearFilters = () => resetFilters({ search: '', tipo: '', activo: '', edificio_id: '' });
   const changePage = (page) => {
     filters.page = page;
     return loadSpaces();
   };
+
+  const exportToExcel = async () => {
+      await exportExcel(
+      () => service.exportarExcel({
+        search: filters.search,
+        tipo: filters.tipo,
+        activo: filters.activo,
+        edificio_id: filters.edificio_id,
+      }),
+      `inventario_espacios_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
   const showToast = (message, type = 'success') => Object.assign(toast, { show: true, message, type });
   const closeToast = () => { toast.show = false; };
 
@@ -174,6 +189,6 @@ export function useEspacios(service = espaciosService, buildingService = edifici
     form, formErrors, filters, pagination, stats, toast, canEdit, isEditing,
     typeOptions, buildingOptions, loadSpaces, openCreate, openEdit, closeModal, submit,
     askDelete, cancelDelete, confirmDelete, applyFilters, clearFilters,
-    changePage, closeToast,
+    changePage, closeToast, isExporting, exportToExcel,
   };
 }

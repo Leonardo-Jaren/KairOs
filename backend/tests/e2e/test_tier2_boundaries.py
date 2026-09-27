@@ -247,7 +247,9 @@ class Tier2BoundaryCornerCaseTests(E2EBaseTestCase):
     @requires_m1
     def test_b4_03_responsable_con_multiples_sedes_accede_solo_a_las_suyas(self):
         """B4: Responsable con dos sedes asignadas puede gestionar ambas pero es bloqueado en una tercera."""
-        sede_c = Local.objects.create(codigo='LOC-TINGO-2', nombre='Sede Tingo Anexo', ciudad='Tingo María')
+        sede_c = Local.objects.create(
+            codigo='LOC-TINGO-2', nombre='Sede Tingo Anexo', ciudad=self.ciudad_b
+        )
         edif_c = Edificio.objects.create(codigo='ED-C', nombre='Pab C', local=sede_c)
 
         # Vincular a sede_a y sede_b

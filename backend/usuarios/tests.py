@@ -3,6 +3,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
+from espacios.models import Ciudad
 from usuarios.admin import UsuarioAdmin
 from usuarios.models import Usuario
 from usuarios.repositories import UsuarioRepository
@@ -178,10 +179,11 @@ class UsuarioAPITests(APITestCase):
     def test_admin_creates_user_and_hashes_password(self):
         """Crea una cuenta válida mediante el endpoint protegido."""
         from espacios.models import Local
+        ciudad = Ciudad.objects.create(nombre='Huánuco')
         local = Local.objects.create(
             codigo='LOC-CREATE',
             nombre='Sede de creación',
-            ciudad='Huánuco',
+            ciudad=ciudad,
         )
         self.client.force_authenticate(self.admin)
         payload = {
@@ -310,7 +312,8 @@ class UsuarioAPITests(APITestCase):
     def test_crear_usuario_con_supervisor_y_sedes(self):
         """Valida que se pueda asignar supervisor y sedes al crear un usuario."""
         from espacios.models import Local
-        local = Local.objects.create(codigo='LOC-TEST', nombre='Sede Huánuco', ciudad='Huánuco')
+        ciudad = Ciudad.objects.create(nombre='Huánuco')
+        local = Local.objects.create(codigo='LOC-TEST', nombre='Sede Huánuco', ciudad=ciudad)
         self.client.force_authenticate(self.admin)
 
         payload = {
@@ -420,16 +423,17 @@ class UsuarioAPITests(APITestCase):
         """La vista global no debe reducirse a la primera sede del administrador."""
         from espacios.models import Local
         from usuarios.models import UsuarioSede
+        ciudad = Ciudad.objects.create(nombre='Huánuco')
 
         sede_central = Local.objects.create(
             codigo='LOC-CENTRAL',
             nombre='Campus Central',
-            ciudad='Huánuco',
+            ciudad=ciudad,
         )
         sede_esperanza = Local.objects.create(
             codigo='LOC-ESPERANZA',
             nombre='Sede La Esperanza',
-            ciudad='Huánuco',
+            ciudad=ciudad,
         )
         UsuarioSede.objects.create(
             usuario=self.admin,
@@ -553,8 +557,10 @@ class UsuarioAPITests(APITestCase):
         """Impide a un administrador asignar un supervisor perteneciente a otra sede."""
         from espacios.models import Local
         from usuarios.models import UsuarioSede
-        local_hco = Local.objects.create(codigo='LOC-HCO', nombre='Huánuco', ciudad='Huánuco')
-        local_tm = Local.objects.create(codigo='LOC-TM', nombre='Tingo María', ciudad='Tingo María')
+        ciudad_hco = Ciudad.objects.create(nombre='Huánuco')
+        ciudad_tm = Ciudad.objects.create(nombre='Tingo María')
+        local_hco = Local.objects.create(codigo='LOC-HCO', nombre='Huánuco', ciudad=ciudad_hco)
+        local_tm = Local.objects.create(codigo='LOC-TM', nombre='Tingo María', ciudad=ciudad_tm)
 
         # Asignar sede Huánuco a admin
         UsuarioSede.objects.create(usuario=self.admin, local=local_hco, activo=True, es_sede_principal=True)
@@ -589,8 +595,10 @@ class UsuarioAPITests(APITestCase):
         """Impide a un administrador editar un usuario de una sede a la que no pertenece."""
         from espacios.models import Local
         from usuarios.models import UsuarioSede
-        local_hco = Local.objects.create(codigo='LOC-HCO2', nombre='Huánuco 2', ciudad='Huánuco')
-        local_tm = Local.objects.create(codigo='LOC-TM2', nombre='Tingo María 2', ciudad='Tingo María')
+        ciudad_hco = Ciudad.objects.create(nombre='Huánuco')
+        ciudad_tm = Ciudad.objects.create(nombre='Tingo María')
+        local_hco = Local.objects.create(codigo='LOC-HCO2', nombre='Huánuco 2', ciudad=ciudad_hco)
+        local_tm = Local.objects.create(codigo='LOC-TM2', nombre='Tingo María 2', ciudad=ciudad_tm)
 
         UsuarioSede.objects.create(usuario=self.admin, local=local_hco, activo=True, es_sede_principal=True)
 
@@ -614,8 +622,10 @@ class UsuarioAPITests(APITestCase):
         """Rechaza que un administrador consulte con local_id de otra sede física."""
         from espacios.models import Local
         from usuarios.models import UsuarioSede
-        local_hco = Local.objects.create(codigo='LOC-HCO3', nombre='Huánuco 3', ciudad='Huánuco')
-        local_tm = Local.objects.create(codigo='LOC-TM3', nombre='Tingo María 3', ciudad='Tingo María')
+        ciudad_hco = Ciudad.objects.create(nombre='Huánuco')
+        ciudad_tm = Ciudad.objects.create(nombre='Tingo María')
+        local_hco = Local.objects.create(codigo='LOC-HCO3', nombre='Huánuco 3', ciudad=ciudad_hco)
+        local_tm = Local.objects.create(codigo='LOC-TM3', nombre='Tingo María 3', ciudad=ciudad_tm)
 
         UsuarioSede.objects.create(usuario=self.admin, local=local_hco, activo=True, es_sede_principal=True)
 
@@ -635,10 +645,11 @@ class UsuarioAPITests(APITestCase):
 
     def test_responsable_permiso_espacios_y_override(self):
         """Comprueba que un responsable puede gestionar espacios y que la matriz modular se aplica en API."""
-        from espacios.models import Espacio, Local, Edificio
+        from espacios.models import Ciudad, Espacio, Local, Edificio
         from usuarios.models import PermisoPersonalizado
 
-        local = Local.objects.create(codigo='LOC-RESP', nombre='Sede Esperanza', ciudad='Huánuco')
+        ciudad = Ciudad.objects.create(nombre='Huánuco')
+        local = Local.objects.create(codigo='LOC-RESP', nombre='Sede Esperanza', ciudad=ciudad)
         edificio = Edificio.objects.create(codigo='ED-RESP', nombre='Pabellón E', local=local)
 
         responsable = Usuario.objects.create_user(

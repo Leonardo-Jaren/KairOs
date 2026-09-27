@@ -4,7 +4,7 @@ from django.test import TransactionTestCase
 from rest_framework.test import APITestCase
 from django.urls import reverse
 
-from espacios.models import Edificio, Espacio, Local
+from espacios.models import Ciudad, Edificio, Espacio, Local
 from usuarios.models import Usuario, UsuarioSede
 
 
@@ -31,14 +31,23 @@ class LocalAPITests(APITestCase):
             rol='usuario',
         )
         self.url = reverse('local-list')
+        self.ciudad = self.crear_ciudad('Lima')
         self.payload = {
             'codigo': ' loc-01 ',
             'nombre': 'Campus Norte',
-            'ciudad': 'Lima',
+            'ciudad_id': self.ciudad.id,
             'tipo': 'campus',
             'descripcion': 'Sede principal',
             'activo': True,
         }
+
+    @staticmethod
+    def crear_ciudad(nombre):
+        clave = Ciudad.normalizar_nombre(nombre)
+        return Ciudad.objects.get_or_create(
+            nombre_normalizado=clave,
+            defaults={'nombre': nombre},
+        )[0]
 
     def test_admin_creates_normalized_local_and_paginates(self):
         self.client.force_authenticate(self.admin)
@@ -49,11 +58,24 @@ class LocalAPITests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['codigo'], 'LOC-01')
         self.assertEqual(response.data['ciudad'], 'Lima')
+        self.assertEqual(response.data['ciudad_id'], self.ciudad.id)
         self.assertEqual(response.data['tipo'], 'campus')
         self.assertEqual(listed.data['count'], 1)
 
+    def test_local_creation_requires_a_city_from_the_catalog(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(
+            self.url,
+            {**self.payload, 'ciudad': 'Lima', 'ciudad_id': None},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('ciudad_id', response.data['errores'])
+
     def test_tecnico_reads_but_cannot_write_and_regular_user_is_blocked(self):
-        Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
+        Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad=self.ciudad)
         self.client.force_authenticate(self.tecnico)
         self.assertEqual(self.client.get(self.url).status_code, 200)
         self.assertEqual(self.client.post(self.url, self.payload).status_code, 403)
@@ -69,12 +91,14 @@ class LocalAPITests(APITestCase):
             nombre='Leonardo',
             password='SuperAdminPass123',
         )
-        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
-        second = Local.objects.create(codigo='LOC-02', nombre='Sur', ciudad='Cusco')
+        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad=self.ciudad)
+        second = Local.objects.create(
+            codigo='LOC-02', nombre='Sur', ciudad=self.crear_ciudad('Cusco')
+        )
         Local.objects.create(
             codigo='LOC-03',
             nombre='Inactiva',
-            ciudad='Piura',
+            ciudad=self.crear_ciudad('Piura'),
             activo=False,
         )
         self.client.force_authenticate(superadmin)
@@ -93,8 +117,10 @@ class LocalAPITests(APITestCase):
 
     def test_assignable_locations_are_scoped_for_admin_and_responsable(self):
         """Limita el selector a las sedes vinculadas al actor territorial."""
-        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
-        second = Local.objects.create(codigo='LOC-02', nombre='Sur', ciudad='Cusco')
+        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad=self.ciudad)
+        second = Local.objects.create(
+            codigo='LOC-02', nombre='Sur', ciudad=self.crear_ciudad('Cusco')
+        )
         responsable = Usuario.objects.create_user(
             correo='responsable-locales@example.com',
             username='responsable_locales',
@@ -117,8 +143,10 @@ class LocalAPITests(APITestCase):
                 self.assertEqual(response.data['results'][0]['id'], expected_id)
 
     def test_edificio_assigns_reassigns_and_filters_by_local(self):
-        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
-        second = Local.objects.create(codigo='LOC-02', nombre='Sur', ciudad='Cusco')
+        first = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad=self.ciudad)
+        second = Local.objects.create(
+            codigo='LOC-02', nombre='Sur', ciudad=self.crear_ciudad('Cusco')
+        )
         self.client.force_authenticate(self.admin)
         created = self.client.post(
             reverse('edificio-list'),
@@ -165,7 +193,7 @@ class LocalAPITests(APITestCase):
 
     def test_building_assignment_rejects_inactive_or_deleted_local(self):
         local = Local.objects.create(
-            codigo='LOC-01', nombre='Norte', ciudad='Lima', activo=False
+            codigo='LOC-01', nombre='Norte', ciudad=self.ciudad, activo=False
         )
         self.client.force_authenticate(self.admin)
         response = self.client.post(
@@ -185,7 +213,7 @@ class LocalAPITests(APITestCase):
         self.assertIn('local_id', response.data['errores'])
 
     def test_local_deactivation_is_blocked_by_any_non_deleted_building(self):
-        local = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
+        local = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad=self.ciudad)
         Edificio.objects.create(codigo='EDIF-01', nombre='Bloque A', local=local, activo=False)
         self.client.force_authenticate(self.admin)
 
@@ -203,7 +231,7 @@ class LocalAPITests(APITestCase):
         self.assertFalse(local.is_deleted)
 
     def test_local_can_be_deleted_when_it_has_no_buildings(self):
-        local = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad='Lima')
+        local = Local.objects.create(codigo='LOC-01', nombre='Norte', ciudad=self.ciudad)
         self.client.force_authenticate(self.admin)
 
         response = self.client.delete(reverse('local-detail', args=[local.id]))
@@ -233,6 +261,41 @@ class LocalAPITests(APITestCase):
         self.assertIsNone(edificio.local_id)
         self.assertEqual(edificio.configuracion_croquis['version'], 1)
         self.assertEqual(espacio.configuracion_plano['filas'], 2)
+
+
+class CiudadAPITests(APITestCase):
+    """Comprueba que el catálogo evita duplicados por acentos o mayúsculas."""
+
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            correo='admin-ciudades@example.com',
+            username='admin_ciudades',
+            nombre='Ada',
+            rol='admin',
+        )
+        self.url = reverse('ciudad-list')
+
+    def test_admin_creates_and_lists_city_catalog_entries(self):
+        self.client.force_authenticate(self.admin)
+
+        created = self.client.post(self.url, {'nombre': '  Huánuco  '}, format='json')
+        listed = self.client.get(self.url, {'search': 'Huánuco'})
+
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.data['nombre'], 'Huánuco')
+        self.assertEqual(listed.data['count'], 1)
+        self.assertEqual(listed.data['results'][0]['id'], created.data['id'])
+
+    def test_city_name_is_unique_ignoring_accents_case_and_extra_spaces(self):
+        self.client.force_authenticate(self.admin)
+
+        first = self.client.post(self.url, {'nombre': 'Huánuco'}, format='json')
+        duplicate = self.client.post(self.url, {'nombre': '  HUANUCO  '}, format='json')
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertIn('nombre', duplicate.data['errores'])
+        self.assertEqual(Ciudad.objects.filter(is_deleted=False).count(), 1)
 
 
 class LocalSchemaMigrationTests(TransactionTestCase):
@@ -279,3 +342,46 @@ class LocalSchemaMigrationTests(TransactionTestCase):
         self.assertIsNone(edificio.local_id)
         self.assertEqual(edificio.configuracion_croquis['version'], 1)
         self.assertEqual(espacio.configuracion_plano['filas'], 2)
+
+
+class CiudadDataMigrationTests(TransactionTestCase):
+    """Verifica que las ciudades textuales existentes se normalicen al migrar."""
+
+    migrate_from = [('espacios', '0012_allow_duplicate_space_codes')]
+    migrate_to = [('espacios', '0013_ciudad_catalogo')]
+
+    def setUp(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_from)
+        old_apps = executor.loader.project_state(self.migrate_from).apps
+        LocalHistorico = old_apps.get_model('espacios', 'Local')
+        LocalHistorico.objects.create(
+            codigo='LOC-MIG-HCO-1', nombre='Campus 1', ciudad='Huánuco'
+        )
+        LocalHistorico.objects.create(
+            codigo='LOC-MIG-HCO-2', nombre='Campus 2', ciudad=' HUANUCO '
+        )
+        LocalHistorico.objects.create(
+            codigo='LOC-MIG-LIMA', nombre='Campus Lima', ciudad='Lima'
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
+        self.apps = executor.loader.project_state(self.migrate_to).apps
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
+    def test_legacy_city_values_share_normalized_catalog_records(self):
+        CiudadMigrada = self.apps.get_model('espacios', 'Ciudad')
+        LocalMigrado = self.apps.get_model('espacios', 'Local')
+        sedes_huanuco = LocalMigrado.objects.filter(codigo__contains='HCO')
+
+        self.assertEqual(CiudadMigrada.objects.count(), 2)
+        self.assertEqual(sedes_huanuco.values_list('ciudad_id', flat=True).distinct().count(), 1)
+        self.assertEqual(
+            CiudadMigrada.objects.get(nombre_normalizado='huanuco').nombre,
+            'Huánuco',
+        )

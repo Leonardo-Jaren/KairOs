@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -6,6 +7,7 @@ from equipos.services import EquipoService
 from mantenimiento.models import Mantenimiento
 from mantenimiento.repositories import MantenimientoRepository
 from shared.base import BaseService
+from mantenimiento.reports.mantenimiento_excel_report import generar_reporte_excel
 from shared.mixins import AuditableMixin
 from shared.permissions import get_accessible_space_ids
 from shared.constants import ROL_ADMIN, ROL_RESPONSABLE, ROL_SUPERADMIN, ROL_TECNICO
@@ -48,6 +50,34 @@ class MantenimientoService(AuditableMixin, BaseService):
             tipo_mantenimiento=tipo_mantenimiento.strip(),
             equipo_id=equipo_id,
             espacio_ids=espacio_ids,
+        )
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        estado: str = '',
+        tipo_mantenimiento: str = '',
+        equipo_id: int | None = None,
+        actor: Usuario = None,
+    ) -> HttpResponse:
+        """Genera y descarga un reporte formal en Excel con las órdenes de mantenimiento filtradas."""
+        mantenimientos = self.listar(
+            busqueda=busqueda,
+            estado=estado,
+            tipo_mantenimiento=tipo_mantenimiento,
+            equipo_id=equipo_id,
+            actor=actor,
+        ).select_related('equipo', 'equipo__espacio', 'incidencia_origen', 'reportado_por').prefetch_related('tecnicos')
+
+        stats = self.get_estadisticas(actor=actor)
+        return generar_reporte_excel(
+            mantenimientos,
+            stats,
+            busqueda=busqueda,
+            estado=estado,
+            tipo_mantenimiento=tipo_mantenimiento,
+            equipo_id=equipo_id,
+            actor=actor,
         )
 
     @transaction.atomic

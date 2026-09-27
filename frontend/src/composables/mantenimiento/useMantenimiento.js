@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import equiposService from '@/services/equipos.service';
 import mantenimientoService from '@/services/mantenimiento.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
@@ -49,7 +50,8 @@ export function useMantenimiento(
   const formErrors = reactive({});
   const finalizeErrors = reactive({});
   const toast = reactive({ show: false, message: '', type: 'success' });
-  const filters = reactive({ search: '', estado: '', tipo_mantenimiento: '', page: 1, page_size: 8 });
+  const { isExporting, exportExcel } = useExcelExport();
+  const filters = reactive({ search: '', estado: '', tipo_mantenimiento: '', equipo_id: '', page: 1, page_size: 8 });
   const pagination = reactive({ total: 0, totalPages: 1 });
   const stats = reactive({
     total: 0,
@@ -339,11 +341,29 @@ export function useMantenimiento(
     }
   };
 
+  const exportToExcel = async () => {
+    try {
+      const { search, estado, tipo_mantenimiento, equipo_id } = filters;
+      await exportExcel(
+        () => service.exportarExcel({
+          search,
+          estado,
+          tipo_mantenimiento,
+          equipo_id: equipo_id || undefined,
+        }),
+        `reporte_mantenimiento_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      showToast('Reporte de mantenimiento exportado exitosamente en Excel.');
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudo exportar el reporte a Excel.'), 'error');
+    }
+  };
+
   const { applyFilters, resetFilters } = useAutoFilters(filters, loadMantenimientos, {
-    immediateKeys: ['estado', 'tipo_mantenimiento'],
+    immediateKeys: ['estado', 'tipo_mantenimiento', 'equipo_id'],
   });
 
-  const clearFilters = () => resetFilters({ search: '', estado: '', tipo_mantenimiento: '' });
+  const clearFilters = () => resetFilters({ search: '', estado: '', tipo_mantenimiento: '', equipo_id: '' });
 
   const changePage = (page) => {
     filters.page = page;
@@ -409,6 +429,8 @@ export function useMantenimiento(
     askDelete,
     cancelDelete,
     confirmDelete,
+    exportToExcel,
+    isExporting,
     applyFilters,
     clearFilters,
     changePage,

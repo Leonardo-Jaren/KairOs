@@ -19,6 +19,13 @@ const softwareInstalacionesService = {
   async eliminar(id) {
     await api.delete(`/api/v1/software/instalaciones/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/software/instalaciones/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default softwareInstalacionesService;

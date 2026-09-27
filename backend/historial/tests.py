@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from espacios.models import Espacio, Local
+from espacios.models import Ciudad, Espacio, Local
 from historial.models import Historial
 from historial.repositories import HistorialRepository
 from historial.services import HistorialService
@@ -315,10 +315,11 @@ class HistorialIntegracionUsuarioTests(TestCase):
     def setUp(self):
         self.repo = UsuarioRepository()
         self.service = UsuarioService()
+        ciudad = Ciudad.objects.create(nombre='Huánuco')
         self.local = Local.objects.create(
             codigo='LOC-HISTORIAL',
             nombre='Sede de historial',
-            ciudad='Huánuco',
+            ciudad=ciudad,
         )
         self.admin = self.repo.create_user(
             correo='admin@example.com',
@@ -512,3 +513,58 @@ class HistorialIntegracionEspacioUsuarioTests(TestCase):
         self.assertEqual(Historial.objects.count(), 1)
         evento = Historial.objects.first()
         self.assertEqual(evento.tipo_evento, EspacioUsuarioService.RETIRO_USUARIO)
+
+
+# ---------------------------------------------------------------------------
+# Exportar Excel Tests
+# ---------------------------------------------------------------------------
+
+class HistorialExportExcelAPITests(APITestCase):
+    """Verifica la exportación del log de auditoría global a Excel."""
+
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            correo='admin@example.com',
+            username='admin',
+            nombre='Admin',
+            rol='admin',
+        )
+        self.docente = Usuario.objects.create_user(
+            correo='docente@example.com',
+            username='docente',
+            nombre='Docente',
+            rol='docente',
+        )
+        self.espacio = Espacio.objects.create(
+            codigo_espacio='LAB-909',
+            tipo='laboratorio',
+            pabellon='Pabellón Central',
+            piso='1',
+        )
+        self.service = HistorialService()
+        self.service.registrar(
+            objeto=self.espacio,
+            tipo_evento='espacio.creacion',
+            descripcion='Espacio creado.',
+            usuario=self.admin,
+            datos_extra={'codigo': 'LAB-909'},
+        )
+        self.url = reverse('historial-exportar-excel')
+
+    def test_admin_puede_exportar_excel(self):
+        """Admin recibe un archivo Excel con content-type correcto."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        self.assertIn('attachment; filename="reporte_auditoria_historial.xlsx"', response['Content-Disposition'])
+
+    def test_docente_no_puede_exportar_excel_global(self):
+        """Docente recibe 403 Forbidden al intentar exportar el historial global."""
+        self.client.force_authenticate(user=self.docente)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 403)
+

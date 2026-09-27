@@ -1,13 +1,18 @@
 <script setup>
+import { computed } from 'vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BaseSelect from '@/components/selects/BaseSelect.vue';
 import BaseTextarea from '@/components/inputs/BaseTextarea.vue';
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
   isEditing: { type: Boolean, default: false },
+  creationMode: { type: String, default: 'sede' },
+  city: { type: String, default: '' },
+  cityLocked: { type: Boolean, default: false },
+  cityOptions: { type: Array, default: () => [] },
   form: { type: Object, required: true },
   errors: { type: Object, default: () => ({}) },
   saving: { type: Boolean, default: false },
@@ -15,13 +20,27 @@ defineProps({
 });
 
 const emit = defineEmits(['close', 'submit']);
+
+const modalTitle = computed(() => {
+  if (props.isEditing) return 'Editar sede';
+  return props.creationMode === 'city' ? 'Crear ciudad y primera sede' : 'Nueva sede';
+});
+
+const modalDescription = computed(() => {
+  if (props.isEditing) return 'Actualiza los datos de esta sede.';
+  if (props.creationMode === 'city') {
+    return 'Crea la ciudad y su primera sede. Después podrás añadir otras sedes a la misma ciudad.';
+  }
+  if (props.city) return `La nueva sede se registrará en ${props.city}.`;
+  return 'Registra una sede para organizar sus pabellones.';
+});
 </script>
 
 <template>
   <BaseModal
     :open="open"
-    :title="isEditing ? 'Editar local' : 'Nuevo local'"
-    description="Registra la ubicación física territorial para organizar sus pabellones."
+    :title="modalTitle"
+    :description="modalDescription"
     @close="emit('close')"
   >
     <form id="sede-form" class="grid gap-4 sm:grid-cols-2" @submit.prevent="emit('submit')">
@@ -37,17 +56,28 @@ const emit = defineEmits(['close', 'submit']);
         id="sede-nombre"
         v-model="form.nombre"
         appearance="light"
-        label="Nombre del local"
+        :label="creationMode === 'city' ? 'Nombre de la primera sede' : 'Nombre de la sede'"
         placeholder="Campus Central Huánuco"
         :error="errors.nombre"
       />
       <BaseInput
+        v-if="creationMode === 'city' && !isEditing"
         id="sede-ciudad"
-        v-model="form.ciudad"
+        v-model="form.ciudad_nombre"
         appearance="light"
-        label="Ciudad"
+        label="Nombre de la ciudad"
         placeholder="Huánuco"
-        :error="errors.ciudad"
+        :error="errors.ciudad_nombre"
+      />
+      <BaseSelect
+        v-else
+        id="sede-ciudad"
+        v-model="form.ciudad_id"
+        label="Ciudad"
+        :options="cityOptions"
+        placeholder="Seleccionar ciudad"
+        :disabled="cityLocked && !isEditing"
+        :error="errors.ciudad_id"
       />
       <BaseSelect
         id="sede-tipo"
@@ -94,7 +124,7 @@ const emit = defineEmits(['close', 'submit']);
         :loading="saving"
         :full-width="false"
       >
-         {{ isEditing ? 'Guardar cambios' : 'Crear local' }}
+          {{ isEditing ? 'Guardar cambios' : creationMode === 'city' ? 'Crear ciudad y sede' : 'Crear sede' }}
       </BaseButton>
     </template>
   </BaseModal>

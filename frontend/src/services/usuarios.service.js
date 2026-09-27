@@ -24,6 +24,13 @@ const usuariosService = {
   async desactivar(id) {
     await api.delete(`/api/v1/usuarios/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/usuarios/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default usuariosService;

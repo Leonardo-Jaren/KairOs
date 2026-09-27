@@ -38,6 +38,10 @@ Base URL en entorno local: `http://localhost:8000/api/v1`
 | `GET` | `/espacios/{id}/` | `admin`, `tecnico` | Detalle de un espacio incluyendo su `configuracion_plano` y equipos. | - |
 | `PATCH` | `/espacios/{id}/disposicion/` | `admin`, `tecnico` | Actualiza la matriz y coordenadas de puestos del plano interactivo. | `{"filas": 5, "columnas": 6, "posiciones": [...]}` |
 | `GET` | `/espacios/edificios/` | `admin`, `tecnico` | Listado de edificios/pabellones del campus tecnológico. | Query: `?activo=true` |
+| `GET` | `/espacios/ciudades/` | Roles con acceso al módulo Espacios | Catálogo paginado de ciudades; admite filtro `search`. | - |
+| `POST` | `/espacios/ciudades/` | Roles con permiso de creación en Espacios | Crea una ciudad; el nombre es único sin distinguir tildes, mayúsculas o espacios. | `{"nombre": "Huánuco"}` |
+| `GET` | `/espacios/locales/` | Roles con acceso al módulo Espacios | Lista locales y muestra `ciudad` (nombre) junto a `ciudad_id`. | Query: `?activo=true` |
+| `POST` | `/espacios/locales/` | Roles con permiso de creación en Espacios | Registra un local usando una ciudad existente del catálogo. | `{"codigo": "LOC-01", "nombre": "Campus Central", "ciudad_id": 1, "tipo": "campus"}` |
 | `PATCH` | `/espacios/edificios/{id}/croquis-piso/` | `admin` | Actualiza el mapa vectorial o configuración de croquis por piso. | `{"piso": "1", "croquis": {...}}` |
 | `GET` | `/espacios/usuarios/` | `admin`, `tecnico` | Asignaciones de usuarios y docentes a laboratorios. | Query: `?espacio_id=17` |
 | `POST` | `/espacios/usuarios/` | `admin` | Asigna un usuario a un espacio con un rol operativo específico. | `{"espacio": 17, "usuario": 5, "tipo_responsabilidad": "responsable"}` |

@@ -109,3 +109,15 @@ class MantenimientoViewSet(BaseViewSet):
     def tecnicos_disponibles(self, request: Request) -> Response:
         """Entrega los tecnicos vigentes disponibles para asignar."""
         return Response(self.service.get_tecnicos_disponibles())
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request):
+        """Genera y descarga un reporte formal en Excel con las órdenes filtradas."""
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            estado=request.query_params.get('estado', ''),
+            tipo_mantenimiento=request.query_params.get('tipo_mantenimiento', ''),
+            equipo_id=self.parse_integer_query(request.query_params.get('equipo_id')),
+            actor=request.user,
+        )
+

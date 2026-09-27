@@ -1,15 +1,43 @@
-# Lineamientos y Arquitectura Frontend de KairOs (Guía para Agentes y Desarrolladores)
+# Lineamientos de Arquitectura Backend y Frontend de KairOs
 
 > **Backend y flujo de trabajo (PR, docs, GitHub Projects):** ver [`docs/CONTRIBUCION-IA.md`](docs/CONTRIBUCION-IA.md).  
 > **VS Code + Copilot:** ver [`.github/copilot-instructions.md`](.github/copilot-instructions.md).
 
-Este documento define la arquitectura y las reglas de codificación para todo el desarrollo frontend en el proyecto KairOs. Cualquier agente de IA o desarrollador humano debe seguir estrictamente estas pautas para mantener la consistencia, modularidad y escalabilidad del sistema.
+Este documento define reglas compartidas de arquitectura y codificación para backend y frontend. Todo agente o desarrollador debe seguirlas para mantener el sistema modular, legible y fácil de mantener.
+
+## 0. SOLID, responsabilidades y tamaño de archivos
+
+Los cambios nuevos y las funcionalidades que se estén implementando deben respetar SOLID tanto en backend como en frontend:
+
+* **Responsabilidad única (SRP):** cada archivo, clase y función debe tener un propósito claro. Separar consultas y reglas de negocio, validación, acceso a datos, presentación y generación de reportes cuando tengan razones distintas para cambiar.
+* **Abierto/cerrado (OCP):** extender el comportamiento mediante módulos o estrategias específicas en vez de agregar condiciones y responsabilidades ajenas a una clase existente.
+* **Sustitución de Liskov (LSP):** las implementaciones derivadas deben conservar el contrato de sus abstracciones.
+* **Segregación de interfaces (ISP):** preferir contratos pequeños y específicos antes que dependencias que obliguen a implementar operaciones no utilizadas.
+* **Inversión de dependencias (DIP):** la lógica de alto nivel debe depender de contratos o colaboradores inyectables, no acoplarse innecesariamente a detalles de infraestructura.
+
+### Backend
+
+Organizar cada dominio en módulos con responsabilidades identificables y mantener, cuando aplique, el flujo:
+
+```text
+ViewSet -> Serializer -> Service -> Repository -> Model
+```
+
+Los ViewSets coordinan HTTP, los serializers validan y representan datos, los services implementan casos de uso, los repositories encapsulan consultas y persistencia, y los models representan el dominio y el esquema. La generación de reportes debe vivir en módulos `reports/` específicos del dominio; no se debe acumular formato Excel, consultas y reglas de negocio en un único service o archivo compartido.
+
+### Frontend
+
+Las vistas coordinan la presentación; los componentes reutilizables se ocupan de UI; los composables encapsulan estado y lógica de interacción; y los services concentran las llamadas HTTP. Los helpers reutilizables deben extraerse por propósito y no mezclarse con las vistas.
+
+### Tamaño y alcance del refactor
+
+Apuntar a archivos de alrededor de **300 líneas**. Al superar esa cifra, evaluar una división por responsabilidad; **400 líneas es un límite orientativo**, no una meta ni una razón para fragmentar artificialmente componentes pequeños. Al trabajar en una funcionalidad nueva o modificada, modularizar el alcance de esa funcionalidad. No refactorizar masivamente módulos preexistentes y ajenos a la tarea: dejar ese trabajo para cambios futuros, evitando ampliar el alcance o introducir regresiones.
 
 ---
 
 ## 🏗️ 1. Estructura de Directorios y Separación de Responsabilidades
 
-El frontend está construido sobre **Vue 3 (Vite) + Tailwind CSS v4** y se organiza bajo una arquitectura limpia en capas, tratando que se trabaje por componentes y llegar a rondar las 300 lineas de codigo, si sobre pasa es necesario crear mas componentes para una arquitectura limpia:
+El frontend está construido sobre **Vue 3 (Vite) + Tailwind CSS v4** y se organiza bajo una arquitectura limpia en capas. Aplicar el criterio de tamaño y división por responsabilidad definido en la sección 0.
 
 ### Carpetas Principales (`src/`)
 *   **`src/components/`**: Los componentes de la interfaz de usuario se agrupan en subcarpetas específicas según su categoría o tipo de control (p. ej., `buttons/`, `inputs/`, `tables/`, `selects/`, `toasts/`, `icons/`).

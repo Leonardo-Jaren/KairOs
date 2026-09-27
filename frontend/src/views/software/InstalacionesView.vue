@@ -3,6 +3,7 @@ import { Pencil, Plus, Search, Trash2 } from '@lucide/vue';
 import { onMounted } from 'vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BasePagination from '@/components/pagination/BasePagination.vue';
@@ -28,6 +29,7 @@ const {
   cargar, cargarOpciones, openCreate, openEdit, closeForm, submit,
   askDelete, cancelDelete, confirmDelete, applyFilters, clearFilters,
   changePage, closeToast,
+  isExporting, exportToExcel,
 } = useInstalaciones();
 
 onMounted(() => {
@@ -46,10 +48,16 @@ onMounted(() => {
           Consulta qué software está instalado en cada equipo de cada espacio.
         </p>
       </div>
-      <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate()">
-        <template #icon><Plus :size="18" /></template>
-        Instalar software
-      </BaseButton>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+        <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate()">
+          <template #icon><Plus :size="18" /></template>
+          Instalar software
+        </BaseButton>
+      </div>
     </header>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

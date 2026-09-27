@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, readonly, shallowRef } from 'vue';
 
 import historialService from '@/services/historial.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 export function useHistorial(service = historialService) {
@@ -64,6 +65,21 @@ export function useHistorial(service = historialService) {
     return loadHistorial();
   };
 
+  const { isExporting, exportExcel } = useExcelExport();
+
+  const exportToExcel = async () => {
+    await exportExcel(
+      () => service.exportarExcel({
+        modulo: filters.modulo || undefined,
+        tipo_evento: filters.tipo_evento || undefined,
+        usuario_id: filters.usuario_id || undefined,
+        fecha_desde: filters.fecha_desde || undefined,
+        fecha_hasta: filters.fecha_hasta || undefined,
+      }),
+      'reporte_auditoria_historial.xlsx'
+    );
+  };
+
   onMounted(loadHistorial);
 
   return {
@@ -78,5 +94,7 @@ export function useHistorial(service = historialService) {
     clearFilters,
     changePage,
     closeToast,
+    isExporting,
+    exportToExcel,
   };
 }

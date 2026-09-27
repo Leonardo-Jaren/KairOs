@@ -1,9 +1,11 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
+from django.http import HttpResponse
 
 from shared.base import BaseService
 from historial.models import Historial
 from historial.repositories.historial_repository import HistorialRepository
+from historial.reports.historial_excel_report import generar_reporte_historial
 
 
 class HistorialService(BaseService):
@@ -65,6 +67,34 @@ class HistorialService(BaseService):
             object_id=object_id,
             tipo_evento=tipo_evento,
             usuario_id=usuario_id,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
+
+    def exportar_excel(
+        self,
+        modulo: str | None = None,
+        object_id: int | None = None,
+        tipo_evento: str | None = None,
+        usuario_id: int | None = None,
+        fecha_desde: str | None = None,
+        fecha_hasta: str | None = None,
+        actor=None,
+    ) -> HttpResponse:
+        """Exporta eventos del log de auditoría a una planilla Excel corporativa."""
+        queryset = self.listar(
+            modulo=modulo,
+            object_id=object_id,
+            tipo_evento=tipo_evento,
+            usuario_id=usuario_id,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
+        return generar_reporte_historial(
+            list(queryset),
+            actor=actor,
+            modulo=modulo,
+            tipo_evento=tipo_evento,
             fecha_desde=fecha_desde,
             fecha_hasta=fecha_hasta,
         )

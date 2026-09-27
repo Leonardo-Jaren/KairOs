@@ -8,6 +8,9 @@ import edificiosService from '@/services/edificios.service';
 import espaciosService from '@/services/espacios.service';
 import espaciosUsuariosService from '@/services/espacios-usuarios.service';
 import localesService from '@/services/locales.service';
+import ciudadesService from '@/services/ciudades.service';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
+import BaseSelect from '@/components/selects/BaseSelect.vue';
 import { useAuthStore } from '@/stores/auth';
 
 vi.mock('@/services/locales.service', () => ({
@@ -16,6 +19,13 @@ vi.mock('@/services/locales.service', () => ({
     crear: vi.fn(),
     actualizar: vi.fn(),
     desactivar: vi.fn(),
+  },
+}));
+
+vi.mock('@/services/ciudades.service', () => ({
+  default: {
+    listar: vi.fn(),
+    crear: vi.fn(),
   },
 }));
 
@@ -35,6 +45,7 @@ vi.mock('@/services/espacios.service', () => ({
     crear: vi.fn(),
     actualizar: vi.fn(),
     desactivar: vi.fn(),
+    exportarExcel: vi.fn().mockResolvedValue(new Blob(['mock excel content'])),
   },
 }));
 
@@ -49,8 +60,12 @@ vi.mock('@/services/espacios-usuarios.service', () => ({
 }));
 
 const mockLocales = [
-  { id: 1, codigo: 'LOC-01', nombre: 'Campus Central', ciudad: 'Huánuco', tipo: 'campus', activo: true },
-  { id: 2, codigo: 'LOC-02', nombre: 'Sede Tingo María', ciudad: 'Tingo María', tipo: 'sede', activo: true },
+  { id: 1, codigo: 'LOC-01', nombre: 'Campus Central', ciudad: 'Huánuco', ciudad_id: 1, tipo: 'campus', activo: true },
+  { id: 2, codigo: 'LOC-02', nombre: 'Sede Tingo María', ciudad: 'Tingo María', ciudad_id: 2, tipo: 'sede', activo: true },
+];
+const mockCiudades = [
+  { id: 1, nombre: 'Huánuco' },
+  { id: 2, nombre: 'Tingo María' },
 ];
 
 const mockEdificios = [
@@ -129,6 +144,8 @@ describe('EspaciosView.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localesService.listar.mockResolvedValue({ results: mockLocales });
+    ciudadesService.listar.mockResolvedValue({ results: mockCiudades });
+    ciudadesService.crear.mockResolvedValue({ id: 3, nombre: 'Ambo' });
     edificiosService.listar.mockResolvedValue({ results: mockEdificios });
     espaciosService.listar.mockResolvedValue({ results: mockEspacios, count: 2 });
     espaciosService.obtenerEstadisticas.mockResolvedValue({
@@ -176,10 +193,85 @@ describe('EspaciosView.vue', () => {
     // Nivel 1: Ciudades
     expect(wrapper.get('[aria-label="Ciudades disponibles"]').text()).toContain('Huánuco');
     expect(wrapper.get('[aria-label="Ciudades disponibles"]').text()).toContain('Tingo María');
-    expect(wrapper.text()).toContain('Nuevo local');
-    expect(wrapper.findAll('button').filter((button) => button.text().includes('Nuevo local'))).toHaveLength(1);
+    expect(wrapper.text()).toContain('Crear ciudad');
+    expect(wrapper.findAll('button').filter((button) => button.text().includes('Crear ciudad'))).toHaveLength(1);
     expect(wrapper.get('#search-sedes').exists()).toBe(true);
     expect(wrapper.find('[aria-label="Ubicación actual"]').exists()).toBe(false);
+  });
+
+  it('muestra los KPI globales solo al inicio y guía el recorrido por niveles', async () => {
+    const wrapper = await mountView('/espacios');
+    await flushPromises();
+
+    expect(wrapper.get('[aria-label="Resumen de infraestructura"]').exists()).toBe(true);
+
+    await wrapper.get('[aria-label="Ciudades disponibles"] button').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[aria-label="Resumen de infraestructura"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Sedes disponibles');
+    expect(wrapper.text()).toContain('Nueva sede');
+
+    await wrapper.get('[aria-label="Lista de locales"] [role="button"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[aria-label="Resumen de infraestructura"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Pabellones de la sede');
+
+    await wrapper.get('[aria-label="Lista de pabellones"] [role="button"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[aria-label="Resumen de infraestructura"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Aulas y ambientes por piso');
+  });
+
+  it('crea una ciudad desde la raíz junto con su primera sede', async () => {
+    const wrapper = await mountView('/espacios');
+    await flushPromises();
+
+    await wrapper.findAll('button').find((button) => button.text().includes('Crear ciudad')).trigger('click');
+    await flushPromises();
+
+    const dialog = document.body.querySelector('[role="dialog"]');
+    expect(dialog.getAttribute('aria-label')).toBe('Crear ciudad y primera sede');
+    expect(dialog.textContent).toContain('Nombre de la primera sede');
+    expect(document.body.querySelector('#sede-ciudad').disabled).toBe(false);
+    expect(document.body.querySelector('#sede-ciudad').tagName).toBe('INPUT');
+  });
+
+  it('prellena y bloquea la ciudad al crear una sede desde su ciudad', async () => {
+    const wrapper = await mountView('/espacios');
+    await flushPromises();
+
+    await wrapper.get('[aria-label="Ciudades disponibles"] button').trigger('click');
+    await flushPromises();
+    await wrapper.findAll('button').find((button) => button.text().includes('Nueva sede')).trigger('click');
+    await flushPromises();
+
+    const citySelect = document.body.querySelector('#sede-ciudad');
+    expect(citySelect.textContent).toContain('Huánuco');
+    expect(citySelect.disabled).toBe(true);
+    expect(document.body.querySelector('[role="dialog"]').getAttribute('aria-label')).toBe('Nueva sede');
+  });
+
+  it('crea una ciudad y vincula su primera sede usando el identificador del catálogo', async () => {
+    const wrapper = await mountView('/espacios');
+    await wrapper.findAll('button').find((button) => button.text().includes('Crear ciudad')).trigger('click');
+    await flushPromises();
+
+    document.body.querySelector('#sede-ciudad').value = 'Ambo';
+    document.body.querySelector('#sede-ciudad').dispatchEvent(new Event('input', { bubbles: true }));
+    document.body.querySelector('#sede-codigo').value = 'LOC-AMBO';
+    document.body.querySelector('#sede-codigo').dispatchEvent(new Event('input', { bubbles: true }));
+    document.body.querySelector('#sede-nombre').value = 'Sede Ambo';
+    document.body.querySelector('#sede-nombre').dispatchEvent(new Event('input', { bubbles: true }));
+
+    await document.body.querySelector('#sede-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(ciudadesService.crear).toHaveBeenCalledWith({ nombre: 'Ambo' });
+    expect(localesService.crear).toHaveBeenCalledWith(expect.objectContaining({
+      codigo: 'LOC-AMBO',
+      ciudad_id: 3,
+    }));
+    expect(localesService.crear.mock.calls[0][0]).not.toHaveProperty('ciudad');
   });
 
   it('permite alternar entre la vista Tradicional y la vista Lista', async () => {
@@ -197,6 +289,43 @@ describe('EspaciosView.vue', () => {
     expect(wrapper.text()).toContain('LAB-201');
     expect(wrapper.text()).toContain('Todos los tipos');
     expect(wrapper.get('[aria-label="Espacios disponibles"]').text()).toContain('LAB-101');
+    expect(wrapper.get('[aria-label="Resumen de infraestructura"]').exists()).toBe(true);
+  });
+
+  it('permite filtrar por ciudad desde el selector en modo lista, limpiar y volver a filtrar con exportación asistida', async () => {
+    const wrapper = await mountView('/espacios?vista=inventario&ciudad=Hu%C3%A1nuco');
+    await flushPromises();
+
+    // 1. Debe mostrarse la ciudad activa Huánuco en el selector y en el botón de Excel
+    const citySelect = wrapper.findAllComponents(BaseSelect).find((c) => c.props('id') === 'spaces-city');
+    expect(citySelect).toBeDefined();
+    expect(citySelect.props('modelValue')).toBe('Huánuco');
+    expect(wrapper.text()).toContain('Exportar Excel (Huánuco)');
+
+    // 2. Limpiar filtros con el botón Limpiar
+    const clearBtn = wrapper.findAll('button').find((btn) => btn.text().trim() === 'Limpiar');
+    expect(clearBtn).toBeDefined();
+    await clearBtn.trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.ciudad).toBeUndefined();
+    expect(wrapper.text()).toContain('Exportar Excel');
+
+    // 3. Volver a filtrar por Huánuco desde el selector
+    await citySelect.vm.$emit('update:modelValue', 'Huánuco');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.ciudad).toBe('Huánuco');
+    expect(wrapper.text()).toContain('Exportar Excel (Huánuco)');
+
+    // 4. Exportar a Excel y verificar que envía la ciudad seleccionada
+    const exportBtn = wrapper.findComponent(BaseExportExcelButton);
+    await exportBtn.find('button').trigger('click');
+    await flushPromises();
+
+    expect(espaciosService.exportarExcel).toHaveBeenCalledWith(expect.objectContaining({
+      ciudad: 'Huánuco',
+    }));
   });
 
   it('conserva la ciudad y el local al abrir el mapa desde Tradicional', async () => {

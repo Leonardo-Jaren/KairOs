@@ -34,6 +34,19 @@ const espaciosService = {
   async desactivar(id) {
     await api.delete(`/api/v1/espacios/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/espacios/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
+
+  async exportarPlanoExcel(id) {
+    return api.get(`/api/v1/espacios/${id}/exportar-plano-excel/`, {
+      responseType: 'blob',
+    });
+  },
 };
 
 export default espaciosService;

@@ -5,6 +5,7 @@ import {
 
 import componentesService from '@/services/componentes.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 const emptyForm = () => ({ equipo_id: '', tipo: '', modelo: '', descripcion: '' });
@@ -163,11 +164,23 @@ export function useComponentes(service = componentesService) {
     return cargar();
   };
 
+  const { isExporting, exportExcel } = useExcelExport();
+
+  const exportToExcel = async () => {
+      await exportExcel(
+      () => service.exportarExcel({
+        search: filters.search,
+        tipo: filters.tipo,
+      }),
+      `inventario_componentes_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  };
+
   return {
     componentes, loading, saving, formOpen, deleteOpen, pendingDelete,
     form, formErrors, filters, pagination, toast, isEditing,
     cargar, openCreate, openEdit, closeForm, submit,
     askDelete, cancelDelete, confirmDelete, applyFilters, clearFilters,
-    changePage, closeToast, reset,
+    changePage, closeToast, reset, isExporting, exportToExcel,
   };
 }

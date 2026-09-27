@@ -8,10 +8,16 @@
           Administra el inventario de hardware, su ubicación y estado operativo.
         </p>
       </div>
-      <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate">
-        <template #icon><Plus :size="18" /></template>
-        Agregar
-      </BaseButton>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+        <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate">
+          <template #icon><Plus :size="18" /></template>
+          Agregar
+        </BaseButton>
+      </div>
     </header>
 
     <section class="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
@@ -30,10 +36,7 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <h2 class="text-base font-bold text-slate-900">Inventario de equipos</h2>
-      </div>
-      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(200px,1.5fr)_minmax(180px,1fr)_160px_160px_auto]" @submit.prevent="applyFilters">
         <BaseInput
           id="equipos-search"
           v-model="filters.search"
@@ -42,6 +45,12 @@
         >
           <template #icon><Search :size="17" /></template>
         </BaseInput>
+        <BaseSelect
+          id="equipos-espacio"
+          v-model="filters.espacio_id"
+          :options="espacioSelectOptions"
+          placeholder="Todos los espacios"
+        />
         <BaseSelect
           id="equipos-tipo"
           v-model="filters.tipo_equipo"
@@ -169,6 +178,7 @@
     />
   </div>
 </template>
+
 <script setup>
 import {
   AlertTriangle,
@@ -184,6 +194,7 @@ import {
 import { shallowRef } from 'vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
 import EquipoDetailModal from '@/components/equipos/EquipoDetailModal.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
@@ -208,6 +219,7 @@ const {
   equipos,
   loading,
   saving,
+  isExporting,
   modalOpen,
   deleteModalOpen,
   pendingDelete,
@@ -230,6 +242,7 @@ const {
   askDelete,
   cancelDelete,
   confirmDelete,
+  exportToExcel,
   applyFilters,
   clearFilters,
   changePage,

@@ -98,6 +98,89 @@ class EdificioRepository(BaseRepository):
             'aulas': espacios.filter(tipo='aula').count(),
         }
 
+    def get_excel_catalog_data(self, edificios, local_id: int | None = None):
+        """Obtiene las métricas y filas necesarias para exportar pabellones."""
+        from equipos.models import Equipo
+        from espacios.models import Local
+
+        local = Local.objects.filter(id=local_id).first() if local_id else None
+        total_buildings = len(edificios)
+        total_spaces = sum(building.cantidad_espacios for building in edificios)
+        total_laboratories = sum(building.cantidad_laboratorios for building in edificios)
+        total_equipment = Equipo.objects.filter(
+            espacio__edificio__in=edificios,
+            is_deleted=False,
+        ).count()
+        stats = {
+            'total_pabellones': total_buildings,
+            'total_ambientes': total_spaces,
+            'total_laboratorios': total_laboratories,
+            'total_equipos': total_equipment,
+        }
+
+        rows = []
+        for building in edificios:
+            equipment_count = Equipo.objects.filter(
+                espacio__edificio=building,
+                is_deleted=False,
+            ).count()
+            rows.append({
+                "sede": building.local.nombre if building.local else "—",
+                "codigo": building.codigo,
+                "nombre": building.nombre,
+                "pisos": building.cantidad_pisos,
+                "espacios": building.cantidad_espacios,
+                "laboratorios": building.cantidad_laboratorios,
+                "aulas": building.cantidad_aulas,
+                "equipos": equipment_count,
+                "estado": "Activo" if building.activo else "Inactivo",
+            })
+        return local, stats, rows
+
+    def get_excel_floor_data(self, building: Edificio, floor: str):
+        """Obtiene métricas y filas de equipos y espacios de un piso."""
+        from equipos.models import Equipo
+
+        spaces = Espacio.objects.filter(
+            edificio=building,
+            piso=floor,
+            is_deleted=False,
+        ).prefetch_related('equipos', 'asignaciones_usuario__usuario')
+        equipment = Equipo.objects.filter(espacio__in=spaces, is_deleted=False)
+        total_spaces = spaces.count()
+        total_equipment = equipment.count()
+        operational_count = equipment.filter(estado='en_uso').count()
+        maintenance_count = equipment.filter(estado='en_mantenimiento').count()
+        damaged_count = equipment.filter(estado='dañado').count()
+        stats = {
+            'total_ambientes': total_spaces,
+            'total_equipos': total_equipment,
+            'equipos_operativos': operational_count,
+            'equipos_mantenimiento': maintenance_count,
+            'equipos_dañados': damaged_count,
+        }
+
+        rows = []
+        for space in spaces:
+            space_equipment = list(space.equipos.filter(is_deleted=False))
+            assignments = [
+                f"{assignment.usuario.nombre} {assignment.usuario.apellido}".strip()
+                for assignment in space.asignaciones_usuario.filter(is_deleted=False, activo=True)
+            ]
+            rows.append({
+                "codigo_espacio": space.codigo_espacio,
+                "tipo": space.get_tipo_display(),
+                "equipos_operativos": sum(1 for item in space_equipment if item.estado == 'en_uso'),
+                "equipos_mantenimiento": sum(
+                    1 for item in space_equipment if item.estado == 'en_mantenimiento'
+                ),
+                "equipos_dañados": sum(1 for item in space_equipment if item.estado == 'dañado'),
+                "total_equipos": len(space_equipment),
+                "responsables": ", ".join(assignments) if assignments else "Sin asignar",
+                "estado": "Activo" if space.activo else "Inactivo",
+            })
+        return stats, rows
+
     def local_asignable(self, local_id: int):
         """Busca un local vigente y activo para asignarlo a un edificio."""
         from espacios.models import Local

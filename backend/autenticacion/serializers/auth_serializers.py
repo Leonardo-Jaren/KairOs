@@ -50,7 +50,8 @@ class UserProfileSerializer(serializers.Serializer):
                 'id': us.local.id,
                 'codigo': us.local.codigo,
                 'nombre': us.local.nombre,
-                'ciudad': us.local.ciudad,
+                'ciudad': us.local.ciudad.nombre if us.local.ciudad else '',
+                'ciudad_id': us.local.ciudad_id,
                 'es_sede_principal': us.es_sede_principal,
             }
             for us in obj.usuario_sedes.all()

@@ -5,6 +5,9 @@ from rest_framework.exceptions import ValidationError
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
 from software.repositories import ProductoSoftwareRepository, SoftwareInstaladoRepository
+from software.reports.software_instalado_excel_report import (
+    generar_reporte_software_instalado,
+)
 
 
 class SoftwareInstaladoService(AuditableMixin, BaseService):
@@ -92,3 +95,27 @@ class SoftwareInstaladoService(AuditableMixin, BaseService):
             raise ValidationError(
                 {'producto_software': 'El producto de software no tiene licencias disponibles.'}
             )
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        equipo_id: int | None = None,
+        espacio_id: int | None = None,
+        producto_software_id: int | None = None,
+        actor: Any = None,
+    ):
+        """Genera un reporte gerencial en formato Excel del inventario de software instalado."""
+        queryset = self.listar(
+            busqueda=busqueda,
+            equipo_id=equipo_id,
+            espacio_id=espacio_id,
+            producto_software_id=producto_software_id,
+        )
+        return generar_reporte_software_instalado(
+            queryset,
+            actor=actor,
+            busqueda=busqueda,
+            equipo_id=equipo_id,
+            espacio_id=espacio_id,
+            producto_software_id=producto_software_id,
+        )

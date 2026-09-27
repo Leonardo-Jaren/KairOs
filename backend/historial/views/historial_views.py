@@ -1,5 +1,7 @@
+from django.http import HttpResponse
 from rest_framework import mixins
-from rest_framework.exceptions import NotFound
+from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -61,4 +63,19 @@ class HistorialViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Generic
         """Obtiene el detalle de un evento de auditoría por su ID."""
         instance = self.service.get_by_id(kwargs['pk'])
         return Response(self.get_serializer(instance).data)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request) -> HttpResponse:
+        """Exporta eventos del log de auditoría a Excel."""
+        if request.user.rol in {ROL_DOCENTE, ROL_USUARIO}:
+            raise PermissionDenied('No tienes permisos para exportar el log de auditoría global.')
+        return self.service.exportar_excel(
+            modulo=request.query_params.get('modulo'),
+            object_id=parse_integer(request.query_params.get('object_id')),
+            tipo_evento=request.query_params.get('tipo_evento'),
+            usuario_id=parse_integer(request.query_params.get('usuario_id')),
+            fecha_desde=request.query_params.get('fecha_desde'),
+            fecha_hasta=request.query_params.get('fecha_hasta'),
+            actor=request.user,
+        )
 

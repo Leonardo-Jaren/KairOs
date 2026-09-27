@@ -16,6 +16,7 @@ import {
 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseTextarea from '@/components/inputs/BaseTextarea.vue';
@@ -81,6 +82,8 @@ const {
   askDelete,
   cancelDelete,
   confirmDelete,
+  exportToExcel,
+  isExporting,
   applyFilters,
   clearFilters,
   changePage,
@@ -150,10 +153,16 @@ const formatFecha = (fecha) => {
           Registra y da seguimiento a los tickets de mantenimiento preventivo y correctivo de los equipos.
         </p>
       </div>
-      <BaseButton v-if="canCreate" variant="accent" :full-width="false" @click="openCreate">
-        <template #icon><Plus :size="18" /></template>
-        Agregar
-      </BaseButton>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+        <BaseButton v-if="canCreate" variant="accent" :full-width="false" @click="openCreate">
+          <template #icon><Plus :size="18" /></template>
+          Agregar
+        </BaseButton>
+      </div>
     </header>
 
     <section class="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
@@ -172,10 +181,7 @@ const formatFecha = (fecha) => {
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <h2 class="text-base font-bold text-slate-900">Mantenimiento de equipos</h2>
-      </div>
-      <form class="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]" @submit.prevent="applyFilters">
+      <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(200px,1.5fr)_minmax(180px,1fr)_160px_160px_auto]" @submit.prevent="applyFilters">
         <BaseInput
           id="mant-search"
           v-model="filters.search"
@@ -184,6 +190,12 @@ const formatFecha = (fecha) => {
         >
           <template #icon><Search :size="17" /></template>
         </BaseInput>
+        <BaseSelect
+          id="mant-equipo"
+          v-model="filters.equipo_id"
+          :options="equipoSelectOptions"
+          placeholder="Todos los equipos"
+        />
         <BaseSelect
           id="mant-tipo"
           v-model="filters.tipo_mantenimiento"
