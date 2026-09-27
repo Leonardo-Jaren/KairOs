@@ -130,4 +130,20 @@ class UsuarioViewSet(BaseViewSet):
         subs = self.service.repository.get_subordinados(pk, directos_solo=True)
         return Response(UsuarioSerializer(subs, many=True).data)
 
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request):
+        """Genera y descarga un reporte formal en Excel con los usuarios filtrados."""
+        activo = self.parse_boolean_query(request.query_params.get('activo'))
+        local_id = int(request.query_params['local_id']) if request.query_params.get('local_id') else None
+        supervisor_id = int(request.query_params['supervisor_id']) if request.query_params.get('supervisor_id') else None
+        return self.service.exportar_excel(
+            actor=request.user,
+            busqueda=request.query_params.get('search', ''),
+            rol=request.query_params.get('rol', ''),
+            activo=activo,
+            local_id=local_id,
+            supervisor_id=supervisor_id,
+        )
+
+
 

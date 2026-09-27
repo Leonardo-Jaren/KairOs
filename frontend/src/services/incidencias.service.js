@@ -65,6 +65,13 @@ const incidenciasService = {
   async eliminar(id) {
     await api.delete(`/api/v1/incidencias/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/incidencias/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default incidenciasService;

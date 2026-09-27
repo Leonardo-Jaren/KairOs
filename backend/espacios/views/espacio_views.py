@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -34,6 +35,8 @@ class EspacioViewSet(BaseViewSet):
             request.query_params.get('edificio_id') or edificio_param
         )
         local_id = self.parse_integer_query(request.query_params.get('local_id') or request.query_params.get('sede_id'))
+        ciudad_id = self.parse_integer_query(request.query_params.get('ciudad_id'))
+        ciudad = request.query_params.get('ciudad', '')
         queryset = self.service.listar(
             busqueda=request.query_params.get('search', ''),
             tipo=request.query_params.get('tipo', ''),
@@ -42,6 +45,8 @@ class EspacioViewSet(BaseViewSet):
             edificio='' if edificio_id is not None else edificio_param,
             edificio_id=edificio_id,
             local_id=local_id,
+            ciudad=ciudad,
+            ciudad_id=ciudad_id,
             piso=request.query_params.get('piso', ''),
         )
         return self.get_collection_response(queryset)
@@ -98,3 +103,37 @@ class EspacioViewSet(BaseViewSet):
             actor=request.user,
         )
         return Response(EspacioDetailSerializer(updated).data)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request) -> HttpResponse:
+        """Exporta el inventario de espacios a Excel respetando los filtros activos."""
+        edificio_param = request.query_params.get('edificio', '')
+        edificio_id = self.parse_integer_query(
+            request.query_params.get('edificio_id') or edificio_param
+        )
+        local_id = self.parse_integer_query(
+            request.query_params.get('local_id') or request.query_params.get('sede_id')
+        )
+        ciudad_id = self.parse_integer_query(request.query_params.get('ciudad_id'))
+        ciudad = request.query_params.get('ciudad', '')
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            tipo=request.query_params.get('tipo', ''),
+            activo=self.parse_boolean_query(request.query_params.get('activo')),
+            pabellon=request.query_params.get('pabellon', ''),
+            edificio='' if edificio_id is not None else edificio_param,
+            edificio_id=edificio_id,
+            local_id=local_id,
+            ciudad=ciudad,
+            ciudad_id=ciudad_id,
+            piso=request.query_params.get('piso', ''),
+            actor=request.user,
+        )
+
+    @action(detail=True, methods=['get'], url_path='exportar-plano-excel')
+    def exportar_plano_excel(self, request: Request, *args, **kwargs) -> HttpResponse:
+        """Exporta la ficha técnica, inventario de equipos y croquis 2D en Excel."""
+        return self.service.exportar_plano_excel(
+            id=kwargs['pk'],
+            actor=request.user,
+        )

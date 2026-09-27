@@ -41,7 +41,11 @@ async function createCampus({ path = '/espacios/mapa?local=1&pabellon=1', role =
   const localService = { listar: vi.fn(async () => {
     if (reject) throw new Error('Falló la conexión');
     return { results: data.locales };
-  }), crear: vi.fn() };
+  }), crear: vi.fn(async (payload) => ({ id: 5, activo: true, ...payload })) };
+  const cityService = { listar: vi.fn(async () => ({ results: [
+    { id: 1, nombre: 'Huánuco' },
+    { id: 2, nombre: 'Tingo María' },
+  ] })) };
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/espacios/mapa', component: { render: () => null } },
     { path: '/espacios/:id', component: { render: () => null } },
@@ -51,7 +55,14 @@ async function createCampus({ path = '/espacios/mapa?local=1&pabellon=1', role =
   let state;
   const wrapper = mount(defineComponent({ setup() {
     useAuthStore().user = { id: 1, rol: role };
-    state = useCampusTecnologico(spaceService, buildingService, localService, { route: useRoute(), router: useRouter() });
+    state = useCampusTecnologico(
+      spaceService,
+      buildingService,
+      localService,
+      { route: useRoute(), router: useRouter() },
+      undefined,
+      cityService,
+    );
     return () => h('div');
   } }), { global: { plugins: [createPinia(), router] } });
   wrappers.push(wrapper);
@@ -211,6 +222,27 @@ describe('mapa por locales', () => {
     expect(localService.crear).not.toHaveBeenCalled();
     expect(buildingService.crear).not.toHaveBeenCalled();
     expect(spaceService.crear).not.toHaveBeenCalled();
+  });
+
+  it('selecciona una ciudad del catálogo al registrar un local desde el mapa', async () => {
+    const { state, localService } = await createCampus({
+      path: '/espacios/mapa?ciudad=Hu%C3%A1nuco&tipo=campus',
+    });
+
+    state.openCreateLocal();
+    expect(state.localForm.ciudad_id).toBe(1);
+    Object.assign(state.localForm, {
+      codigo: 'LOC-NUEVO',
+      nombre: 'Campus Nuevo',
+    });
+
+    await state.submitLocal();
+
+    expect(localService.crear).toHaveBeenCalledWith(expect.objectContaining({
+      codigo: 'LOC-NUEVO',
+      ciudad_id: 1,
+    }));
+    expect(localService.crear.mock.calls[0][0]).not.toHaveProperty('ciudad');
   });
 
   it('distingue errores de carga de un mapa vacío y permite reintentar', async () => {

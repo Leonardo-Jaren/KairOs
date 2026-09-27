@@ -13,6 +13,7 @@ import { shallowRef } from 'vue';
 
 import ProductoDetailModal from '@/components/software/ProductoDetailModal.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
@@ -60,6 +61,8 @@ const {
   clearFilters,
   changePage,
   closeToast,
+  isExporting,
+  exportToExcel,
 } = useSoftware();
 
 const detailProducto = shallowRef(null);
@@ -75,10 +78,16 @@ const detailProducto = shallowRef(null);
           Administra el catálogo de productos de software y sus licencias.
         </p>
       </div>
-      <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate">
-        <template #icon><Plus :size="18" /></template>
-        Agregar
-      </BaseButton>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+        <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate">
+          <template #icon><Plus :size="18" /></template>
+          Agregar
+        </BaseButton>
+      </div>
     </header>
 
     <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">

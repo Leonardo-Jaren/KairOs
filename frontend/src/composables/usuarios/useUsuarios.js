@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import localesService from '@/services/locales.service';
 import usuariosService from '@/services/usuarios.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
@@ -34,6 +35,7 @@ export function useUsuarios(service = usuariosService, sedesService = localesSer
   const formErrors = reactive({});
   const toast = reactive({ show: false, message: '', type: 'success' });
   const filters = reactive({ search: '', rol: '', activo: '', local_id: '', page: 1, page_size: 10 });
+  const { isExporting, exportExcel } = useExcelExport();
   const pagination = reactive({ total: 0, totalPages: 1 });
   const stats = reactive({ total: 0, activos: 0, administradores: 0, tecnicos: 0, docentes: 0 });
 
@@ -334,6 +336,24 @@ export function useUsuarios(service = usuariosService, sedesService = localesSer
     }
   };
 
+  const exportToExcel = async () => {
+    try {
+      const { search, rol, activo, local_id } = filters;
+      await exportExcel(
+        () => service.exportarExcel({
+          search,
+          rol,
+          activo: activo === '' ? undefined : activo,
+          local_id: local_id || undefined,
+        }),
+        `reporte_usuarios_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      showToast('Reporte de usuarios exportado exitosamente en Excel.');
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudo exportar el reporte a Excel.'), 'error');
+    }
+  };
+
   const { applyFilters, resetFilters } = useAutoFilters(filters, loadUsuarios, {
     immediateKeys: ['rol', 'activo', 'local_id'],
   });
@@ -395,6 +415,8 @@ export function useUsuarios(service = usuariosService, sedesService = localesSer
     askDelete,
     cancelDelete,
     confirmDelete,
+    exportToExcel,
+    isExporting,
     applyFilters,
     clearFilters,
     changePage,

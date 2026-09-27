@@ -5,6 +5,7 @@ import incidenciasService from '@/services/incidencias.service';
 import espaciosService from '@/services/espacios.service';
 import mantenimientoService from '@/services/mantenimiento.service';
 import { useAuthStore } from '@/stores/auth';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { getApiErrorMessage } from '@/utils/api-errors';
 import { isValidIpv4, isValidIpv6 } from '@/utils/ip-validation';
 
@@ -613,6 +614,16 @@ export function usePlanoEspacio(
 
   onMounted(() => Promise.all([loadSpace(), loadTechnicians()]));
 
+  const { isExporting, exportExcel } = useExcelExport();
+
+  const exportPlanoExcel = async () => {
+    if (!espacio.value) return;
+      await exportExcel(
+      () => spaceService.exportarPlanoExcel(espacio.value.id),
+      `ficha_plano_${espacio.value.codigo_espacio}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  };
+
   return {
     espacio,
     equipos,
@@ -675,5 +686,7 @@ export function usePlanoEspacio(
     cancelDeleteEquipment,
     confirmDeleteEquipment,
     closeToast,
+    isExporting,
+    exportPlanoExcel,
   };
 }

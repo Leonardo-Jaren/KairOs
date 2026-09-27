@@ -1,7 +1,7 @@
 from django.db.models import Prefetch, Q
 
 from equipos.models import Equipo
-from espacios.models import Espacio, EspacioUsuario
+from espacios.models import Ciudad, Espacio, EspacioUsuario
 from shared.base import BaseRepository
 from usuarios.models import Usuario
 
@@ -30,6 +30,7 @@ class EspacioRepository(BaseRepository):
         equipos = Equipo.objects.filter(is_deleted=False).order_by('codigo')
         return self.model.objects.filter(is_deleted=False).select_related(
             'edificio__local',
+            'edificio__local__ciudad',
         ).prefetch_related(
             Prefetch(
                 'asignaciones_usuario',
@@ -69,6 +70,8 @@ class EspacioRepository(BaseRepository):
         edificio: str = '',
         edificio_id: int | None = None,
         local_id: int | None = None,
+        ciudad: str = '',
+        ciudad_id: int | None = None,
         piso: str = '',
     ):
         """Aplica los filtros disponibles en la pantalla de espacios."""
@@ -98,20 +101,33 @@ class EspacioRepository(BaseRepository):
             queryset = queryset.filter(edificio_id=edificio_id)
         if local_id is not None:
             queryset = queryset.filter(edificio__local_id=local_id)
+        if ciudad_id is not None:
+            queryset = queryset.filter(edificio__local__ciudad_id=ciudad_id)
+        elif ciudad:
+            queryset = queryset.filter(
+                Q(edificio__local__ciudad__nombre__iexact=ciudad)
+                | Q(edificio__local__ciudad__nombre_normalizado__iexact=Ciudad.normalizar_nombre(ciudad))
+            )
         if piso:
             queryset = queryset.filter(piso=piso)
         return queryset
 
-    def get_by_codigo(
-        self,
-        codigo: str,
-        exclude_id: int | None = None,
-    ) -> Espacio | None:
-        """Busca un espacio por código incluyendo registros retirados."""
-        queryset = self.model.objects.filter(codigo_espacio__iexact=codigo)
-        if exclude_id is not None:
-            queryset = queryset.exclude(id=exclude_id)
-        return queryset.first()
+    def get_deleted_by_location(self, data: dict) -> Espacio | None:
+        """Busca un espacio retirado por código y ubicación para poder reactivarlo."""
+        queryset = self.model.objects.filter(
+            is_deleted=True,
+            codigo_espacio__iexact=data['codigo_espacio'],
+            piso=data['piso'],
+        )
+        edificio = data.get('edificio')
+        if edificio is not None:
+            queryset = queryset.filter(edificio_id=edificio.id)
+        else:
+            queryset = queryset.filter(
+                edificio__isnull=True,
+                pabellon__iexact=data['pabellon'],
+            )
+        return queryset.order_by('id').first()
 
     def get_estadisticas(self) -> dict:
         """Calcula indicadores generales del módulo."""

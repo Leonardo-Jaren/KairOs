@@ -30,10 +30,12 @@ Un local representa un recinto físico, por ejemplo el campus central o una sede
 
 ## Administración y modelo de datos
 
-- `Local` contiene código, nombre, ciudad, tipo de ubicación, descripción y estado activo, además de los campos de auditoría compartidos.
+- `Ciudad` es una entidad de catálogo independiente. Cada local referencia una ciudad mediante `ciudad_id`; las respuestas conservan `ciudad` como nombre de presentación y también exponen `ciudad_id`.
+- El nombre normalizado de ciudad es único, ignorando tildes, mayúsculas y espacios repetidos. La migración agrupa los textos existentes equivalentes y conserva una etiqueta legible.
+- `Local` contiene código, nombre, referencia a ciudad, tipo de ubicación, descripción y estado activo, además de los campos de auditoría compartidos.
 - El tipo de ubicación usa los valores estables `campus`, `sede`, `anexo` y `otro`. Los registros existentes migran como `sede` para conservar compatibilidad.
-- La ciudad se registra como texto del local; no se agrega un catálogo geográfico ni un mapa cartográfico.
 - `Edificio` sigue siendo la entidad interna del pabellón. Se añade la relación opcional `local`, expuesta como `local_id` y un resumen de lectura.
+- El administrador selecciona una ciudad existente al crear o editar un local. La ciudad se crea desde el catálogo; no se admite texto libre como identificador al registrar un local.
 - El administrador crea y edita locales, y asigna o reasigna pabellones usando su identificador, nunca mediante coincidencias del nombre.
 - Los nombres de pabellón pueden repetirse entre locales; los códigos conservan la unicidad global del contrato existente.
 - La relación de un ambiente sigue siendo `Espacio.edificio`. No se duplica `local_id` en los ambientes.
@@ -79,6 +81,7 @@ Se conserva el diseño de **Pisos y ambientes**, incluida la distribución visua
 |------|------|
 | API | `GET, POST /api/v1/espacios/locales/` |
 | API | `GET, PATCH, DELETE /api/v1/espacios/locales/{id}/` |
+| API | `GET, POST /api/v1/espacios/ciudades/` |
 | API | `/api/v1/espacios/edificios/`, con `local_id` en escritura y filtro de listado |
 | Vista | `frontend/src/views/espacios/CampusTecnologicoView.vue` |
 | Lógica | `frontend/src/composables/espacios/useCampusTecnologico.js` |
@@ -87,9 +90,9 @@ Se conserva el diseño de **Pisos y ambientes**, incluida la distribución visua
 
 ## Activación
 
-Aplicar la nueva migración de Espacios antes de utilizar el frontend actualizado. Después, registrar los locales reales y asignar los pabellones existentes. En una instalación real la migración no crea datos: el sistema comienza vacío y todo se registra manualmente. El comando `seed_datos_prueba` se ejecuta solo de forma explícita en desarrollo o demostraciones.
+Aplicar la nueva migración de Espacios antes de utilizar el frontend actualizado. La migración genera el catálogo a partir de las ciudades guardadas en los locales y combina nombres equivalentes; después se pueden crear más ciudades y locales desde la interfaz. El comando `seed_datos_prueba` se ejecuta solo de forma explícita en desarrollo o demostraciones.
 
-Las migraciones `0008_local_edificio_local` y `0009_local_tipo` deben aplicarse antes de usar el flujo actualizado. No se crean locales ni se asignan pabellones automáticamente mediante migraciones.
+Las migraciones `0008_local_edificio_local`, `0009_local_tipo` y `0013_ciudad_catalogo` deben aplicarse antes de usar el flujo actualizado. La migración de ciudad no crea locales ni asigna pabellones.
 
 ## Validación de la implementación
 

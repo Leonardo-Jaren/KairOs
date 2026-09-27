@@ -133,3 +133,18 @@ class IncidenciaViewSet(BaseViewSet):
         serializer.is_valid(raise_exception=True)
         ticket = MantenimientoService().create(serializer.validated_data, actor=request.user)
         return Response(MantenimientoSerializer(ticket).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request):
+        """Genera y descarga un reporte formal en Excel con los filtros aplicados."""
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            espacio_id=self.parse_integer_query(request.query_params.get('espacio_id')),
+            equipo_id=self.parse_integer_query(request.query_params.get('equipo_id')),
+            tipo_incidencia=request.query_params.get('tipo_incidencia', ''),
+            estado=request.query_params.get('estado', ''),
+            prioridad=request.query_params.get('prioridad', ''),
+            asignado_a_id=self.parse_integer_query(request.query_params.get('asignado_a_id')),
+            actor=request.user,
+        )
+

@@ -189,11 +189,16 @@ class EspacioUsuarioRepository(BaseRepository):
                 'id', 'codigo_espacio', 'tipo', 'pabellon', 'piso', 'edificio_id'
             )
         )
-        locales = list(
-            locales_qs.order_by('nombre').values(
-                'id', 'codigo', 'nombre', 'ciudad'
-            )
-        )
+        locales = [
+            {
+                'id': local.id,
+                'codigo': local.codigo,
+                'nombre': local.nombre,
+                'ciudad': local.ciudad.nombre if local.ciudad else '',
+                'ciudad_id': local.ciudad_id,
+            }
+            for local in locales_qs.select_related('ciudad').order_by('nombre')
+        ]
         edificios = list(
             edificios_qs.order_by('nombre').values(
                 'id', 'codigo', 'nombre', 'local_id'

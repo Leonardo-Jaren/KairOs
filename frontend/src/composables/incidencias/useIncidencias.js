@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import incidenciasService from '@/services/incidencias.service';
 import historialService from '@/services/historial.service';
 import { useAuthStore } from '@/stores/auth';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 const emptyForm = () => ({
@@ -66,6 +67,8 @@ export function useIncidencias(service = incidenciasService) {
   const equipoOptions = ref([]);
   const formEquipoOptions = ref([]);
   const tecnicoOptions = ref([]);
+
+  const { isExporting, exportExcel } = useExcelExport();
 
   const isEditing = computed(() => Boolean(editingIncidencia.value));
   const canManageAll = computed(() => authStore.hasPermission('incidencias', 'editar'));
@@ -339,6 +342,27 @@ export function useIncidencias(service = incidenciasService) {
     }
   };
 
+  const exportToExcel = async () => {
+    try {
+      const { search, espacio_id, equipo_id, tipo_incidencia, estado, prioridad, asignado_a_id } = filters;
+      await exportExcel(
+        () => service.exportarExcel({
+          search,
+          espacio_id: espacio_id || undefined,
+          equipo_id: equipo_id || undefined,
+          tipo_incidencia,
+          estado,
+          prioridad,
+          asignado_a_id: asignado_a_id || undefined,
+        }),
+        `reporte_incidencias_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      showToast('Reporte de incidencias exportado exitosamente en Excel.');
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudo exportar el reporte a Excel.'), 'error');
+    }
+  };
+
   const applyFilters = () => {
     filters.page = 1;
     return loadIncidencias();
@@ -376,6 +400,7 @@ export function useIncidencias(service = incidenciasService) {
     loading,
     saving,
     correctiveSaving,
+    isExporting,
     modalOpen,
     deleteModalOpen,
     detailOpen,
@@ -414,6 +439,7 @@ export function useIncidencias(service = incidenciasService) {
     cancelDelete,
     confirmDelete,
     createCorrective,
+    exportToExcel,
     applyFilters,
     clearFilters,
     changePage,

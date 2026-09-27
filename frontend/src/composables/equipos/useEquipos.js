@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import equiposService from '@/services/equipos.service';
 import espaciosService from '@/services/espacios.service';
 import { useAutoFilters } from '@/composables/shared/useAutoFilters';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 import { isValidIpv4, isValidIpv6 } from '@/utils/ip-validation';
@@ -36,10 +37,19 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
   const form = reactive(emptyForm());
   const formErrors = reactive({});
   const toast = reactive({ show: false, message: '', type: 'success' });
-  const filters = reactive({ search: '', tipo_equipo: '', estado: '', page: 1, page_size: 8 });
+  const filters = reactive({
+    search: '',
+    espacio_id: '',
+    tipo_equipo: '',
+    estado: '',
+    page: 1,
+    page_size: 8,
+  });
   const pagination = reactive({ total: 0, totalPages: 1 });
   const stats = reactive({ total: 0, en_uso: 0, en_mantenimiento: 0, de_baja: 0 });
   const espacioOptions = ref([]);
+
+  const { isExporting, exportExcel } = useExcelExport();
 
   const isEditing = computed(() => Boolean(editingEquipo.value));
   const canManageAll = computed(() => authStore.user?.rol === 'admin');
@@ -214,11 +224,29 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
     }
   };
 
+  const exportToExcel = async () => {
+    try {
+      const { search, tipo_equipo, estado, espacio_id } = filters;
+      await exportExcel(
+        () => service.exportarExcel({
+          search,
+          tipo_equipo,
+          estado,
+          espacio_id: espacio_id || undefined,
+        }),
+        `reporte_equipos_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      showToast('Reporte de equipos exportado exitosamente en Excel.');
+    } catch (error) {
+      showToast(getApiErrorMessage(error, 'No se pudo exportar el reporte a Excel.'), 'error');
+    }
+  };
+
   const { applyFilters, resetFilters } = useAutoFilters(filters, loadEquipos, {
-    immediateKeys: ['tipo_equipo', 'estado'],
+    immediateKeys: ['tipo_equipo', 'estado', 'espacio_id'],
   });
 
-  const clearFilters = () => resetFilters({ search: '', tipo_equipo: '', estado: '' });
+  const clearFilters = () => resetFilters({ search: '', tipo_equipo: '', estado: '', espacio_id: '' });
 
   const changePage = (page) => {
     filters.page = page;
@@ -239,6 +267,7 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
     equipos,
     loading,
     saving,
+    isExporting,
     modalOpen,
     deleteModalOpen,
     editingEquipo,
@@ -262,6 +291,7 @@ export function useEquipos(service = equiposService, espaciosServiceInstance = e
     askDelete,
     cancelDelete,
     confirmDelete,
+    exportToExcel,
     applyFilters,
     clearFilters,
     changePage,

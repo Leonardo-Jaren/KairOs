@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -60,3 +61,12 @@ class ProductoSoftwareViewSet(BaseViewSet):
     def opciones(self, request: Request) -> Response:
         """Entrega productos de software vigentes para poblar selects de otros modulos."""
         return Response(self.service.get_opciones())
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request) -> HttpResponse:
+        """Exporta el catálogo de software y licencias a Excel."""
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            tipo_licencia=request.query_params.get('tipo_licencia', ''),
+            actor=request.user,
+        )

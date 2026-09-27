@@ -1,6 +1,7 @@
 from rest_framework.exceptions import ValidationError
 
 from espacios.models import Edificio
+from espacios.reports.edificio_excel_report import EdificioExcelReport
 from espacios.repositories.edificio_repository import EdificioRepository
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
@@ -198,3 +199,37 @@ class EdificioService(AuditableMixin, BaseService):
             raise ValidationError({
                 'local_id': 'El local indicado no existe, está eliminado o está inactivo.'
             })
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        activo: bool | None = None,
+        local_id: int | None = None,
+        actor: Usuario = None,
+    ):
+        queryset = self.listar(
+            busqueda=busqueda,
+            activo=activo,
+            local_id=local_id,
+        )
+        local, stats, rows = self.repository.get_excel_catalog_data(queryset, local_id)
+        return EdificioExcelReport.generar_catalogo(local, rows, stats, actor=actor)
+
+    def exportar_piso_excel(
+        self,
+        edificio_id: int,
+        piso: str,
+        actor: Usuario = None,
+    ):
+        edificio = self.get_by_id(edificio_id)
+        if not edificio:
+            raise ValidationError({'edificio': 'El pabellón solicitado no existe.'})
+        floor = str(piso).strip()
+        stats, rows = self.repository.get_excel_floor_data(edificio, floor)
+        return EdificioExcelReport.generar_reporte_piso(
+            edificio,
+            floor,
+            rows,
+            stats,
+            actor=actor,
+        )

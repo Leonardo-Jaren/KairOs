@@ -27,6 +27,20 @@ const edificiosService = {
     );
     return data;
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/espacios/edificios/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
+
+  async exportarPisoExcel(id, piso) {
+    return api.get(`/api/v1/espacios/edificios/${id}/exportar-piso-excel/`, {
+      params: { piso },
+      responseType: 'blob',
+    });
+  },
 };
 
 export default edificiosService;

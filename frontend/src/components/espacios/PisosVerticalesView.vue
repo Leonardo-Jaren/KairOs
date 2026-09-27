@@ -66,7 +66,18 @@ const emit = defineEmits([
       </div>
     </section>
 
-    <!-- Lista de Plantas Verticales / Pisos (ordenados de arriba hacia abajo: Piso 3, Piso 2, Piso 1) -->
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.16em] text-primary-600">Siguiente nivel</p>
+        <h3 class="mt-1 text-lg font-extrabold text-slate-950">Aulas y ambientes por piso</h3>
+        <p class="mt-1 text-sm text-slate-500">Abre un ambiente en el plano para consultar su información.</p>
+      </div>
+      <span class="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+        {{ pisos.length }} {{ pisos.length === 1 ? 'piso' : 'pisos' }}
+      </span>
+    </div>
+
+    <!-- Lista de pisos ordenados de arriba hacia abajo -->
     <div v-if="loading" class="flex flex-col gap-5">
       <div
         v-for="item in 2"

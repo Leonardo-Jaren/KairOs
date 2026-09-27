@@ -1,11 +1,13 @@
 import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import ciudadesService from '@/services/ciudades.service';
 import edificiosService from '@/services/edificios.service';
 import espaciosService from '@/services/espacios.service';
 import espaciosUsuariosService from '@/services/espacios-usuarios.service';
 import localesService from '@/services/locales.service';
 import { normalizeFloorLayout } from '@/composables/espacios/useCroquisPiso';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { useAuthStore } from '@/stores/auth';
 import { getApiErrorMessage } from '@/utils/api-errors';
 import { formatFloor } from '@/utils/formatters';
@@ -68,7 +70,8 @@ export const formatFloorTitle = (floorKey, totalFloors, index) => {
 const emptySede = () => ({
   codigo: '',
   nombre: '',
-  ciudad: '',
+  ciudad_id: '',
+  ciudad_nombre: '',
   tipo: 'sede',
   descripcion: '',
   activo: true,
@@ -96,6 +99,7 @@ export function useEspaciosJerarquia(options = {}) {
     spaceService = espaciosService,
     buildingService = edificiosService,
     localService = localesService,
+    cityService = ciudadesService,
     assignService = espaciosUsuariosService,
     route: customRoute = null,
     router: customRouter = null,
@@ -126,6 +130,7 @@ export function useEspaciosJerarquia(options = {}) {
 
   // Datos base
   const locales = ref([]);
+  const ciudades = ref([]);
   const edificios = ref([]);
   const espacios = ref([]);
   const stats = reactive({ total: 0, activos: 0, laboratorios: 0, equipos: 0 });
@@ -133,6 +138,7 @@ export function useEspaciosJerarquia(options = {}) {
 
   // Modales y formularios
   const sedeModalOpen = ref(false);
+  const sedeCreationMode = ref('sede');
   const editingSede = ref(null);
   const sedeForm = reactive(emptySede());
   const sedeErrors = reactive({});
@@ -171,7 +177,15 @@ export function useEspaciosJerarquia(options = {}) {
   const toast = reactive({ show: false, message: '', type: 'success' });
 
   // Filtros y paginacion de la vista inventario
-  const inventoryFilters = reactive({ search: '', tipo: '', activo: '', page: 1, page_size: 10 });
+  const inventoryFilters = reactive({
+    search: '',
+    tipo: '',
+    activo: '',
+    ciudad: '',
+    sede: '',
+    page: 1,
+    page_size: 10,
+  });
   const inventoryPagination = reactive({ total: 0, totalPages: 1 });
 
   const showToast = (message, type = 'success') => {
@@ -235,6 +249,8 @@ export function useEspaciosJerarquia(options = {}) {
       selectedEdificioId.value = null;
     }
     selectedCity.value = String(route.query.ciudad || '');
+    inventoryFilters.ciudad = String(route.query.ciudad || '');
+    inventoryFilters.sede = route.query.sede ? String(route.query.sede) : '';
   };
 
   const setVista = (vista) => {
@@ -282,6 +298,15 @@ export function useEspaciosJerarquia(options = {}) {
       locales.value = data.results ?? data ?? [];
     } catch (err) {
       showToast(getApiErrorMessage(err, 'No se pudieron cargar las sedes.'), 'error');
+    }
+  };
+
+  const loadCiudades = async () => {
+    try {
+      const data = await cityService.listar({ page_size: 100 });
+      ciudades.value = data.results ?? data ?? [];
+    } catch (err) {
+      showToast(getApiErrorMessage(err, 'No se pudieron cargar las ciudades.'), 'error');
     }
   };
 
@@ -336,6 +361,7 @@ export function useEspaciosJerarquia(options = {}) {
     try {
       await Promise.all([
         loadLocales(),
+        loadCiudades(),
         loadEdificios(),
         loadEspacios(),
         loadEstadisticas(),
@@ -421,15 +447,42 @@ export function useEspaciosJerarquia(options = {}) {
       });
   });
 
-  const cityCards = computed(() => [...new Set(locales.value.map((local) => local.ciudad).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'es'))
-    .map((city) => ({
-      label: city,
-      localCount: locales.value.filter((local) => local.ciudad === city).length,
-      buildingCount: edificios.value.filter((building) => locales.value.some((local) => (
-        local.ciudad === city && String(local.id) === String(building.local_id ?? building.local?.id)
-      ))).length,
-    })));
+  const cityCatalog = computed(() => {
+    if (ciudades.value.length) return ciudades.value;
+    const legacyCities = new Map();
+    locales.value.forEach((local) => {
+      if (local.ciudad && !legacyCities.has(local.ciudad)) {
+        legacyCities.set(local.ciudad, {
+          id: local.ciudad_id ?? local.ciudad,
+          nombre: local.ciudad,
+        });
+      }
+    });
+    return [...legacyCities.values()];
+  });
+  const cityOptions = computed(() => cityCatalog.value.map((city) => ({
+    value: city.id,
+    label: city.nombre,
+  })));
+  const cityCards = computed(() => [...cityCatalog.value]
+    .sort((left, right) => left.nombre.localeCompare(right.nombre, 'es'))
+    .map((city) => {
+      const belongsToCity = (local) => (
+        local.ciudad_id != null && city.id != null
+          ? String(local.ciudad_id) === String(city.id)
+          : local.ciudad === city.nombre
+      );
+      const cityLocals = locales.value.filter(belongsToCity);
+      const cityLocalIds = new Set(cityLocals.map((local) => String(local.id)));
+      return {
+        id: city.id,
+        label: city.nombre,
+        localCount: cityLocals.length,
+        buildingCount: edificios.value.filter((building) => (
+          cityLocalIds.has(String(building.local_id ?? building.local?.id))
+        )).length,
+      };
+    }));
 
   const selectedSede = computed(() => (
     sedesList.value.find((s) => String(s.id) === String(selectedSedeId.value))
@@ -605,21 +658,28 @@ export function useEspaciosJerarquia(options = {}) {
   });
 
   // Acciones y Modales: Sedes
-  const openCreateSede = () => {
+  const openCreateSede = ({ city = selectedCity.value, createCity = false } = {}) => {
     if (!canEdit.value) return;
     editingSede.value = null;
     Object.assign(sedeForm, emptySede());
+    sedeForm.ciudad_id = createCity
+      ? ''
+      : cityCatalog.value.find((item) => item.nombre === city)?.id ?? '';
+    sedeForm.ciudad_nombre = '';
+    sedeCreationMode.value = createCity ? 'city' : 'sede';
     Object.keys(sedeErrors).forEach((k) => delete sedeErrors[k]);
     sedeModalOpen.value = true;
   };
 
   const openEditSede = (sede) => {
     if (!canEdit.value || !sede) return;
+    sedeCreationMode.value = 'sede';
     editingSede.value = sede;
     Object.assign(sedeForm, {
       codigo: sede.codigo,
       nombre: sede.nombre,
-      ciudad: sede.ciudad,
+      ciudad_id: sede.ciudad_id ?? '',
+      ciudad_nombre: '',
       tipo: sede.tipo || 'sede',
       descripcion: sede.descripcion || '',
       activo: sede.activo !== false,
@@ -631,29 +691,85 @@ export function useEspaciosJerarquia(options = {}) {
   const closeSedeModal = () => {
     sedeModalOpen.value = false;
     editingSede.value = null;
+    sedeCreationMode.value = 'sede';
   };
 
   const submitSede = async () => {
     if (!canEdit.value) return false;
+    const creatingCity = !editingSede.value && sedeCreationMode.value === 'city';
     Object.keys(sedeErrors).forEach((k) => delete sedeErrors[k]);
     if (!sedeForm.codigo.trim()) sedeErrors.codigo = 'Ingresa el código de la sede.';
     if (!sedeForm.nombre.trim()) sedeErrors.nombre = 'Ingresa el nombre de la sede.';
-    if (!sedeForm.ciudad.trim()) sedeErrors.ciudad = 'Ingresa la ciudad de la sede.';
+    if (sedeCreationMode.value === 'city') {
+      const cityName = sedeForm.ciudad_nombre.trim();
+      if (!cityName) {
+        sedeErrors.ciudad_nombre = 'Ingresa el nombre de la ciudad.';
+      } else {
+        const normalizedName = cityName.normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLocaleLowerCase('es');
+        const duplicateCity = cityCatalog.value.find((item) => (
+          item.nombre.normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLocaleLowerCase('es') === normalizedName
+        ));
+        if (duplicateCity) {
+          sedeErrors.ciudad_nombre = `La ciudad ${duplicateCity.nombre} ya existe; selecciónala para agregar una sede.`;
+        }
+      }
+    } else if (!sedeForm.ciudad_id) {
+      sedeErrors.ciudad_id = 'Selecciona una ciudad del catálogo.';
+    }
     if (Object.keys(sedeErrors).length) return false;
 
     saving.value = true;
     try {
       if (editingSede.value) {
-        await localService.actualizar(editingSede.value.id, { ...sedeForm });
+        await localService.actualizar(editingSede.value.id, {
+          codigo: sedeForm.codigo,
+          nombre: sedeForm.nombre,
+          ciudad_id: Number(sedeForm.ciudad_id),
+          tipo: sedeForm.tipo,
+          descripcion: sedeForm.descripcion,
+          activo: sedeForm.activo,
+        });
         showToast('Sede actualizada correctamente.');
       } else {
-        await localService.crear({ ...sedeForm });
-        showToast('Sede creada correctamente.');
+        let cityId = sedeForm.ciudad_id;
+        if (sedeCreationMode.value === 'city') {
+          const nuevaCiudad = await cityService.crear({ nombre: sedeForm.ciudad_nombre.trim() });
+          cityId = nuevaCiudad.id;
+          ciudades.value = [...ciudades.value, nuevaCiudad]
+            .sort((left, right) => left.nombre.localeCompare(right.nombre, 'es'));
+          sedeForm.ciudad_id = nuevaCiudad.id;
+          sedeForm.ciudad_nombre = '';
+          sedeCreationMode.value = 'sede';
+        }
+        await localService.crear({
+          codigo: sedeForm.codigo,
+          nombre: sedeForm.nombre,
+          ciudad_id: Number(cityId),
+          tipo: sedeForm.tipo,
+          descripcion: sedeForm.descripcion,
+          activo: sedeForm.activo,
+        });
+        showToast(creatingCity
+          ? 'Ciudad y primera sede creadas correctamente.'
+          : 'Sede creada correctamente.');
       }
       closeSedeModal();
-      await loadLocales();
+      await Promise.all([loadLocales(), loadCiudades()]);
       return true;
     } catch (err) {
+      const apiErrors = err.response?.data?.errores ?? {};
+      if (apiErrors.nombre) sedeErrors.ciudad_nombre = Array.isArray(apiErrors.nombre)
+        ? apiErrors.nombre[0] : apiErrors.nombre;
+      if (apiErrors.ciudad_id) sedeErrors.ciudad_id = Array.isArray(apiErrors.ciudad_id)
+        ? apiErrors.ciudad_id[0] : apiErrors.ciudad_id;
       showToast(getApiErrorMessage(err, 'No se pudo guardar la sede.'), 'error');
       return false;
     } finally {
@@ -931,13 +1047,17 @@ export function useEspaciosJerarquia(options = {}) {
   };
 
   // Paginacion y filtros para la tabla de inventario
+  // Paginacion y filtros para la tabla de inventario
   const inventoryFilteredEspacios = computed(() => {
     let list = espacios.value;
-    const scopeCity = route?.query?.ciudad;
-    const scopeLocal = route?.query?.sede || route?.query?.local;
-    const scopeBuilding = route?.query?.edificio || route?.query?.pabellon;
+    const scopeCity = inventoryFilters.ciudad || selectedCity.value || route?.query?.ciudad;
+    const scopeLocal = inventoryFilters.sede || selectedSedeId.value || route?.query?.sede || route?.query?.local;
+    const scopeBuilding = selectedEdificioId.value || route?.query?.edificio || route?.query?.pabellon;
     if (scopeCity) {
-      const ids = new Set(locales.value.filter((local) => local.ciudad === scopeCity).map((local) => String(local.id)));
+      const ids = new Set(locales.value.filter((local) => (
+        local.ciudad === scopeCity
+        || (local.ciudad_id != null && String(local.ciudad_id) === String(scopeCity))
+      )).map((local) => String(local.id)));
       const buildingIds = new Set(edificios.value.filter((building) => ids.has(String(building.local_id ?? building.local?.id))).map((building) => String(building.id)));
       list = list.filter((space) => buildingIds.has(String(space.edificio_id ?? space.edificio?.id)));
     }
@@ -978,12 +1098,165 @@ export function useEspaciosJerarquia(options = {}) {
     inventoryFilters.search = '';
     inventoryFilters.tipo = '';
     inventoryFilters.activo = '';
+    inventoryFilters.ciudad = '';
+    inventoryFilters.sede = '';
     inventoryFilters.page = 1;
+    selectedCity.value = '';
+    selectedSedeId.value = null;
+    selectedEdificioId.value = null;
+    updateRouteQuery({
+      ciudad: undefined,
+      sede: undefined,
+      edificio: undefined,
+      local: undefined,
+      pabellon: undefined,
+      piso: undefined,
+    });
   };
 
   const clearInventoryScope = () => {
+    inventoryFilters.ciudad = '';
+    inventoryFilters.sede = '';
     inventoryFilters.page = 1;
-    updateRouteQuery({ ciudad: undefined, sede: undefined, edificio: undefined, local: undefined, pabellon: undefined, piso: undefined });
+    selectedCity.value = '';
+    selectedSedeId.value = null;
+    selectedEdificioId.value = null;
+    updateRouteQuery({
+      ciudad: undefined,
+      sede: undefined,
+      edificio: undefined,
+      local: undefined,
+      pabellon: undefined,
+      piso: undefined,
+    });
+  };
+
+  const selectInventoryCity = (cityName) => {
+    inventoryFilters.ciudad = cityName || '';
+    inventoryFilters.sede = '';
+    inventoryFilters.page = 1;
+    selectedCity.value = cityName || '';
+    selectedSedeId.value = null;
+    selectedEdificioId.value = null;
+    updateRouteQuery({
+      ciudad: cityName || undefined,
+      sede: undefined,
+      edificio: undefined,
+      local: undefined,
+      pabellon: undefined,
+      piso: undefined,
+    });
+  };
+
+  const selectInventorySede = (sedeId) => {
+    inventoryFilters.sede = sedeId || '';
+    inventoryFilters.page = 1;
+    selectedSedeId.value = sedeId ? Number(sedeId) : null;
+    selectedEdificioId.value = null;
+    if (sedeId) {
+      const matchedLocal = locales.value.find((l) => String(l.id) === String(sedeId));
+      if (matchedLocal?.ciudad) {
+        inventoryFilters.ciudad = matchedLocal.ciudad;
+        selectedCity.value = matchedLocal.ciudad;
+      }
+    }
+    updateRouteQuery({
+      ciudad: inventoryFilters.ciudad || undefined,
+      sede: sedeId || undefined,
+      edificio: undefined,
+      local: undefined,
+      pabellon: undefined,
+      piso: undefined,
+    });
+  };
+
+  const cityFilterOptions = computed(() => [
+    { value: '', label: 'Todas las ciudades' },
+    ...cityCatalog.value.map((c) => ({
+      value: c.nombre,
+      label: c.nombre,
+    })),
+  ]);
+
+  const sedeFilterOptions = computed(() => {
+    let filteredLocales = locales.value;
+    if (inventoryFilters.ciudad) {
+      filteredLocales = filteredLocales.filter((l) => (
+        l.ciudad === inventoryFilters.ciudad
+        || (l.ciudad_id != null && String(l.ciudad_id) === String(inventoryFilters.ciudad))
+      ));
+    }
+    return [
+      {
+        value: '',
+        label: inventoryFilters.ciudad
+          ? `Todas las sedes (${inventoryFilters.ciudad})`
+          : 'Todas las sedes',
+      },
+      ...filteredLocales.map((l) => ({
+        value: String(l.id),
+        label: `${l.nombre}${!inventoryFilters.ciudad && l.ciudad ? ` (${l.ciudad})` : ''}`,
+      })),
+    ];
+  });
+
+  const currentScopeName = computed(() => {
+    if (currentView.value === 'inventario') {
+      if (inventoryFilters.sede) {
+        const found = locales.value.find((l) => String(l.id) === String(inventoryFilters.sede));
+        if (found) return found.nombre;
+      }
+      if (inventoryFilters.ciudad) return inventoryFilters.ciudad;
+    }
+    return (
+      selectedEdificio.value?.nombre
+      || selectedSede.value?.nombre
+      || selectedCity.value
+      || ''
+    );
+  });
+
+  const exportExcelLabel = computed(() => {
+    const scope = currentScopeName.value;
+    if (!scope) return 'Exportar Excel';
+    const shortScope = scope.length > 16 ? `${scope.slice(0, 14)}...` : scope;
+    return `Exportar Excel (${shortScope})`;
+  });
+
+  const exportExcelTooltip = computed(() => {
+    const scope = currentScopeName.value;
+    const count = inventoryFilteredEspacios.value.length;
+    if (scope) {
+      return `Descargar reporte Excel con los ${count} espacios correspondientes a ${scope}`;
+    }
+    return `Descargar reporte Excel con todos los ${count} espacios disponibles según los filtros`;
+  });
+
+  const { isExporting, exportExcel } = useExcelExport();
+
+  const exportInventarioExcel = async () => {
+    const scopeCity = inventoryFilters.ciudad || selectedCity.value || route?.query?.ciudad;
+    const scopeSede = inventoryFilters.sede || selectedSedeId.value || route?.query?.sede;
+    const scopeEdificio = selectedEdificioId.value || route?.query?.edificio;
+
+    const queryParams = {
+      search: inventoryFilters.search || undefined,
+      tipo: inventoryFilters.tipo || undefined,
+      activo: inventoryFilters.activo !== '' ? inventoryFilters.activo : undefined,
+      ciudad: scopeCity || undefined,
+      local_id: scopeSede ? Number(scopeSede) : undefined,
+      edificio_id: scopeEdificio ? Number(scopeEdificio) : undefined,
+    };
+
+    const scopeName = currentScopeName.value;
+    const safeScopeSlug = scopeName
+      ? `_${scopeName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '')}`
+      : '_todos';
+
+    await exportExcel(
+      () => spaceService.exportarExcel(queryParams),
+      `inventario_espacios${safeScopeSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
   };
 
   onMounted(() => {
@@ -995,8 +1268,8 @@ export function useEspaciosJerarquia(options = {}) {
     // Estado y navegacion
     loading, saving, error, currentView, searchQuery,
     selectedCity, selectedSedeId, selectedEdificioId, selectedSede, selectedEdificio,
-    cityCards, sedesList, edificiosDeSede, pisosDeEdificio, stats,
-    canEdit, typeOptions, sedeTipoOptions, allLocalesOptions,
+     cityCards, cityOptions, sedesList, edificiosDeSede, pisosDeEdificio, stats,
+     canEdit, typeOptions, sedeTipoOptions, allLocalesOptions,
     edificiosOptionsForSede, pisosExistentesEnEdificio,
     toast, detailEspacio,
 
@@ -1007,7 +1280,7 @@ export function useEspaciosJerarquia(options = {}) {
     // Formularios contextuales
     sedeModalOpen, editingSede, isEditingSede: computed(() => Boolean(editingSede.value)),
     sedeForm, sedeErrors, deleteSedeModalOpen, pendingDeleteSede,
-    openCreateSede, openEditSede, closeSedeModal, submitSede, askDeleteSede, confirmDeleteSede,
+    sedeCreationMode, openCreateSede, openEditSede, closeSedeModal, submitSede, askDeleteSede, confirmDeleteSede,
 
     edificioModalOpen, editingEdificio, isEditingEdificio: computed(() => Boolean(editingEdificio.value)),
     edificioForm, edificioErrors, deleteEdificioModalOpen, pendingDeleteEdificio,
@@ -1031,5 +1304,9 @@ export function useEspaciosJerarquia(options = {}) {
       totalPages: Math.max(1, Math.ceil(inventoryFilteredEspacios.value.length / inventoryFilters.page_size)),
     })),
     changeInventoryPage, clearInventoryFilters, clearInventoryScope,
+    selectInventoryCity, selectInventorySede,
+    cityFilterOptions, sedeFilterOptions, cityCatalog,
+    currentScopeName, exportExcelLabel, exportExcelTooltip,
+    isExporting, exportInventarioExcel,
   };
 }

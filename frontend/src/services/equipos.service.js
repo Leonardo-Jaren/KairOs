@@ -29,6 +29,13 @@ const equiposService = {
   async eliminar(id) {
     await api.delete(`/api/v1/equipos/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/equipos/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default equiposService;

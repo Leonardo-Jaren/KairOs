@@ -13,6 +13,7 @@ import {
 } from '@lucide/vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
@@ -43,6 +44,7 @@ const {
   incidencias,
   loading,
   saving,
+  isExporting,
   correctiveSaving,
   modalOpen,
   deleteModalOpen,
@@ -81,6 +83,7 @@ const {
   cancelDelete,
   confirmDelete,
   createCorrective,
+  exportToExcel,
   applyFilters,
   clearFilters,
   changePage,
@@ -177,10 +180,16 @@ const formatAge = (createdAt) => {
           Reporta y da seguimiento a fallas de hardware o software en los equipos de cada espacio.
         </p>
       </div>
-      <BaseButton v-if="canCreate" variant="accent" :full-width="false" @click="openCreate">
-        <template #icon><Plus :size="18" /></template>
-        Reportar
-      </BaseButton>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+        <BaseButton v-if="canCreate" variant="accent" :full-width="false" @click="openCreate">
+          <template #icon><Plus :size="18" /></template>
+          Reportar
+        </BaseButton>
+      </div>
     </header>
 
     <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -199,9 +208,6 @@ const formatAge = (createdAt) => {
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <h2 class="text-base font-bold text-slate-900">Incidencias registradas</h2>
-      </div>
       <form class="flex flex-col gap-3" @submit.prevent="applyFilters">
         <BaseInput
           id="incidencias-search"

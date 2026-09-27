@@ -1,5 +1,7 @@
 from rest_framework.exceptions import ValidationError
 
+from espacios.models import Ciudad
+from espacios.reports.local_excel_report import LocalExcelReport
 from espacios.repositories.local_repository import LocalRepository
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
@@ -108,18 +110,42 @@ class LocalService(AuditableMixin, BaseService):
             clean_data['codigo'] = ''
         if not partial and 'tipo' not in clean_data:
             clean_data['tipo'] = 'sede'
-        for field in ['nombre', 'ciudad', 'tipo', 'descripcion']:
+        for field in ['nombre', 'tipo', 'descripcion']:
             if field in clean_data:
                 clean_data[field] = clean_data[field].strip()
-        for field in ['codigo', 'nombre', 'ciudad', 'tipo']:
+        if 'ciudad' in clean_data and not isinstance(clean_data['ciudad'], Ciudad):
+            raise ValidationError({'ciudad_id': 'Selecciona una ciudad vigente del catálogo.'})
+        for field in ['codigo', 'nombre', 'tipo']:
             if field in clean_data and not clean_data[field]:
                 raise ValidationError({field: 'Este campo es obligatorio.'})
         if not partial:
             for field in ['codigo', 'nombre', 'ciudad', 'tipo']:
                 if field not in clean_data:
-                    raise ValidationError({field: 'Este campo es obligatorio.'})
+                    error_field = 'ciudad_id' if field == 'ciudad' else field
+                    raise ValidationError({error_field: 'Este campo es obligatorio.'})
         return clean_data
 
     def _validar_codigo(self, codigo: str, exclude_id: int | None = None) -> None:
         if self.repository.get_by_codigo(codigo, exclude_id):
             raise ValidationError({'codigo': 'Ya existe un local con este código.'})
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        activo: bool | None = None,
+        actor: Usuario = None,
+        solo_asignables: bool = False,
+    ):
+        queryset = self.listar(
+            busqueda=busqueda,
+            activo=activo,
+            actor=actor,
+            solo_asignables=solo_asignables,
+        )
+        stats, rows = self.repository.get_excel_report_data(queryset)
+        return LocalExcelReport.generar(
+            rows,
+            stats,
+            busqueda=busqueda,
+            actor=actor,
+        )

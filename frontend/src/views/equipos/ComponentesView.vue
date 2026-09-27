@@ -3,6 +3,7 @@ import { Pencil, Plus, Search, Trash2 } from '@lucide/vue';
 import { onMounted, ref } from 'vue';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BasePagination from '@/components/pagination/BasePagination.vue';
@@ -22,6 +23,7 @@ const {
   form, formErrors, filters, pagination, toast, isEditing,
   cargar, openCreate, openEdit, closeForm, submit,
   askDelete, cancelDelete, confirmDelete, clearFilters, changePage, closeToast,
+  isExporting, exportToExcel,
 } = useComponentes();
 
 const equipoOptions = ref([]);
@@ -54,10 +56,16 @@ onMounted(async () => {
           Listado de todos los componentes de hardware registrados en el sistema.
         </p>
       </div>
-      <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate">
-        <template #icon><Plus :size="18" /></template>
-        Agregar
-      </BaseButton>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+        <BaseButton v-if="canManageAll" variant="accent" :full-width="false" @click="openCreate">
+          <template #icon><Plus :size="18" /></template>
+          Agregar
+        </BaseButton>
+      </div>
     </header>
 
     <!-- Filtros rápidos por tipo -->

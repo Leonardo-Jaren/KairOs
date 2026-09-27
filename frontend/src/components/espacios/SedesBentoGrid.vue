@@ -10,6 +10,7 @@ import {
 
 defineProps({
   sedes: { type: Array, default: () => [] },
+  city: { type: String, default: '' },
   loading: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: false },
 });
@@ -23,12 +24,15 @@ const emit = defineEmits([
 
 <template>
   <div class="flex flex-col gap-5">
-    <div class="flex items-center justify-end">
-       <div class="flex items-center gap-3">
-         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-           {{ sedes.length }} {{ sedes.length === 1 ? 'local registrado' : 'locales registrados' }}
-         </span>
-       </div>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.16em] text-primary-600">{{ city || 'Ciudad seleccionada' }}</p>
+        <h2 class="mt-1 text-lg font-extrabold text-slate-950">Sedes disponibles</h2>
+        <p class="mt-1 text-sm text-slate-500">Elige una sede para ver sus pabellones y ambientes.</p>
+      </div>
+      <span class="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+        {{ sedes.length }} {{ sedes.length === 1 ? 'sede' : 'sedes' }}
+      </span>
     </div>
 
     <!-- Skeleton loading -->

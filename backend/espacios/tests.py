@@ -41,20 +41,43 @@ class EspacioRepositoryServiceTests(TestCase):
         self.assertEqual(espacio.created_by, self.admin)
         self.assertTrue(espacio.activo)
 
-    def test_rejects_duplicate_code_case_insensitive(self):
+    def test_allows_duplicate_codes_in_different_locations(self):
         payload = {
             'codigo_espacio': 'LAB-301',
             'tipo': 'laboratorio',
             'pabellon': 'Pabellón 3',
             'piso': '3',
         }
-        self.service.create(payload, actor=self.admin)
+        first = self.service.create(payload, actor=self.admin)
+        second = self.service.create(
+            {
+                **payload,
+                'codigo_espacio': 'lab-301',
+                'pabellon': 'Pabellón 4',
+                'piso': '2',
+            },
+            actor=self.admin,
+        )
 
-        with self.assertRaisesMessage(Exception, 'Ya existe un espacio'):
-            self.service.create(
-                {**payload, 'codigo_espacio': 'lab-301'},
-                actor=self.admin,
-            )
+        self.assertEqual(first.codigo_espacio, second.codigo_espacio)
+        self.assertNotEqual(first.id, second.id)
+        self.assertEqual(self.repository.get_all().filter(codigo_espacio='LAB-301').count(), 2)
+
+    def test_recreating_deleted_space_at_same_location_restores_it(self):
+        payload = {
+            'codigo_espacio': 'LAB-303',
+            'tipo': 'laboratorio',
+            'pabellon': 'Pabellón 3',
+            'piso': '3',
+        }
+        original = self.service.create(payload, actor=self.admin)
+        self.service.delete(original.id, actor=self.admin)
+
+        restored = self.service.create(payload, actor=self.admin)
+
+        self.assertEqual(restored.id, original.id)
+        self.assertFalse(restored.is_deleted)
+        self.assertTrue(restored.activo)
 
     def test_rejects_non_numeric_floor(self):
         with self.assertRaisesMessage(Exception, 'El piso debe contener únicamente números'):
@@ -160,6 +183,25 @@ class EspacioAPITests(APITestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.data['equipos'], [])
 
+    def test_admin_can_create_spaces_with_the_same_code(self):
+        self.client.force_authenticate(self.admin)
+
+        first = self.client.post(self.list_url, self.payload, format='json')
+        second = self.client.post(
+            self.list_url,
+            {
+                **self.payload,
+                'pabellon': 'Pabellón 5',
+                'piso': '2',
+            },
+            format='json',
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(first.data['codigo_espacio'], second.data['codigo_espacio'])
+        self.assertNotEqual(first.data['id'], second.data['id'])
+
     def test_api_rejects_non_numeric_floor(self):
         self.client.force_authenticate(self.admin)
 
@@ -183,10 +225,12 @@ class EspacioAPITests(APITestCase):
         self.assertEqual(response.data['activos'], 1)
 
     def test_list_filters_by_local_id_and_piso(self):
-        from espacios.models import Local, Edificio
+        from espacios.models import Ciudad, Local, Edificio
         self.client.force_authenticate(self.admin)
-        local1 = Local.objects.create(codigo='LOC-TEST-1', nombre='Sede 1', ciudad='Huánuco', tipo='campus')
-        local2 = Local.objects.create(codigo='LOC-TEST-2', nombre='Sede 2', ciudad='Tingo María', tipo='filial')
+        ciudad_huanuco = Ciudad.objects.create(nombre='Huánuco')
+        ciudad_tingo = Ciudad.objects.create(nombre='Tingo María')
+        local1 = Local.objects.create(codigo='LOC-TEST-1', nombre='Sede 1', ciudad=ciudad_huanuco, tipo='campus')
+        local2 = Local.objects.create(codigo='LOC-TEST-2', nombre='Sede 2', ciudad=ciudad_tingo, tipo='filial')
         ed1 = Edificio.objects.create(codigo='ED-1', nombre='Pabellón A', local=local1)
         ed2 = Edificio.objects.create(codigo='ED-2', nombre='Pabellón B', local=local2)
 
@@ -546,3 +590,97 @@ class EspacioUsuarioAPITests(APITestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertTrue(assignment.is_deleted)
+
+
+class EspaciosExportExcelAPITests(APITestCase):
+    """Verifica la exportación a Excel en los diferentes niveles de espacios y croquis."""
+
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            correo='admin.export@example.com',
+            username='adminexport',
+            nombre='Admin',
+            apellido='KairOs',
+            rol='admin',
+        )
+        self.client.force_authenticate(self.admin)
+        self.espacio = Espacio.objects.create(
+            codigo_espacio='LAB-901',
+            tipo='laboratorio',
+            pabellon='Pabellón Central',
+            piso='2',
+            configuracion_plano={
+                'filas': 2,
+                'columnas': 2,
+                'puestos': [
+                    {'fila': 1, 'columna': 1, 'equipo_id': 1, 'es_docente': True}
+                ],
+            },
+            created_by=self.admin,
+            updated_by=self.admin,
+        )
+
+    def test_exportar_espacios_excel(self):
+        url = reverse('espacio-exportar-excel')
+        response = self.client.get(url, {'ciudad': 'Huánuco'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment; filename="reporte_espacios_huanuco_', response['Content-Disposition'])
+        self.assertGreater(len(response.content), 1000)
+
+    def test_exportar_plano_excel(self):
+        url = reverse('espacio-exportar-plano-excel', args=[self.espacio.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment; filename="ficha_plano_LAB-901_', response['Content-Disposition'])
+        self.assertGreater(len(response.content), 1000)
+
+    def test_exportar_locales_excel(self):
+        url = reverse('local-exportar-excel')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment; filename="reporte_territorio_', response['Content-Disposition'])
+        self.assertGreater(len(response.content), 1000)
+
+    def test_exportar_edificios_excel(self):
+        url = reverse('edificio-exportar-excel')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment; filename="reporte_pabellones_', response['Content-Disposition'])
+        self.assertGreater(len(response.content), 1000)
+
+    def test_exportar_piso_excel(self):
+        from espacios.models import Edificio
+        edificio = Edificio.objects.create(
+            codigo='ED-10',
+            nombre='Edificio 10',
+            created_by=self.admin,
+            updated_by=self.admin,
+        )
+        self.espacio.edificio = edificio
+        self.espacio.save()
+
+        url = reverse('edificio-exportar-piso-excel', args=[edificio.id])
+        response = self.client.get(f"{url}?piso=2")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment; filename="reporte_piso_ED-10_p2_', response['Content-Disposition'])
+        self.assertGreater(len(response.content), 1000)

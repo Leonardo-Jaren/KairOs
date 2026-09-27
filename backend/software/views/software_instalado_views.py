@@ -1,4 +1,6 @@
+from django.http import HttpResponse
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -53,3 +55,16 @@ class SoftwareInstaladoViewSet(BaseViewSet):
         """Elimina logicamente una instalacion, liberando una licencia disponible."""
         self.service.delete(kwargs['pk'], actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request) -> HttpResponse:
+        """Exporta el inventario de software instalado a Excel."""
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            equipo_id=self.parse_integer_query(request.query_params.get('equipo_id')),
+            espacio_id=self.parse_integer_query(request.query_params.get('espacio_id')),
+            producto_software_id=self.parse_integer_query(
+                request.query_params.get('producto_software_id')
+            ),
+            actor=request.user,
+        )
