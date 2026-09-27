@@ -4,13 +4,23 @@
 |-------|-------|
 | Módulo | Espacios y Campus Tecnológico |
 | Categoría | Rendimiento / Integridad Referencial / Usabilidad |
-| Fecha | 2026-09-14 |
+| Fecha | 2026-09-26 |
 | Autor | Equipo KairOs |
 | Estado | Aprobado |
 
 ## Descripción
 
-El módulo de navegación territorial y mapa de infraestructura (`/espacios/mapa`) permite explorar los edificios, pisos y ambientes organizados jerárquicamente por ciudad y local. Este flujo debe garantizar una experiencia interactiva sin latencia perceptible, una rigurosa integridad de datos en operaciones de borrado y desactivación, y un aislamiento total entre contextos territoriales.
+El módulo de navegación territorial y mapa de infraestructura (`/espacios/mapa`) conserva el mapa departamental de ciudades y utiliza un esquema axonométrico para navegar desde una ciudad hacia sus sedes. El esquema comunica relaciones jerárquicas; no simula posiciones, distancias ni coordenadas geográficas. El flujo debe garantizar una experiencia interactiva, integridad de datos en operaciones de borrado y desactivación, y aislamiento entre contextos territoriales.
+
+## Requisitos del esquema axonométrico
+
+- El mapa departamental de selección de ciudades no cambia como parte del esquema.
+- Los locales se muestran como módulos conectados a la ciudad seleccionada y reutilizan los nombres, códigos e indicadores ya disponibles.
+- Se muestran hasta tres módulos por página; la paginación permite recorrer el resto sin perder la ciudad seleccionada. La búsqueda filtra los resultados y reinicia la página actual.
+- En pantallas pequeñas, los módulos se apilan verticalmente sin desplazamiento horizontal.
+- Los módulos son controles de teclado con foco visible y un área táctil mínima de 44 px. El diagrama se oculta para tecnologías de asistencia mientras su contenido se comunica mediante botones con nombres accesibles.
+- La animación de interacción respeta `prefers-reduced-motion`.
+- No se añaden coordenadas, distancias ni campos de geolocalización para distribuir visualmente los módulos.
 
 ## Justificación
 
@@ -23,7 +33,7 @@ La supervisión de múltiples sedes físicas (locales) y campus tecnológicos re
 | Tiempo de conmutación de local (`selectLocal`) | < 200 ms en renderizado de pabellones |
 | Carga inicial de datos territoriales (`/api/v1/espacios/locales/`) | < 350 ms para catálogos de hasta 100 locales |
 | Cálculo de estadísticas agregadas por sede | < 300 ms en llamada `/api/v1/espacios/edificios/estadisticas/` |
-| Paginación exhaustiva en carga | 100% de páginas resueltas antes de calcular métricas de tarjetas |
+| Paginación exhaustiva en carga | 100% de páginas de API resueltas antes de calcular indicadores territoriales |
 | Tiempo de respuesta en creación/edición de local | < 400 ms en HTTP POST/PATCH |
 
 ## Requisitos de Integridad y Reglas de Negocio
@@ -46,6 +56,7 @@ La supervisión de múltiples sedes físicas (locales) y campus tecnológicos re
 - **Frontend (Vitest Specs):**
   - `frontend/src/composables/espacios/useCampusTerritorio.spec.js`: Valida selección de ciudades, locales, filtros dinámicos, creación/edición/eliminación reactiva y manejo de errores de API.
   - `frontend/src/composables/espacios/useCampusTecnologico.spec.js`: Valida indicadores, cambio de pabellones, croquis y persistencia de distribución.
+  - `frontend/src/components/espacios/TerritorioSelector.spec.js` y `SedesAxonometrico.spec.js`: Valida que el mapa de ciudades se conserve y que el diagrama de sedes soporte selección, búsqueda, paginación y estado de edición.
 
 ## Relación con Requerimientos e Historias de Usuario
 
