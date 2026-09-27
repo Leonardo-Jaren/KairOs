@@ -2,6 +2,7 @@
 import { shallowRef } from 'vue';
 
 import AuditDetailModal from '@/components/historial/AuditDetailModal.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import HistorialFilters from '@/components/historial/HistorialFilters.vue';
 import HistorialTable from '@/components/historial/HistorialTable.vue';
 import BasePagination from '@/components/pagination/BasePagination.vue';
@@ -19,6 +20,8 @@ const {
   clearFilters,
   changePage,
   closeToast,
+  isExporting,
+  exportToExcel,
 } = useHistorial();
 
 const selectedEvent = shallowRef(null);
@@ -27,12 +30,20 @@ const selectedEvent = shallowRef(null);
 <template>
   <div class="flex flex-col gap-6">
 
-    <header>
-      <p class="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-600">Sistema</p>
-      <h1 class="text-3xl font-extrabold tracking-tight text-slate-950">Historial de auditoría</h1>
-      <p class="mt-2 max-w-2xl text-sm text-slate-500">
-        Registro de las acciones realizadas en el sistema.
-      </p>
+    <header class="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+      <div>
+        <p class="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-600">Sistema</p>
+        <h1 class="text-3xl font-extrabold tracking-tight text-slate-950">Historial de auditoría</h1>
+        <p class="mt-2 max-w-2xl text-sm text-slate-500">
+          Registro de las acciones realizadas en el sistema.
+        </p>
+      </div>
+      <div>
+        <BaseExportExcelButton
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
+      </div>
     </header>
 
     <HistorialFilters

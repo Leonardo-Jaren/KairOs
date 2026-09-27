@@ -5,6 +5,9 @@ from rest_framework.exceptions import ValidationError
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
 from software.repositories import ProductoSoftwareRepository
+from software.reports.producto_software_excel_report import (
+    generar_reporte_productos_software,
+)
 
 
 class ProductoSoftwareService(AuditableMixin, BaseService):
@@ -106,3 +109,21 @@ class ProductoSoftwareService(AuditableMixin, BaseService):
                     )
                 }
             )
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        tipo_licencia: str = '',
+        actor: Any = None,
+    ):
+        """Genera un reporte gerencial en formato Excel del catálogo de productos de software."""
+        queryset = self.listar(
+            busqueda=busqueda,
+            tipo_licencia=tipo_licencia,
+        )
+        return generar_reporte_productos_software(
+            queryset,
+            actor=actor,
+            busqueda=busqueda,
+            tipo_licencia=tipo_licencia,
+        )

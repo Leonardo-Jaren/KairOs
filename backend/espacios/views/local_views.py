@@ -1,4 +1,6 @@
+from django.http import HttpResponse
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -60,3 +62,15 @@ class LocalViewSet(BaseViewSet):
         """Retira un local cuando no conserva edificios vigentes."""
         self.service.delete(kwargs['pk'], actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request) -> HttpResponse:
+        """Exporta el reporte territorial de sedes y campus a Excel."""
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            activo=self.parse_boolean_query(request.query_params.get('activo')),
+            actor=request.user,
+            solo_asignables=(
+                self.parse_boolean_query(request.query_params.get('asignables')) is True
+            ),
+        )

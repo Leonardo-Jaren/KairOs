@@ -19,6 +19,13 @@ const localesService = {
   async desactivar(id) {
     await api.delete(`/api/v1/espacios/locales/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/espacios/locales/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default localesService;

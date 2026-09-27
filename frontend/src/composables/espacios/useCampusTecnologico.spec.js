@@ -22,6 +22,7 @@ const spaces = [
 
 const createServices = () => ({
   localService: { listar: vi.fn().mockResolvedValue({ results: [] }) },
+  cityService: { listar: vi.fn().mockResolvedValue({ results: [] }) },
   spaceService: {
     listar: vi.fn().mockResolvedValue({ results: structuredClone(spaces) }),
     crear: vi.fn().mockResolvedValue(spaces[0]),
@@ -47,7 +48,14 @@ const mountComposable = (services) => {
   useAuthStore().user = { id: 10, rol: 'admin' };
   mount(defineComponent({
     setup() {
-      state = useCampusTecnologico(services.spaceService, services.buildingService, services.localService);
+      state = useCampusTecnologico(
+        services.spaceService,
+        services.buildingService,
+        services.localService,
+        {},
+        undefined,
+        services.cityService,
+      );
       return () => h('div');
     },
   }), { global: { plugins: [pinia] } });

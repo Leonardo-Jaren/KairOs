@@ -1,5 +1,14 @@
 from django.contrib import admin
-from .models import Edificio, Espacio, EspacioUsuario, Local
+from .models import Ciudad, Edificio, Espacio, EspacioUsuario, Local
+
+
+@admin.register(Ciudad)
+class CiudadAdmin(admin.ModelAdmin):
+    """Configura el catálogo normalizado de ciudades."""
+
+    list_display = ('id', 'nombre', 'nombre_normalizado', 'is_deleted')
+    search_fields = ('nombre', 'nombre_normalizado')
+    ordering = ('nombre',)
 
 
 @admin.register(Local)
@@ -8,7 +17,7 @@ class LocalAdmin(admin.ModelAdmin):
 
     list_display = ('id', 'codigo', 'nombre', 'ciudad', 'tipo', 'activo')
     list_filter = ('ciudad', 'tipo', 'activo')
-    search_fields = ('codigo', 'nombre', 'ciudad', 'descripcion')
+    search_fields = ('codigo', 'nombre', 'ciudad__nombre', 'descripcion')
     ordering = ('nombre', 'codigo')
 
 

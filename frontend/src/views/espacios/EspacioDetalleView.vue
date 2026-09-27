@@ -9,13 +9,7 @@
         espacios</RouterLink>
     </div>
 
-    <div v-if="loading" class="grid gap-4" aria-label="Cargando plano">
-      <div class="h-2 overflow-hidden rounded-full bg-slate-100"><span
-          class="block h-full w-1/3 animate-pulse rounded-full bg-primary-400" /></div>
-      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><span v-for="index in 4" :key="index"
-          class="h-20 animate-pulse rounded-2xl bg-slate-100" /></div>
-      <div class="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white" />
-    </div>
+    <PlanoEspacioSkeleton v-if="loading" />
     <div v-else-if="error" class="rounded-2xl border border-danger-200 bg-danger-50 p-6 text-sm text-danger-700">{{
       error }}</div>
     <template v-else-if="espacio">
@@ -32,19 +26,24 @@
             características o registrar una falla. Activa la edición para adaptar el plano a la distribución real del
             laboratorio.</p>
         </div>
-        <div v-if="canEdit"
+        <div
           class="grid shrink-0 gap-2 sm:flex sm:justify-end lg:col-start-2 lg:row-start-1 xl:col-start-3"
           :class="equipos.length ? 'grid-cols-2' : 'grid-cols-1'">
-          <BaseButton size="sm" variant="secondary" :disabled="editing" :full-width="false" class="w-full sm:w-auto"
+          <BaseExportExcelButton
+            size="sm"
+            :loading="isExporting"
+            @export="exportPlanoExcel"
+          />
+          <BaseButton v-if="canEdit" size="sm" variant="secondary" :disabled="editing" :full-width="false" class="w-full sm:w-auto"
             @click="openCreateEquipment"><template #icon>
               <Plus :size="15" />
             </template>Nuevo
             equipo</BaseButton>
-          <BaseButton v-if="equipos.length && !editing" size="sm" variant="accent" :full-width="false"
+          <BaseButton v-if="canEdit && equipos.length && !editing" size="sm" variant="accent" :full-width="false"
             class="w-full sm:w-auto" @click="startEditing"><template #icon>
               <Pencil :size="15" />
             </template>Editar distribución</BaseButton>
-          <div v-else-if="editing"
+          <div v-else-if="canEdit && editing"
             class="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 text-xs font-bold text-primary-700">
             <LayoutGrid :size="15" />Edición activa
           </div>
@@ -286,10 +285,12 @@ import {
 import { useRoute } from 'vue-router';
 
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import EquipoDetailModal from '@/components/equipos/EquipoDetailModal.vue';
 import EquipoFormModal from '@/components/equipos/EquipoFormModal.vue';
 import EquipoPlanoPanel from '@/components/espacios/EquipoPlanoPanel.vue';
 import PlanoEquipoCard from '@/components/espacios/PlanoEquipoCard.vue';
+import PlanoEspacioSkeleton from '@/components/espacios/PlanoEspacioSkeleton.vue';
 import BaseTextarea from '@/components/inputs/BaseTextarea.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
 import BaseSelect from '@/components/selects/BaseSelect.vue';
@@ -312,7 +313,7 @@ const {
   handleDrop, toggleTeacher, saveLayout, openReport, closeReport, submitReport,
   openCreateEquipment, openEditEquipment, closeEquipmentModal, submitEquipment,
   askDeleteEquipment, cancelDeleteEquipment, confirmDeleteEquipment, closeToast,
-  manageSelectedEquipment,
+  manageSelectedEquipment, isExporting, exportPlanoExcel,
 } = usePlanoEspacio(route.params.id);
 
 const columnOptions = [3, 4, 5, 6, 7, 8].map((value) => ({ value, label: `${value} columnas` }));

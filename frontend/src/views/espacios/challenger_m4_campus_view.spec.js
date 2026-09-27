@@ -10,6 +10,7 @@ import edificiosService from '@/services/edificios.service';
 import espaciosService from '@/services/espacios.service';
 import espaciosUsuariosService from '@/services/espacios-usuarios.service';
 import localesService from '@/services/locales.service';
+import ciudadesService from '@/services/ciudades.service';
 import { useAuthStore } from '@/stores/auth';
 
 vi.mock('@/services/espacios.service', () => ({
@@ -40,6 +41,13 @@ vi.mock('@/services/locales.service', () => ({
   },
 }));
 
+vi.mock('@/services/ciudades.service', () => ({
+  default: {
+    listar: vi.fn(),
+    crear: vi.fn(),
+  },
+}));
+
 vi.mock('@/services/espacios-usuarios.service', () => ({
   default: {
     listar: vi.fn(),
@@ -51,7 +59,7 @@ vi.mock('@/services/espacios-usuarios.service', () => ({
 }));
 
 const mockLocales = [
-  { id: 1, codigo: 'LOC-01', nombre: 'Sede Central', ciudad: 'Huánuco', tipo: 'campus', activo: true },
+  { id: 1, codigo: 'LOC-01', nombre: 'Sede Central', ciudad: 'Huánuco', ciudad_id: 1, tipo: 'campus', activo: true },
 ];
 
 const mockEdificios = [
@@ -103,6 +111,7 @@ describe('Adversarial View Integration: CampusTecnologicoView In-Situ Technician
     setActivePinia(pinia);
 
     localesService.listar.mockResolvedValue({ results: structuredClone(mockLocales) });
+    ciudadesService.listar.mockResolvedValue({ results: [{ id: 1, nombre: 'Huánuco' }] });
     edificiosService.listar.mockResolvedValue({ results: structuredClone(mockEdificios) });
     espaciosService.listar.mockResolvedValue({ results: structuredClone(mockEspacios) });
     espaciosUsuariosService.listar.mockResolvedValue({ results: [] });

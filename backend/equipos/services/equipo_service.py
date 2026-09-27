@@ -1,9 +1,11 @@
+from django.http import HttpResponse
 from rest_framework.exceptions import ValidationError
 
 from equipos.models import Equipo
 from equipos.repositories import EquipoRepository
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
+from equipos.reports.equipo_excel_report import generar_reporte_excel
 from usuarios.models import Usuario
 
 
@@ -104,6 +106,33 @@ class EquipoService(AuditableMixin, BaseService):
     def get_opciones(self):
         """Retorna equipos vigentes para poblar selects de otros modulos."""
         return self.repository.get_opciones()
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        tipo_equipo: str = '',
+        estado: str = '',
+        espacio_id: int | None = None,
+        actor: Usuario = None,
+    ) -> HttpResponse:
+        """Construye y retorna el reporte formal en Excel con los filtros aplicados."""
+        equipos = self.listar(
+            busqueda=busqueda,
+            tipo_equipo=tipo_equipo,
+            estado=estado,
+            espacio_id=espacio_id,
+        ).select_related('espacio', 'responsable_usuario')
+
+        stats = self.get_estadisticas()
+        return generar_reporte_excel(
+            equipos,
+            stats,
+            busqueda=busqueda,
+            tipo_equipo=tipo_equipo,
+            estado=estado,
+            espacio_id=espacio_id,
+            actor=actor,
+        )
 
     def _normalizar(self, data: dict, partial: bool = False) -> dict:
         clean_data = data.copy()

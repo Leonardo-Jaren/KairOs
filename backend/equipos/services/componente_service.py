@@ -4,6 +4,7 @@ from equipos.models import Componente
 from equipos.repositories import ComponenteRepository
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
+from equipos.reports.componente_excel_report import generar_reporte_excel
 from usuarios.models import Usuario
 
 
@@ -89,3 +90,26 @@ class ComponenteService(AuditableMixin, BaseService):
         if equipo is None:
             raise ValidationError({'equipo_id': 'El equipo no existe o fue dado de baja.'})
         return equipo
+
+    def exportar_excel(
+        self,
+        equipo_id: int | None = None,
+        busqueda: str = '',
+        tipo: str = '',
+        actor: Usuario = None,
+    ):
+        """Genera un reporte en formato Excel con el inventario de componentes de hardware."""
+        queryset = self.listar(
+            equipo_id=equipo_id,
+            busqueda=busqueda,
+            tipo=tipo,
+        )
+        equipo_filtro = self.repository.get_equipo_by_id(equipo_id) if equipo_id else None
+        return generar_reporte_excel(
+            queryset,
+            equipo_filtro=equipo_filtro,
+            equipo_id=equipo_id,
+            busqueda=busqueda,
+            tipo=tipo,
+            actor=actor,
+        )

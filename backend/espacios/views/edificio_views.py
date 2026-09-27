@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -98,3 +99,25 @@ class EdificioViewSet(BaseViewSet):
             actor=request.user,
         )
         return Response(EdificioSerializer(updated).data)
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request) -> HttpResponse:
+        """Exporta el reporte de pabellones e infraestructura a Excel."""
+        local_param = request.query_params.get('local_id')
+        local_id = self.parse_integer_query(local_param)
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            activo=self.parse_boolean_query(request.query_params.get('activo')),
+            local_id=local_id,
+            actor=request.user,
+        )
+
+    @action(detail=True, methods=['get'], url_path='exportar-piso-excel')
+    def exportar_piso_excel(self, request: Request, *args, **kwargs) -> HttpResponse:
+        """Exporta el reporte técnico de ambientes y equipos en un piso específico a Excel."""
+        piso = request.query_params.get('piso', '1')
+        return self.service.exportar_piso_excel(
+            edificio_id=kwargs['pk'],
+            piso=piso,
+            actor=request.user,
+        )

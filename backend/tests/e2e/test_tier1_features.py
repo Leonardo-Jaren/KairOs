@@ -367,7 +367,9 @@ class Tier1FeatureCoverageTests(E2EBaseTestCase):
     @requires_m2
     def test_f5_04_sede_sin_responsable_no_falla_asignacion(self):
         """F5: Si la sede no tiene responsable activo, supervisor queda None sin arrojar error."""
-        sede_sin_resp = Local.objects.create(codigo='LOC-VACIA', nombre='Sede Vacía', ciudad='Lima')
+        sede_sin_resp = Local.objects.create(
+            codigo='LOC-VACIA', nombre='Sede Vacía', ciudad=self.ciudad_a
+        )
         edif = Edificio.objects.create(codigo='ED-VAC', nombre='Pab 1', local=sede_sin_resp)
         tec = Usuario.objects.create_user(correo='t.vac@udh.edu.pe', username='t.vac', rol='tecnico')
         self.auth(self.admin)

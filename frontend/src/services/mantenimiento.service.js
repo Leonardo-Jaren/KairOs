@@ -39,6 +39,13 @@ const mantenimientoService = {
   async eliminar(id) {
     await api.delete(`/api/v1/mantenimiento/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/mantenimiento/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default mantenimientoService;

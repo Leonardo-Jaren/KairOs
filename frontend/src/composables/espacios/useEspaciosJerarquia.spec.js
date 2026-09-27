@@ -16,6 +16,7 @@ const mockLocales = [
     codigo: 'LOC-CENTRAL',
     nombre: 'Campus Central Huánuco',
     ciudad: 'Huánuco',
+    ciudad_id: 1,
     tipo: 'campus',
     descripcion: 'Sede principal',
     activo: true,
@@ -25,6 +26,7 @@ const mockLocales = [
     codigo: 'LOC-TINGO',
     nombre: 'Sede Tingo María',
     ciudad: 'Tingo María',
+    ciudad_id: 2,
     tipo: 'sede',
     descripcion: '',
     activo: true,
@@ -123,6 +125,7 @@ const createServices = () => ({
     crear: vi.fn().mockImplementation((payload) => Promise.resolve({ id: 999, ...payload })),
     actualizar: vi.fn().mockImplementation((id, payload) => Promise.resolve({ id, ...payload })),
     desactivar: vi.fn().mockResolvedValue(undefined),
+    exportarExcel: vi.fn().mockResolvedValue(new Blob(['mock excel content'])),
   },
   buildingService: {
     listar: vi.fn().mockResolvedValue({ count: 2, results: mockEdificios }),
@@ -135,6 +138,13 @@ const createServices = () => ({
     crear: vi.fn().mockImplementation((payload) => Promise.resolve({ id: 777, ...payload })),
     actualizar: vi.fn().mockImplementation((id, payload) => Promise.resolve({ id, ...payload })),
     desactivar: vi.fn().mockResolvedValue(undefined),
+  },
+  cityService: {
+    listar: vi.fn().mockResolvedValue({ count: 2, results: [
+      { id: 1, nombre: 'Huánuco' },
+      { id: 2, nombre: 'Tingo María' },
+    ] }),
+    crear: vi.fn().mockResolvedValue({ id: 3, nombre: 'Ambo' }),
   },
   assignService: {
     listar: vi.fn().mockResolvedValue({ count: 1, results: mockFloorAssignments }),
@@ -308,13 +318,14 @@ describe('useEspaciosJerarquia', () => {
       const { state } = mountComposable(services);
       await flushPromises();
 
+      state.selectCity('Huánuco');
       state.openCreateSede();
       expect(state.sedeModalOpen.value).toBe(true);
 
       Object.assign(state.sedeForm, {
         codigo: 'LOC-AMBO',
         nombre: 'Sede Ambo',
-        ciudad: 'Ambo',
+        ciudad_id: 1,
         tipo: 'sede',
       });
 
@@ -323,10 +334,56 @@ describe('useEspaciosJerarquia', () => {
       expect(services.localService.crear).toHaveBeenCalledWith(expect.objectContaining({
         codigo: 'LOC-AMBO',
         nombre: 'Sede Ambo',
-        ciudad: 'Ambo',
+        ciudad_id: 1,
       }));
       expect(state.sedeModalOpen.value).toBe(false);
       expect(state.toast.type).toBe('success');
+    });
+
+    it('crea la ciudad antes de registrar su primera sede con el ID devuelto', async () => {
+      const { state } = mountComposable(services);
+      await flushPromises();
+
+      state.openCreateSede({ createCity: true });
+      Object.assign(state.sedeForm, {
+        codigo: 'LOC-AMBO',
+        nombre: 'Sede Ambo',
+        ciudad_nombre: 'Ambo',
+      });
+
+      const success = await state.submitSede();
+
+      expect(success).toBe(true);
+      expect(services.cityService.crear).toHaveBeenCalledWith({ nombre: 'Ambo' });
+      expect(services.localService.crear).toHaveBeenCalledWith(expect.objectContaining({
+        codigo: 'LOC-AMBO',
+        ciudad_id: 3,
+      }));
+      expect(services.localService.crear.mock.calls[0][0]).not.toHaveProperty('ciudad');
+    });
+
+    it('permite reintentar la primera sede si la ciudad ya se creó', async () => {
+      const { state } = mountComposable(services);
+      await flushPromises();
+      services.localService.crear.mockRejectedValueOnce({
+        response: { data: { errores: { codigo: ['El código ya está ocupado.'] } } },
+      });
+
+      state.openCreateSede({ createCity: true });
+      Object.assign(state.sedeForm, {
+        codigo: 'LOC-AMBO',
+        nombre: 'Sede Ambo',
+        ciudad_nombre: 'Ambo',
+      });
+
+      expect(await state.submitSede()).toBe(false);
+      expect(state.sedeForm.ciudad_id).toBe(3);
+      expect(state.sedeCreationMode.value).toBe('sede');
+
+      expect(await state.submitSede()).toBe(true);
+      expect(services.cityService.crear).toHaveBeenCalledTimes(1);
+      expect(services.localService.crear).toHaveBeenCalledTimes(2);
+      expect(services.localService.crear.mock.calls[1][0].ciudad_id).toBe(3);
     });
 
     it('crea un nuevo pabellón con sede preseleccionada', async () => {
@@ -426,6 +483,45 @@ describe('useEspaciosJerarquia', () => {
       state.closeCroquisModal();
       expect(state.croquisModalOpen.value).toBe(false);
       expect(state.croquisTargetFloor.value).toBeNull();
+    });
+  });
+
+  describe('Filtros y exportación en vista Inventario (Lista)', () => {
+    it('filtra por ciudad, permite limpiar a Ver todos y volver a filtrar', async () => {
+      const { state } = mountComposable(services);
+      await flushPromises();
+
+      // Cambiar a vista inventario
+      state.currentView.value = 'inventario';
+
+      // 1. Filtrar por Huánuco
+      state.selectInventoryCity('Huánuco');
+      expect(state.inventoryFilters.ciudad).toBe('Huánuco');
+      expect(state.exportExcelLabel.value).toBe('Exportar Excel (Huánuco)');
+      expect(state.inventoryFilteredEspacios.value.length).toBeGreaterThan(0);
+
+      // 2. Limpiar ubicación con Ver todos
+      state.clearInventoryScope();
+      expect(state.inventoryFilters.ciudad).toBe('');
+      expect(state.exportExcelLabel.value).toBe('Exportar Excel');
+
+      // 3. Volver a filtrar por Huánuco sin bloquearse
+      state.selectInventoryCity('Huánuco');
+      expect(state.inventoryFilters.ciudad).toBe('Huánuco');
+      expect(state.exportExcelLabel.value).toBe('Exportar Excel (Huánuco)');
+    });
+
+    it('exporta el inventario a Excel enviando el ámbito territorial activo', async () => {
+      const { state } = mountComposable(services);
+      await flushPromises();
+
+      state.currentView.value = 'inventario';
+      state.selectInventoryCity('Huánuco');
+
+      await state.exportInventarioExcel();
+      expect(services.spaceService.exportarExcel).toHaveBeenCalledWith(expect.objectContaining({
+        ciudad: 'Huánuco',
+      }));
     });
   });
 });

@@ -5,6 +5,7 @@ import espaciosService from '@/services/espacios.service';
 import softwareService from '@/services/software.service';
 import softwareInstalacionesService from '@/services/software-instalaciones.service';
 import { useAuthStore } from '@/stores/auth';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 const emptyForm = () => ({
@@ -199,6 +200,20 @@ export function useInstalaciones(service = softwareInstalacionesService) {
     cancelDelete();
   };
 
+  const { isExporting, exportExcel } = useExcelExport();
+
+  const exportToExcel = async () => {
+    await exportExcel(
+      () => service.exportarExcel({
+        search: filters.search || undefined,
+        equipo_id: filters.equipo_id || undefined,
+        espacio_id: filters.espacio_id || undefined,
+        producto_software_id: filters.producto_software_id || undefined,
+      }),
+      'software_instalado.xlsx'
+    );
+  };
+
   return {
     instalaciones, loading, saving, formOpen, deleteOpen, pendingDelete,
     form, formErrors, filters, pagination, toast, isEditing, canManageAll,
@@ -206,5 +221,6 @@ export function useInstalaciones(service = softwareInstalacionesService) {
     cargar, cargarOpciones, openCreate, openEdit, closeForm, submit,
     askDelete, cancelDelete, confirmDelete, applyFilters, clearFilters,
     changePage, closeToast, reset,
+    isExporting, exportToExcel,
   };
 }

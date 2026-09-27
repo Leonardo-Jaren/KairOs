@@ -39,6 +39,7 @@ export async function listarTodas(service, params = {}) {
 export function useCampusTerritorio({
   buildingRecords,
   localRecords,
+  cityRecords = ref([]),
   navigation,
   isEditing,
   showToast,
@@ -68,6 +69,19 @@ export function useCampusTerritorio({
       ? LEGACY_LOCAL
       : value
   );
+  const sameCity = (left, right) => String(left ?? '').localeCompare(
+    String(right ?? ''),
+    'es',
+    { sensitivity: 'base' },
+  ) === 0;
+  const cityNameOf = (local) => cityRecords.value.find((city) => (
+    sameId(city.id, local.ciudad_id)
+  ))?.nombre ?? local.ciudad ?? '';
+  const localBelongsToCity = (local, cityName) => {
+    const city = cityRecords.value.find((item) => sameCity(item.nombre, cityName));
+    if (city && local.ciudad_id != null) return sameId(local.ciudad_id, city.id);
+    return sameCity(local.ciudad, cityName);
+  };
 
   const orderedLocals = computed(() => {
     let list = [...localRecords.value];
@@ -77,10 +91,20 @@ export function useCampusTerritorio({
       list = list.filter((local) => allowedSedeIds.has(String(local.id)));
     }
     return list.sort((a, b) => (
-      compare(a.ciudad, b.ciudad) || compare(a.nombre, b.nombre) || compare(a.codigo, b.codigo)
+      compare(cityNameOf(a), cityNameOf(b)) || compare(a.nombre, b.nombre) || compare(a.codigo, b.codigo)
     ));
   });
-  const ciudades = computed(() => [...new Set(orderedLocals.value.map((local) => local.ciudad))]);
+  const ciudades = computed(() => {
+    if (cityRecords.value.length) {
+      let records = cityRecords.value;
+      if (authStore?.user && !authStore.isSuperAdmin && Array.isArray(authStore.user.sedes)) {
+        const authorizedCityIds = new Set(orderedLocals.value.map((local) => String(local.ciudad_id)));
+        records = records.filter((city) => authorizedCityIds.has(String(city.id)));
+      }
+      return records.map((city) => city.nombre).sort((left, right) => compare(left, right));
+    }
+    return [...new Set(orderedLocals.value.map(cityNameOf).filter(Boolean))];
+  });
   const hasLegacy = computed(() => (
     (authStore?.isSuperAdmin || authStore?.isAdmin)
     && buildingRecords.value.some((building) => localIdOf(building) == null)
@@ -89,6 +113,21 @@ export function useCampusTerritorio({
     ...ciudades.value.map((city) => ({ value: city, label: city })),
     ...(hasLegacy.value ? [{ value: LEGACY_LOCAL, label: 'Sin ciudad asignada' }] : []),
   ]);
+  const ciudadSelectOptions = computed(() => {
+    if (cityRecords.value.length) {
+      return cityRecords.value
+        .filter((city) => ciudades.value.some((name) => sameCity(name, city.nombre)))
+        .map((city) => ({ value: city.id, label: city.nombre }));
+    }
+    const legacyCities = new Map();
+    orderedLocals.value.forEach((local) => {
+      const name = cityNameOf(local);
+      if (name && !legacyCities.has(name)) {
+        legacyCities.set(name, { value: local.ciudad_id ?? name, label: name });
+      }
+    });
+    return [...legacyCities.values()];
+  });
   const cityCards = computed(() => cityOptions.value.map((option) => {
     if (option.value === LEGACY_LOCAL) {
       const buildings = buildingRecords.value.filter((building) => localIdOf(building) == null);
@@ -99,7 +138,7 @@ export function useCampusTerritorio({
         legacy: true,
       };
     }
-    const locals = orderedLocals.value.filter((local) => local.ciudad === option.value);
+    const locals = orderedLocals.value.filter((local) => localBelongsToCity(local, option.value));
     const localIds = new Set(locals.map((local) => String(local.id)));
     return {
       ...option,
@@ -113,7 +152,7 @@ export function useCampusTerritorio({
   const campusTypeOptions = computed(() => {
     const counts = new Map();
     orderedLocals.value
-      .filter((local) => local.ciudad === selectedCity.value)
+      .filter((local) => localBelongsToCity(local, selectedCity.value))
       .forEach((local) => {
         const type = local.tipo ?? 'sede';
         counts.set(type, (counts.get(type) ?? 0) + 1);
@@ -134,7 +173,7 @@ export function useCampusTerritorio({
       return hasLegacy.value ? [{ value: LEGACY_LOCAL, label: 'Registros sin local asignado' }] : [];
     }
     return orderedLocals.value
-      .filter((local) => local.ciudad === selectedCity.value)
+      .filter((local) => localBelongsToCity(local, selectedCity.value))
       .filter((local) => (local.tipo ?? 'sede') === selectedCampusType.value)
       .map((local) => ({ value: local.id, label: `${local.codigo} · ${local.nombre}` }));
   });
@@ -152,7 +191,7 @@ export function useCampusTerritorio({
       }] : [];
     }
     return orderedLocals.value
-      .filter((local) => local.ciudad === selectedCity.value)
+      .filter((local) => localBelongsToCity(local, selectedCity.value))
       .map((local) => ({
         ...local,
         tipoLabel: typeLabels[local.tipo ?? 'sede'] ?? typeLabels.otro,
@@ -165,7 +204,7 @@ export function useCampusTerritorio({
     { value: '', label: 'Sin local asignado' },
     ...orderedLocals.value.map((local) => ({
       value: local.id,
-      label: `${local.ciudad} · ${local.nombre} (${local.codigo})`,
+      label: `${cityNameOf(local)} · ${local.nombre} (${local.codigo})`,
     })),
   ]);
   const localActivo = computed(() => orderedLocals.value.find((local) => sameId(local.id, selectedLocalId.value)) ?? null);
@@ -227,10 +266,10 @@ export function useCampusTerritorio({
     if (!hasRequestedPath && navigation.route) {
       return { city: '', type: '', local: '', building: '' };
     }
-    const city = requestedLocal?.ciudad ?? (legacy ? LEGACY_LOCAL
-      : cityOptions.value.find((option) => sameId(option.value, requestedCity))?.value
+    const city = requestedLocal ? cityNameOf(requestedLocal) : (legacy ? LEGACY_LOCAL
+      : cityOptions.value.find((option) => sameCity(option.value, requestedCity))?.value
         ?? (!navigation.route ? cityOptions.value[0]?.value : '') ?? '');
-    const cityLocals = orderedLocals.value.filter((local) => local.ciudad === city);
+    const cityLocals = orderedLocals.value.filter((local) => localBelongsToCity(local, city));
     const availableTypes = new Set(cityLocals.map((local) => local.tipo ?? 'sede'));
     const type = city === LEGACY_LOCAL
       ? LEGACY_LOCAL
@@ -242,7 +281,7 @@ export function useCampusTerritorio({
             ? cityLocals[0]?.tipo ?? (cityLocals.length ? 'sede' : '')
             : '';
     const matchingLocals = cityLocals.filter((local) => (local.tipo ?? 'sede') === type);
-    const local = requestedLocal && requestedLocal.ciudad === city
+    const local = requestedLocal && localBelongsToCity(requestedLocal, city)
       && (requestedLocal.tipo ?? 'sede') === type
       ? requestedLocal.id
       : city === LEGACY_LOCAL
@@ -340,6 +379,7 @@ export function useCampusTerritorio({
 
   return {
     selectedCity, selectedCampusType, selectedLocalId, selectedBuildingId, ciudades, cityOptions,
+    ciudadSelectOptions,
     cityCards, cityLocalCards,
     campusTypeOptions,
     localOptions, allLocalOptions, localActivo, selectedLocalName, currentBuildingRecords,

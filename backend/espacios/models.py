@@ -1,6 +1,46 @@
+import unicodedata
+
 from django.conf import settings
 from django.db import models
+
 from shared.models import BaseModel
+
+
+class Ciudad(BaseModel):
+    """Representa una ciudad del catálogo territorial."""
+
+    nombre = models.CharField(max_length=100, verbose_name='Nombre de la ciudad')
+    nombre_normalizado = models.CharField(
+        max_length=100,
+        unique=True,
+        editable=False,
+        verbose_name='Nombre normalizado',
+    )
+
+    class Meta:
+        db_table = 'ciudades'
+        verbose_name = 'Ciudad'
+        verbose_name_plural = 'Ciudades'
+        ordering = ['nombre']
+
+    @staticmethod
+    def normalizar_nombre(nombre: str) -> str:
+        """Genera una clave que ignora tildes, mayúsculas y espacios repetidos."""
+        nombre_limpio = ' '.join(str(nombre or '').split())
+        descompuesto = unicodedata.normalize('NFKD', nombre_limpio)
+        sin_tildes = ''.join(
+            caracter for caracter in descompuesto
+            if not unicodedata.combining(caracter)
+        )
+        return sin_tildes.casefold()
+
+    def save(self, *args, **kwargs):
+        self.nombre = ' '.join(self.nombre.split())
+        self.nombre_normalizado = self.normalizar_nombre(self.nombre)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.nombre
 
 
 class Local(BaseModel):
@@ -23,8 +63,12 @@ class Local(BaseModel):
         max_length=100,
         verbose_name='Nombre del local',
     )
-    ciudad = models.CharField(
-        max_length=100,
+    ciudad = models.ForeignKey(
+        Ciudad,
+        on_delete=models.PROTECT,
+        related_name='locales',
+        null=True,
+        blank=True,
         verbose_name='Ciudad del local',
     )
     tipo = models.CharField(
@@ -51,7 +95,6 @@ class Local(BaseModel):
         indexes = [
             models.Index(fields=['codigo'], name='idx_local_codigo'),
             models.Index(fields=['nombre'], name='idx_local_nombre'),
-            models.Index(fields=['ciudad'], name='idx_local_ciudad'),
             models.Index(fields=['tipo'], name='idx_local_tipo'),
             models.Index(fields=['activo'], name='idx_local_activo'),
         ]
@@ -130,7 +173,6 @@ class Espacio(BaseModel):
 
     codigo_espacio = models.CharField(
         max_length=50,
-        unique=True,
         verbose_name='Código del espacio',
         help_text='Ej: LAB-203',
     )

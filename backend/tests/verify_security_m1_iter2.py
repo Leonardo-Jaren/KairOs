@@ -24,7 +24,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from espacios.models import Edificio, Espacio, EspacioUsuario, Local
+from espacios.models import Ciudad, Edificio, Espacio, EspacioUsuario, Local
 from usuarios.models import Usuario, UsuarioSede
 
 
@@ -89,16 +89,18 @@ class AdversarialSecurityM1Iter2Tests(TestCase):
         )
 
         # ── Setup Sedes, Edificios, Espacios ─────────────────────────────────────
+        ciudad_a = Ciudad.objects.create(nombre='Huánuco')
+        ciudad_b = Ciudad.objects.create(nombre='Tingo María')
         self.sede_a = Local.objects.create(
             codigo='LOC-SEDE-A-IT2',
             nombre='Sede A Campus Huánuco',
-            ciudad='Huánuco',
+            ciudad=ciudad_a,
             tipo='sede',
         )
         self.sede_b = Local.objects.create(
             codigo='LOC-SEDE-B-IT2',
             nombre='Sede B Campus Tingo María',
-            ciudad='Tingo María',
+            ciudad=ciudad_b,
             tipo='sede',
         )
 

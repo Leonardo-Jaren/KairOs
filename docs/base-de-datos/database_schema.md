@@ -24,7 +24,7 @@ Modela la jerarquía geográfica y física del campus universitario o instituto,
 
 ![Diagrama ER — Módulo de Infraestructura Física, Sedes y Espacios](imagenes/figura_3_erd_infraestructura_espacios.png)
 
-*Nota.* Elaboración propia (2026). Jerarquía espacial compuesta por `LOCALES` (sedes), `EDIFICIOS` (pabellones con croquis 2D), `ESPACIOS` (laboratorios y aulas con distribución de planos en JSON) y `ESPACIOS_USUARIOS` (asignación de responsabilidades de custodia).
+*Nota.* Elaboración propia (2026). Jerarquía espacial con el catálogo `CIUDADES`, `LOCALES` (sedes enlazadas a una ciudad), `EDIFICIOS` (pabellones con croquis 2D), `ESPACIOS` (laboratorios y aulas con distribución de planos en JSON) y `ESPACIOS_USUARIOS` (asignación de responsabilidades de custodia).
 
 ---
 

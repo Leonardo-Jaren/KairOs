@@ -2,6 +2,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 
 import softwareService from '@/services/software.service';
 import { useAuthStore } from '@/stores/auth';
+import { useExcelExport } from '@/composables/shared/useExcelExport';
 import { getApiErrorMessage } from '@/utils/api-errors';
 
 const emptyForm = () => ({
@@ -186,6 +187,18 @@ export function useSoftware(service = softwareService) {
     toast.show = false;
   };
 
+  const { isExporting, exportExcel } = useExcelExport();
+
+  const exportToExcel = async () => {
+    await exportExcel(
+      () => service.exportarExcel({
+        search: filters.search || undefined,
+        tipo_licencia: filters.tipo_licencia || undefined,
+      }),
+      'catalogo_software.xlsx'
+    );
+  };
+
   onMounted(loadData);
 
   return {
@@ -216,5 +229,7 @@ export function useSoftware(service = softwareService) {
     clearFilters,
     changePage,
     closeToast,
+    isExporting,
+    exportToExcel,
   };
 }

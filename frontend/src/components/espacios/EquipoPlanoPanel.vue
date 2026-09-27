@@ -105,7 +105,19 @@ const statusClasses = {
                     {{ activeMaintenances.length }} ticket{{ activeMaintenances.length === 1 ? '' : 's' }}
                   </span>
                 </div>
-                <p v-if="maintenanceLoading" class="mt-3 text-xs text-slate-400">Consultando mantenimiento...</p>
+                                <div v-if="maintenanceLoading" class="mt-3 space-y-2" aria-label="Cargando mantenimientos">
+                  <div class="rounded-xl border border-warning-100 bg-white p-3 animate-pulse">
+                    <div class="flex items-center justify-between">
+                      <div class="h-2.5 w-20 rounded bg-warning-200/80" />
+                      <div class="h-2.5 w-16 rounded bg-slate-100" />
+                    </div>
+                    <div class="mt-2.5 h-3 w-3/4 rounded bg-slate-200/70" />
+                    <div class="mt-2 flex items-center gap-1.5">
+                      <div class="size-3 rounded-full bg-slate-200" />
+                      <div class="h-2.5 w-28 rounded bg-slate-100" />
+                    </div>
+                  </div>
+                </div>
                 <article v-for="ticket in activeMaintenances" v-else :key="ticket.id" class="mt-3 rounded-xl border border-warning-100 bg-white p-3">
                   <div class="flex items-center justify-between gap-3">
                     <span class="text-[10px] font-extrabold uppercase tracking-wide text-warning-700">{{ ticket.estado_display }}</span>
@@ -127,7 +139,16 @@ const statusClasses = {
                     {{ activeIncidencias.length }} reporte{{ activeIncidencias.length === 1 ? '' : 's' }}
                   </span>
                 </div>
-                <p v-if="incidenciaLoading" class="mt-3 text-xs text-slate-400">Consultando incidencias...</p>
+                                <div v-if="incidenciaLoading" class="mt-3 space-y-2" aria-label="Cargando incidencias">
+                  <div class="rounded-xl border border-danger-100 bg-white p-3 animate-pulse">
+                    <div class="flex items-center justify-between">
+                      <div class="h-2.5 w-20 rounded bg-danger-200/80" />
+                      <div class="h-2.5 w-14 rounded bg-slate-100" />
+                    </div>
+                    <div class="mt-2.5 h-3 w-3/4 rounded bg-slate-200/70" />
+                    <div class="mt-2 h-2.5 w-28 rounded bg-slate-100" />
+                  </div>
+                </div>
                 <article v-for="incidencia in activeIncidencias" v-else :key="incidencia.id" class="mt-3 rounded-xl border border-danger-100 bg-white p-3">
                   <div class="flex items-center justify-between gap-3">
                     <span class="text-[10px] font-extrabold uppercase tracking-wide text-danger-700">{{ incidencia.estado_display }}</span>

@@ -4,7 +4,7 @@ from django.db import connection
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from espacios.models import Edificio, Espacio, EspacioUsuario, Local
+from espacios.models import Ciudad, Edificio, Espacio, EspacioUsuario, Local
 from usuarios.models import Usuario, UsuarioSede
 
 
@@ -95,10 +95,11 @@ class E2EBaseTestCase(APITestCase):
         self.url_organigrama = reverse('usuario-organigrama')
 
         # 1. Infraestructura Física - Sede A (Campus Central Huánuco)
+        self.ciudad_a = Ciudad.objects.create(nombre='Huánuco')
         self.sede_a = Local.objects.create(
             codigo='LOC-HUANUCO',
             nombre='Campus Central Huánuco',
-            ciudad='Huánuco',
+            ciudad=self.ciudad_a,
             tipo='campus',
             activo=True,
         )
@@ -148,10 +149,11 @@ class E2EBaseTestCase(APITestCase):
         )
 
         # 2. Infraestructura Física - Sede B (Sede Tingo María)
+        self.ciudad_b = Ciudad.objects.create(nombre='Tingo María')
         self.sede_b = Local.objects.create(
             codigo='LOC-TINGO',
             nombre='Sede Tingo María',
-            ciudad='Tingo María',
+            ciudad=self.ciudad_b,
             tipo='sede',
             activo=True,
         )

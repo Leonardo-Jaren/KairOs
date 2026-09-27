@@ -29,6 +29,13 @@ const softwareService = {
   async eliminar(id) {
     await api.delete(`/api/v1/software/productos/${id}/`);
   },
+
+  async exportarExcel(params = {}) {
+    return api.get('/api/v1/software/productos/exportar-excel/', {
+      params,
+      responseType: 'blob',
+    });
+  },
 };
 
 export default softwareService;

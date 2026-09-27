@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from equipos.models import Equipo
-from espacios.models import Edificio, Espacio, Local
+from espacios.models import Ciudad, Edificio, Espacio, Local
 from mantenimiento.models import Mantenimiento, TecnicoMantenimiento
 from usuarios.models import PerfilTecnico, Usuario
 
@@ -118,9 +118,19 @@ class Command(BaseCommand):
         """Crea una estructura territorial variada e idempotente para pruebas."""
         locales = {}
         for data in LOCALES_PRUEBA:
+            nombre_ciudad = data['ciudad']
+            ciudad, _ = Ciudad.objects.get_or_create(
+                nombre_normalizado=Ciudad.normalizar_nombre(nombre_ciudad),
+                defaults={'nombre': nombre_ciudad},
+            )
             local, _ = Local.objects.update_or_create(
                 codigo=data['codigo'],
-                defaults={**data, 'activo': True, 'is_deleted': False},
+                defaults={
+                    **data,
+                    'ciudad': ciudad,
+                    'activo': True,
+                    'is_deleted': False,
+                },
             )
             locales[local.codigo] = local
 

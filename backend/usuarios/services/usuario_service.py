@@ -1,9 +1,11 @@
+from django.http import HttpResponse
 from rest_framework.exceptions import ValidationError
 
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
 from usuarios.models import Usuario
 from usuarios.repositories.usuario_repository import UsuarioRepository
+from usuarios.reports.usuario_excel_report import generar_reporte_usuarios
 
 
 class UsuarioService(AuditableMixin, BaseService):
@@ -51,6 +53,44 @@ class UsuarioService(AuditableMixin, BaseService):
             supervisor_id=supervisor_id,
         )
 
+    def exportar_excel(
+        self,
+        actor: Usuario,
+        busqueda: str = '',
+        rol: str = '',
+        activo: bool | None = None,
+        local_id: int | None = None,
+        supervisor_id: int | None = None,
+    ) -> HttpResponse:
+        """Genera y descarga un reporte formal en Excel con los usuarios filtrados."""
+        usuarios = self.listar(
+            actor=actor,
+            busqueda=busqueda,
+            rol=rol,
+            activo=activo,
+            local_id=local_id,
+            supervisor_id=supervisor_id,
+        ).select_related('supervisor')
+        total_usuarios = usuarios.count()
+        activos_count = usuarios.filter(is_active=True).count()
+        kpis = [
+            {'label': 'Total Usuarios', 'value': total_usuarios, 'tone': 'info'},
+            {'label': 'Cuentas Activas', 'value': activos_count, 'tone': 'success'},
+            {
+                'label': 'Cuentas Inactivas',
+                'value': total_usuarios - activos_count,
+                'tone': 'danger',
+            },
+        ]
+        return generar_reporte_usuarios(
+            usuarios,
+            kpis,
+            actor=actor,
+            busqueda=busqueda,
+            rol=rol,
+            activo=activo,
+            local_id=local_id,
+        )
 
     # ── Hooks de lógica de negocio ─────────────────────────────────────────────
 
@@ -206,7 +246,8 @@ class UsuarioService(AuditableMixin, BaseService):
                     'id': local_obj.id,
                     'codigo': local_obj.codigo,
                     'nombre': local_obj.nombre,
-                    'ciudad': local_obj.ciudad,
+                    'ciudad': local_obj.ciudad.nombre if local_obj.ciudad else '',
+                    'ciudad_id': local_obj.ciudad_id,
                 }
             except Local.DoesNotExist:
                 pass

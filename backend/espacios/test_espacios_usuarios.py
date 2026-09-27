@@ -9,7 +9,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from espacios.models import Edificio, Espacio, EspacioUsuario, Local
+from espacios.models import Ciudad, Edificio, Espacio, EspacioUsuario, Local
 from usuarios.models import Usuario, UsuarioSede
 
 
@@ -65,16 +65,18 @@ class EspacioUsuarioAmbitoYPermisosAPITests(APITestCase):
         )
 
         # 2. Infraestructura Territorial: 2 Sedes Físicas
+        ciudad_huanuco = Ciudad.objects.create(nombre='Huánuco')
+        ciudad_tingo = Ciudad.objects.create(nombre='Tingo María')
         self.sede_central = Local.objects.create(
             codigo='LOC-CENTRAL',
             nombre='Sede Central Huánuco',
-            ciudad='Huánuco',
+            ciudad=ciudad_huanuco,
             tipo='sede',
         )
         self.sede_norte = Local.objects.create(
             codigo='LOC-NORTE',
             nombre='Sede Norte Tingo María',
-            ciudad='Tingo María',
+            ciudad=ciudad_tingo,
             tipo='sede',
         )
 

@@ -62,3 +62,14 @@ class EquipoViewSet(BaseViewSet):
     def opciones(self, request: Request) -> Response:
         """Entrega equipos vigentes para poblar selects de otros modulos."""
         return Response(self.service.get_opciones())
+
+    @action(detail=False, methods=['get'], url_path='exportar-excel')
+    def exportar_excel(self, request: Request):
+        """Genera y descarga un reporte formal en Excel con los filtros aplicados."""
+        return self.service.exportar_excel(
+            busqueda=request.query_params.get('search', ''),
+            tipo_equipo=request.query_params.get('tipo_equipo', ''),
+            estado=request.query_params.get('estado', ''),
+            espacio_id=self.parse_integer_query(request.query_params.get('espacio_id')),
+            actor=request.user,
+        )

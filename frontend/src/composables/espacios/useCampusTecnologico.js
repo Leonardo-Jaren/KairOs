@@ -4,6 +4,7 @@ import edificiosService from '@/services/edificios.service';
 import espaciosService from '@/services/espacios.service';
 import espaciosUsuariosService from '@/services/espacios-usuarios.service';
 import localesService from '@/services/locales.service';
+import ciudadesService from '@/services/ciudades.service';
 import { listarTodas, useCampusTerritorio } from '@/composables/espacios/useCampusTerritorio';
 import { useLocalesCampus } from '@/composables/espacios/useLocalesCampus';
 export { listarTodas } from '@/composables/espacios/useCampusTerritorio';
@@ -40,6 +41,7 @@ export function useCampusTecnologico(
   localService = localesService,
   navigation = {},
   asignacionesService = espaciosUsuariosService,
+  cityService = ciudadesService,
 ) {
   const authStore = useAuthStore();
   const spaces = ref([]);
@@ -49,6 +51,7 @@ export function useCampusTecnologico(
   const error = ref('');
   const search = ref('');
   const localRecords = ref([]);
+  const cityRecords = ref([]);
   const activeFloorKey = ref(normalizeFloorValue(navigation.route?.query?.piso) || '');
   const buildingModalOpen = ref(false);
   const buildingDeleteOpen = ref(false);
@@ -93,7 +96,7 @@ export function useCampusTecnologico(
   ];
 
   const territorio = useCampusTerritorio({
-    buildingRecords, localRecords, navigation,
+    buildingRecords, localRecords, cityRecords, navigation,
     isEditing: () => Boolean(editingFloor.value) || floorSaving.value,
     showToast,
   });
@@ -305,14 +308,16 @@ export function useCampusTecnologico(
     if (showInitialLoader) loading.value = true;
     if (!silent) error.value = '';
     try {
-      const [buildingData, spaceData, localData] = await Promise.all([
+      const [buildingData, spaceData, localData, cityData] = await Promise.all([
         listarTodas(buildingService, { activo: true }),
         listarTodas(spaceService, { activo: true }),
         listarTodas(localService, { activo: true }),
+        listarTodas(cityService),
       ]);
       buildingRecords.value = buildingData;
       spaces.value = spaceData;
       localRecords.value = localData;
+      cityRecords.value = cityData;
       refreshSelection();
       return true;
     } catch (requestError) {
@@ -495,6 +500,7 @@ export function useCampusTecnologico(
   const locales = useLocalesCampus({
     service: localService, saving, canEdit, selectionBlocked, loadCampus,
     selectLocal: territorio.selectSavedLocal,
+    cityOptions: territorio.ciudadSelectOptions,
     selectedCity: territorio.selectedCity,
     selectedType: territorio.selectedCampusType,
     showToast,

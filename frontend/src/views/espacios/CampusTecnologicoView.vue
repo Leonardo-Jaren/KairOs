@@ -24,6 +24,13 @@
           :disabled="Boolean(editingFloor || floorSaving)"
           @click="router.push('/espacios/usuarios')"
         ><template #icon><Users :size="16" /></template>Usuarios por espacio</BaseButton>
+        <BaseExportExcelButton
+          size="sm"
+          :loading="isExporting"
+          :label="exportLabel"
+          :disabled="Boolean(editingFloor || floorSaving)"
+          @export="exportCampusExcel"
+        />
         <BaseButton
           v-if="canEdit && (explorerLevel === 'cities' || explorerLevel === 'locals')"
           variant="accent"
@@ -101,35 +108,29 @@
         :spaces="currentSpaces"
         :selected-id="selectedBuildingId"
         :can-edit="canEdit"
+        :can-return="canReturnToCity"
+        :return-label="returnLabel"
         :disabled="Boolean(editingFloor || floorSaving)"
         @select="selectBuilding"
         @edit="openEditBuilding"
         @delete="askDeleteBuilding"
         @create-building="openCreateBuilding"
         @select-space="goToSpace"
+        @back="handleBackFromLocal"
       />
-      <section
+      <PisoSelector
         v-if="explorerLevel === 'floors' && edificioActivo"
-        class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
-      >
-        <div class="mb-6 flex flex-col justify-between gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center">
-          <div class="flex items-center gap-4">
-            <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary-50 text-primary-600"><Building2 :size="24" aria-hidden="true" /></span>
-            <div>
-              <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-600">{{ selectedLocalName }}</p>
-              <h2 class="mt-1 text-xl font-extrabold text-slate-950">{{ edificioActivo.nombre }}</h2>
-              <p class="mt-1 text-xs text-slate-500">{{ edificioActivo.spaces.length }} ambientes distribuidos en {{ edificioActivo.pisos.length }} {{ edificioActivo.pisos.length === 1 ? 'piso' : 'pisos' }}.</p>
-            </div>
-          </div>
-          <BaseButton v-if="canEdit" variant="accent" :full-width="false" @click="openCreateSpace()"><template #icon><Plus :size="16" /></template>Agregar ambiente</BaseButton>
-        </div>
-        <PisoSelector
-          :floors="pisosVisibles"
-          :selected-key="activeFloorKey"
-          :disabled="Boolean(editingFloor)"
-          @select="selectFloor"
-        />
-      </section>
+        :edificio="edificioActivo"
+        :local-name="selectedLocalName"
+        :floors="pisosVisibles"
+        :selected-key="activeFloorKey"
+        :can-edit="canEdit"
+        :disabled="Boolean(editingFloor)"
+        @select="selectFloor"
+        @back="showBuildings"
+        @create-space="openCreateSpace()"
+        @assign-technician="openAssignTechnicianModal"
+      />
       <section
         v-else-if="explorerLevel === 'floor-plan' && edificioActivo"
         class="grid min-w-0 gap-5 xl:grid-cols-[270px_minmax(0,1fr)]"
@@ -291,13 +292,13 @@
           label="Nombre"
           placeholder="Local central"
           :error="localErrors.nombre"
-        /><BaseInput
+        /><BaseSelect
           id="local-city"
-          v-model="localForm.ciudad"
-          appearance="light"
+          v-model="localForm.ciudad_id"
           label="Ciudad"
-          placeholder="Huánuco"
-          :error="localErrors.ciudad"
+          :options="ciudadSelectOptions"
+          placeholder="Seleccionar ciudad"
+          :error="localErrors.ciudad_id"
         />
         <BaseSelect
           id="local-type"
@@ -653,6 +654,8 @@ import {
   Users,
 } from "@lucide/vue";
 import BaseButton from "@/components/buttons/BaseButton.vue";
+import BaseExportExcelButton from "@/components/buttons/BaseExportExcelButton.vue";
+import { useCampusExcelExport } from '@/composables/espacios/useCampusExcelExport';
 import CroquisPiso from "@/components/espacios/CroquisPiso.vue";
 import PabellonSelector from "@/components/espacios/PabellonSelector.vue";
 import PisoSelector from "@/components/espacios/PisoSelector.vue";
@@ -671,6 +674,7 @@ import edificiosService from "@/services/edificios.service";
 import espaciosService from "@/services/espacios.service";
 import localesService from "@/services/locales.service";
 import { useCampusTecnologico } from "@/composables/espacios/useCampusTecnologico";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
 const router = useRouter();
@@ -688,6 +692,7 @@ const {
   search,
   cityCards,
   cityLocalCards,
+  ciudadSelectOptions,
   selectedCity,
   allLocalOptions,
   localActivo,
@@ -778,7 +783,32 @@ const {
   openAssignTechnicianModal,
   submitTechnicianAssignment,
 } = state;
+const authStore = useAuthStore();
 watch(selectedCity, () => { territorySearch.value = ''; });
+
+// Valida si el usuario tiene permiso para regresar a explorar otras ciudades o locales
+const canReturnToCity = computed(() => {
+  if (authStore.isSuperAdmin) return true;
+  if ((state.ciudades?.value?.length ?? 0) > 1 || (cityCards.value?.length ?? 0) > 1) return true;
+  if ((cityLocalCards.value?.length ?? 0) > 1) return true;
+  return false;
+});
+
+const returnLabel = computed(() => {
+  if (authStore.isSuperAdmin || (state.ciudades?.value?.length ?? 0) > 1 || (cityCards.value?.length ?? 0) > 1) {
+    return 'Volver a ciudades';
+  }
+  return 'Volver a locales';
+});
+
+const handleBackFromLocal = () => {
+  if (!canReturnToCity.value) return;
+  if (authStore.isSuperAdmin || (state.ciudades?.value?.length ?? 0) > 1 || (cityCards.value?.length ?? 0) > 1) {
+    showCities();
+  } else {
+    showLocals();
+  }
+};
 
 const hasSelectedLocal = computed(() => Boolean(selectedLocalId.value || route.query.local));
 
@@ -815,4 +845,14 @@ const goToSpace = (space) => {
     }
   }
 };
+
+const { isExporting, exportLabel, exportCampusExcel } = useCampusExcelExport({
+  edificiosService,
+  localesService,
+  explorerLevel,
+  edificioActivo,
+  activeFloorKey,
+  localActivo,
+  territorySearch,
+});
 </script>

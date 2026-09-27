@@ -1,6 +1,8 @@
 from rest_framework.exceptions import ValidationError
 
 from espacios.models import Espacio
+from espacios.reports.espacio_excel_report import EspacioExcelReport
+from espacios.reports.plano_espacio_excel_report import PlanoEspacioExcelReport
 from espacios.repositories.espacio_repository import EspacioRepository
 from shared.base import BaseService
 from shared.mixins import AuditableMixin
@@ -27,6 +29,8 @@ class EspacioService(AuditableMixin, BaseService):
         edificio: str = '',
         edificio_id: int | None = None,
         local_id: int | None = None,
+        ciudad: str = '',
+        ciudad_id: int | None = None,
         piso: str = '',
     ):
         return self.repository.listar(
@@ -37,6 +41,8 @@ class EspacioService(AuditableMixin, BaseService):
             edificio=edificio.strip(),
             edificio_id=edificio_id,
             local_id=local_id,
+            ciudad=ciudad.strip(),
+            ciudad_id=ciudad_id,
             piso=piso.strip(),
         )
 
@@ -45,11 +51,10 @@ class EspacioService(AuditableMixin, BaseService):
     def _do_create(self, data: dict, actor: Usuario = None):
         clean_data = self._normalizar(data)
         self._sincronizar_pabellon(clean_data)
-        existing = self.repository.get_by_codigo(clean_data['codigo_espacio'])
+        existing = self.repository.get_deleted_by_location(clean_data)
         if existing and existing.is_deleted:
             instance = self.repository.restore(existing, clean_data, actor)
             return instance, {'restored': True}
-        self._validar_codigo(clean_data['codigo_espacio'])
         instance = self.repository.create(**clean_data, created_by=actor, updated_by=actor)
         instance = self.repository.get_by_id(instance.id)
         return instance, {'restored': False}
@@ -58,8 +63,6 @@ class EspacioService(AuditableMixin, BaseService):
         instance = self.get_by_id(id)
         clean_data = self._normalizar(data, partial=True)
         self._sincronizar_pabellon(clean_data, edificio_actual=instance.edificio)
-        codigo = clean_data.get('codigo_espacio', instance.codigo_espacio)
-        self._validar_codigo(codigo, exclude_id=instance.id)
         clean_data['updated_by'] = actor
         self.repository.update(instance, **clean_data)
         return self.repository.get_by_id(instance.id)
@@ -171,6 +174,46 @@ class EspacioService(AuditableMixin, BaseService):
         if edificio is not None and not clean_data.get('pabellon'):
             clean_data['pabellon'] = edificio.nombre
 
-    def _validar_codigo(self, codigo: str, exclude_id: int | None = None) -> None:
-        if self.repository.get_by_codigo(codigo, exclude_id):
-            raise ValidationError({'codigo_espacio': 'Ya existe un espacio con este código.'})
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        tipo: str = '',
+        activo: bool | None = None,
+        pabellon: str = '',
+        edificio: str = '',
+        edificio_id: int | None = None,
+        local_id: int | None = None,
+        ciudad: str = '',
+        ciudad_id: int | None = None,
+        piso: str = '',
+        actor: Usuario = None,
+    ):
+        queryset = self.listar(
+            busqueda=busqueda,
+            tipo=tipo,
+            activo=activo,
+            pabellon=pabellon,
+            edificio=edificio,
+            edificio_id=edificio_id,
+            local_id=local_id,
+            ciudad=ciudad,
+            ciudad_id=ciudad_id,
+            piso=piso,
+        )
+        return EspacioExcelReport.generar_inventario(
+            queryset,
+            busqueda=busqueda,
+            tipo=tipo,
+            activo=activo,
+            pabellon=pabellon,
+            edificio=edificio,
+            ciudad=ciudad,
+            piso=piso,
+            actor=actor,
+        )
+
+    def exportar_plano_excel(self, id: int, actor: Usuario = None):
+        instance = self.get_by_id(id)
+        if not instance:
+            raise ValidationError({'espacio': 'El espacio solicitado no existe.'})
+        return PlanoEspacioExcelReport.generar(instance, actor=actor)

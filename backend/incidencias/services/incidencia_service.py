@@ -1,11 +1,13 @@
 from typing import Any
 
 from django.db import transaction
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from incidencias.repositories import IncidenciaRepository
 from shared.base import BaseService
+from incidencias.reports.incidencia_excel_report import generar_reporte_excel
 from shared.constants import (
     ROL_ADMIN,
     ROL_DOCENTE,
@@ -256,6 +258,43 @@ class IncidenciaService(AuditableMixin, BaseService):
             espacio_id=espacio_id,
             espacio_ids=espacio_ids,
         )
+
+    def exportar_excel(
+        self,
+        busqueda: str = '',
+        espacio_id: int | None = None,
+        equipo_id: int | None = None,
+        tipo_incidencia: str = '',
+        estado: str = '',
+        prioridad: str = '',
+        asignado_a_id: int | None = None,
+        actor: Any = None,
+    ) -> HttpResponse:
+        """Genera y descarga un reporte formal en Excel de las incidencias filtradas."""
+        incidencias = self.listar(
+            busqueda=busqueda,
+            espacio_id=espacio_id,
+            equipo_id=equipo_id,
+            tipo_incidencia=tipo_incidencia,
+            estado=estado,
+            prioridad=prioridad,
+            asignado_a_id=asignado_a_id,
+            actor=actor,
+        ).select_related('espacio', 'equipo', 'reportado_por', 'asignado_a')
+
+        stats = self.get_estadisticas(actor=actor)
+        return generar_reporte_excel(
+            incidencias,
+            stats,
+            busqueda=busqueda,
+            espacio_id=espacio_id,
+            equipo_id=equipo_id,
+            tipo_incidencia=tipo_incidencia,
+            estado=estado,
+            prioridad=prioridad,
+            actor=actor,
+        )
+
 
     def _normalizar_estado(self, data: dict, instance=None) -> dict:
         """Sincroniza fecha_resolucion con el estado de la incidencia."""

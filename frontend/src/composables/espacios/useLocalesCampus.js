@@ -4,7 +4,7 @@ import { getApiErrorMessage } from '@/utils/api-errors';
 const emptyLocal = () => ({
   codigo: '',
   nombre: '',
-  ciudad: '',
+  ciudad_id: '',
   tipo: 'sede',
   descripcion: '',
   activo: true,
@@ -19,6 +19,7 @@ export function useLocalesCampus({
   selectLocal,
   selectedCity,
   selectedType,
+  cityOptions,
   showToast,
 }) {
   const localModalOpen = ref(false);
@@ -37,7 +38,9 @@ export function useLocalesCampus({
     editingLocal.value = null;
     resetForm();
     if (selectedCity?.value && selectedCity.value !== '__legacy__') {
-      localForm.ciudad = selectedCity.value;
+      localForm.ciudad_id = cityOptions?.value?.find(
+        (option) => option.label === selectedCity.value,
+      )?.value ?? '';
     }
     if (selectedType?.value && selectedType.value !== '__legacy__') {
       localForm.tipo = selectedType.value;
@@ -59,15 +62,17 @@ export function useLocalesCampus({
   const submitLocal = async () => {
     if (!canEdit.value || saving.value || selectionBlocked()) return;
     Object.keys(localErrors).forEach((key) => delete localErrors[key]);
-    for (const [field, label] of [['codigo', 'código'], ['nombre', 'nombre'], ['ciudad', 'ciudad']]) {
-      if (!localForm[field].trim()) localErrors[field] = `Ingresa ${field === 'ciudad' ? 'la' : 'el'} ${label}.`;
+    for (const [field, label] of [['codigo', 'código'], ['nombre', 'nombre']]) {
+      if (!localForm[field].trim()) localErrors[field] = `Ingresa el ${label}.`;
     }
+    if (!localForm.ciudad_id) localErrors.ciudad_id = 'Selecciona una ciudad del catálogo.';
     if (Object.keys(localErrors).length) return;
     saving.value = true;
     try {
       const creating = !isEditingLocal.value;
-      const saved = creating ? await service.crear({ ...localForm })
-        : await service.actualizar(editingLocal.value.id, { ...localForm });
+      const payload = { ...localForm, ciudad_id: Number(localForm.ciudad_id) };
+      const saved = creating ? await service.crear(payload)
+        : await service.actualizar(editingLocal.value.id, payload);
       closeLocalModal();
       if (!await loadCampus({ silent: true })) return;
       if (saved.activo) selectLocal(saved.id);

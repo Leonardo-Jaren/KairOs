@@ -39,6 +39,11 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <BaseExportExcelButton
+          v-if="viewMode === 'tabla'"
+          :loading="isExporting"
+          @export="exportToExcel"
+        />
         <BaseButton v-if="canCreate" variant="accent" :full-width="false" @click="openCreate">
           <template #icon>
             <Plus :size="18" />
@@ -671,6 +676,7 @@ import { ref, shallowRef } from 'vue';
 
 import EntityDetailModal from '@/components/shared/EntityDetailModal.vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import BaseExportExcelButton from '@/components/buttons/BaseExportExcelButton.vue';
 import StatCard from '@/components/cards/StatCard.vue';
 import BaseInput from '@/components/inputs/BaseInput.vue';
 import BaseModal from '@/components/modals/BaseModal.vue';
@@ -735,6 +741,8 @@ const {
   askDelete,
   cancelDelete,
   confirmDelete: confirmDeleteUser,
+  exportToExcel,
+  isExporting,
   applyFilters,
   clearFilters,
   changePage,

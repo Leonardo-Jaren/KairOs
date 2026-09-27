@@ -19,6 +19,7 @@ from .local_serializers import (
     LocalResumenSerializer,
     LocalSerializer,
 )
+from .ciudad_serializers import CiudadCreateSerializer, CiudadSerializer
 
 __all__ = [
     'CroquisPisoSerializer',
@@ -34,4 +35,6 @@ __all__ = [
     'LocalSerializer',
     'LocalResumenSerializer',
     'LocalCreateUpdateSerializer',
+    'CiudadSerializer',
+    'CiudadCreateSerializer',
 ]
