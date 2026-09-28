@@ -1,77 +1,60 @@
 <script setup>
 import { computed } from 'vue';
 
-const props = defineProps({
-  count: { type: Number, default: 0 },
-});
+const props = defineProps({ count: { type: Number, default: 0 } });
 
-const buildingPositions = computed(() => {
+const buildings = computed(() => {
   const count = Math.min(4, Math.max(0, Number(props.count) || 0));
-  const positionsByCount = {
+  const layouts = {
     0: [],
-    1: [88],
-    2: [60, 116],
-    3: [39, 88, 137],
-    4: [18, 66, 116, 164],
+    1: [[44, 24]],
+    2: [[18, 38], [90, 8]],
+    3: [[18, 65], [18, 0], [100, 30]],
+    4: [[12, 66], [12, 0], [98, 66], [98, 0]],
   };
-
-  return positionsByCount[count];
+  return layouts[count]
+    .map(([x, y], index) => ({ x, y, height: index % 2 ? 44 : 35 }))
+    .sort((a, b) => b.y - a.y || a.x - b.x);
 });
+
+// Una proyección común conserva el volumen de cada bloque y de su plataforma.
+function point(x, y, z = 0) {
+  return [35 + x * 1.12 + y * 0.7, 100 + x * 0.34 - y * 0.5 - z];
+}
+
+function face(vertices) {
+  return vertices.map((vertex) => point(...vertex).join(',')).join(' ');
+}
 </script>
 
 <template>
-  <svg
-    class="massing-art h-auto w-full max-w-64 overflow-visible"
-    viewBox="0 0 220 125"
-    aria-hidden="true"
-    focusable="false"
-  >
-    <path
-      d="M18 72 110 30l92 42-92 43L18 72Z"
-      class="fill-slate-100 stroke-slate-300 transition-colors duration-200 group-hover:fill-primary-50 group-hover:stroke-primary-300"
-      stroke-width="1.2"
-    />
-    <path d="m18 72 92 43v7L18 79v-7Z" class="fill-slate-200" />
-    <path d="m110 115 92-43v7l-92 43v-7Z" class="fill-slate-300/80" />
+  <svg class="massing-art h-auto w-full max-w-72" viewBox="0 0 320 185" aria-hidden="true" focusable="false">
+    <polygon :points="face([[-12, -12, -4], [170, -12, -4], [170, 119, -4], [-12, 119, -4]])" fill="#edf2f8" stroke="#cad7e7" stroke-width="1.2" />
+    <polygon :points="face([[-12, -12, -4], [170, -12, -4], [170, -12, -11], [-12, -12, -11]])" fill="#dfe7f1" />
+    <polygon :points="face([[170, -12, -4], [170, 119, -4], [170, 119, -11], [170, -12, -11]])" fill="#cfdbe9" />
 
-    <g
-      v-for="(position, index) in buildingPositions"
-      :key="`${position}-${index}`"
-      :transform="`translate(${position} ${index % 2 === 0 ? 19 : 10})`"
-      class="transition-transform duration-200 group-hover:-translate-y-1"
-    >
-      <path
-        d="m0 22 20-11 20 11-20 11L0 22Z"
-        class="fill-white stroke-slate-400 transition-colors duration-200 group-hover:fill-primary-100 group-hover:stroke-primary-500"
-        stroke-width="1.1"
-      />
-      <path
-        d="m0 22 20 11v30L0 52V22Z"
-        class="fill-slate-200 stroke-slate-400 transition-colors duration-200 group-hover:fill-primary-200 group-hover:stroke-primary-500"
-        stroke-width="1.1"
-      />
-      <path
-        d="m20 33 20-11v30L20 63V33Z"
-        class="fill-slate-300 stroke-slate-400 transition-colors duration-200 group-hover:fill-primary-300 group-hover:stroke-primary-500"
-        stroke-width="1.1"
-      />
-      <path d="m6 28 8 4v15l-8-4V28Zm17 7 7-4v14l-7 4V35Z" class="fill-white/80" />
+    <g v-for="(building, index) in buildings" :key="index" class="campus-block">
+      <polygon :points="face([[building.x + 4, building.y - 4, -3], [building.x + 66, building.y - 4, -3], [building.x + 66, building.y + 35, -3], [building.x + 4, building.y + 35, -3]])" fill="#b8c8da" opacity="0.35" />
+      <polygon :points="face([[building.x, building.y, 0], [building.x + 60, building.y, 0], [building.x + 60, building.y, building.height], [building.x, building.y, building.height]])" fill="#f8fafc" stroke="#92a8c0" stroke-width="0.8" />
+      <polygon :points="face([[building.x + 60, building.y, 0], [building.x + 60, building.y + 30, 0], [building.x + 60, building.y + 30, building.height], [building.x + 60, building.y, building.height]])" fill="#d4deeb" stroke="#92a8c0" stroke-width="0.8" />
+
+      <g v-for="row in 3" :key="row">
+        <polygon v-for="column in 4" :key="column" :points="face([[building.x + 5 + (column - 1) * 13, building.y, row * building.height / 3 - 9], [building.x + 15 + (column - 1) * 13, building.y, row * building.height / 3 - 9], [building.x + 15 + (column - 1) * 13, building.y, row * building.height / 3 - 3], [building.x + 5 + (column - 1) * 13, building.y, row * building.height / 3 - 3]])" fill="#8fa4bc" />
+        <polygon :points="face([[building.x + 60, building.y + 6, row * building.height / 3 - 9], [building.x + 60, building.y + 24, row * building.height / 3 - 9], [building.x + 60, building.y + 24, row * building.height / 3 - 3], [building.x + 60, building.y + 6, row * building.height / 3 - 3]])" fill="#92a8bf" />
+      </g>
+
+      <polygon :points="face([[building.x - 1, building.y - 1, building.height], [building.x + 61, building.y - 1, building.height], [building.x + 61, building.y + 31, building.height], [building.x - 1, building.y + 31, building.height]])" class="campus-roof" fill="#fff" stroke="#91a7c0" stroke-width="1" />
+      <polygon :points="face([[building.x + 4, building.y + 4, building.height], [building.x + 56, building.y + 4, building.height], [building.x + 56, building.y + 26, building.height], [building.x + 4, building.y + 26, building.height]])" fill="#edf2f8" />
     </g>
 
-    <path
-      v-if="!buildingPositions.length"
-      d="m77 69 33-15 33 15-33 16-33-16Z"
-      class="fill-white/60 stroke-slate-400"
-      stroke-dasharray="4 3"
-    />
+    <polygon v-if="!buildings.length" :points="face([[46, 25, 0], [110, 25, 0], [110, 67, 0], [46, 67, 0]])" fill="#fff" stroke="#9aadc3" stroke-dasharray="4 3" />
   </svg>
 </template>
 
 <style scoped>
+.campus-roof { transition: stroke 180ms ease; }
+:global(.group:hover) .campus-roof { stroke: #729ac7; }
 @media (prefers-reduced-motion: reduce) {
-  .massing-art,
-  .massing-art * {
-    transition-duration: 0.01ms !important;
-  }
+  .campus-roof { transition: none; }
 }
 </style>
