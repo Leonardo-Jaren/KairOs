@@ -6,18 +6,16 @@ import {
   ChevronRight,
   DoorOpen,
   FolderOpen,
-  Layers3,
   MapPin,
   Monitor,
   MonitorCog,
-  Pencil,
   Plus,
   Presentation,
   Search,
   ShieldCheck,
-  Trash2,
 } from '@lucide/vue';
 import BaseButton from '@/components/buttons/BaseButton.vue';
+import PabellonCard from '@/components/espacios/PabellonCard.vue';
 
 const props = defineProps({
   buildings: { type: Array, default: () => [] },
@@ -104,14 +102,6 @@ const tasaOperatividad = computed(() => (
   totalEquipos.value > 0 ? Math.round((totalOperativos.value / totalEquipos.value) * 100) : 100
 ));
 
-function getBuildingTelemetry(b) {
-  const equipos = Number(b.equipos) || 0;
-  const alertas = Number(b.alertas) || 0;
-  const operativos = Math.max(0, equipos - alertas);
-  const pct = equipos > 0 ? Math.round((operativos / equipos) * 100) : 100;
-  return { equipos, alertas, operativos, pct };
-}
-
 function getSpaceIcon(tipo) {
   switch (tipo) {
     case 'laboratorio':
@@ -124,11 +114,6 @@ function getSpaceIcon(tipo) {
     default:
       return MapPin;
   }
-}
-
-function getBuildingLetter(index) {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  return letters[index % letters.length] || String(index + 1);
 }
 </script>
 
@@ -222,119 +207,20 @@ function getBuildingLetter(index) {
           </p>
         </div>
 
-        <!-- Tarjetas de pabellones -->
+        <!-- Tarjetas ilustradas de pabellones -->
         <div v-if="buildings.length" class="grid gap-4 sm:grid-cols-2">
-          <article
+          <PabellonCard
             v-for="(building, index) in buildings"
             :key="building.id"
-            class="group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-5 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md"
-            :class="String(selectedId) === String(building.id) ? 'border-primary-500 ring-2 ring-primary-400/40 bg-primary-50/20' : 'border-slate-200/90'"
-          >
-            <div>
-              <!-- Encabezado con icono arquitectonico y acciones -->
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex items-center gap-3">
-                  <span
-                    class="grid size-12 place-items-center rounded-2xl font-extrabold text-base shadow-xs transition-colors duration-200 group-hover:bg-primary-500 group-hover:text-white"
-                    :class="String(selectedId) === String(building.id)
-                      ? 'bg-primary-600 text-white shadow-primary-500/30'
-                      : 'bg-primary-50 text-primary-600'"
-                  >
-                    <Building2 :size="22" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <div class="flex items-center gap-1.5">
-                      <h4 class="text-base font-extrabold text-slate-950 group-hover:text-primary-600 transition-colors line-clamp-1" :title="building.nombre">
-                        {{ building.nombre }}
-                      </h4>
-                      <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 uppercase">
-                        Bloque {{ getBuildingLetter(index) }}
-                      </span>
-                    </div>
-                    <p class="font-mono text-xs font-bold uppercase tracking-wider text-slate-400">
-                      {{ building.codigo }}
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Botones de edicion / eliminacion -->
-                <div v-if="canEdit" class="flex items-center gap-1">
-                  <button
-                    type="button"
-                    class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-primary-600 disabled:opacity-40"
-                    :disabled="disabled"
-                    aria-label="Editar pabellón"
-                    @click.stop="emit('edit', building)"
-                  >
-                    <Pencil :size="15" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-danger-50 hover:text-danger-600 disabled:opacity-40"
-                    :disabled="disabled"
-                    aria-label="Desactivar pabellón"
-                    @click.stop="emit('delete', building)"
-                  >
-                    <Trash2 :size="15" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-
-              <!-- Descripcion del pabellon -->
-              <p class="mt-3 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-slate-500">
-                {{ building.descripcion || 'Bloque físico con distribución de pisos, laboratorios y áreas de cómputo.' }}
-              </p>
-
-              <!-- Resumen de infraestructura en chips -->
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                  <Layers3 :size="13" class="text-primary-500" />
-                  {{ building.pisos?.length || 0 }} {{ (building.pisos?.length === 1) ? 'piso' : 'pisos' }}
-                </span>
-                <span class="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                  <MapPin :size="13" class="text-emerald-500" />
-                  {{ building.spaces?.length || 0 }} amb.
-                </span>
-                <span class="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                  <MonitorCog :size="13" class="text-amber-500" />
-                  {{ building.equipos }} {{ Number(building.equipos) === 1 ? 'equipo' : 'equipos' }}
-                </span>
-              </div>
-
-              <!-- Barra de telemetria por pabellon -->
-              <div v-if="getBuildingTelemetry(building).equipos > 0" class="mt-3 flex flex-col gap-1">
-                <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                  <span>Operatividad hardware</span>
-                  <span class="text-slate-700 font-bold">{{ getBuildingTelemetry(building).pct }}%</span>
-                </div>
-                <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100 flex">
-                  <div
-                    class="bg-emerald-500 transition-all duration-300"
-                    :style="{ width: `${getBuildingTelemetry(building).pct}%` }"
-                  />
-                  <div
-                    v-if="getBuildingTelemetry(building).alertas > 0"
-                    class="bg-amber-400 transition-all duration-300"
-                    :style="{ width: `${100 - getBuildingTelemetry(building).pct}%` }"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Boton de acceso al pabellon -->
-            <div class="mt-4 border-t border-slate-100 pt-3">
-              <button
-                type="button"
-                class="flex w-full min-h-11 items-center justify-between rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-800 transition group-hover:bg-primary-600 group-hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100 disabled:opacity-50"
-                :disabled="disabled"
-                :aria-pressed="String(selectedId) === String(building.id)"
-                @click="emit('select', building.id)"
-              >
-                <span>Recorrer pabellón</span>
-                <ChevronRight :size="16" class="transition-transform group-hover:translate-x-1 motion-reduce:transform-none" aria-hidden="true" />
-              </button>
-            </div>
-          </article>
+            :building="building"
+            :index="index"
+            :selected="String(selectedId) === String(building.id)"
+            :can-edit="canEdit"
+            :disabled="disabled"
+            @select="emit('select', $event)"
+            @edit="emit('edit', $event)"
+            @delete="emit('delete', $event)"
+          />
         </div>
 
         <!-- Estado vacio si el local no tiene pabellones -->

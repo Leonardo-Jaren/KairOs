@@ -107,16 +107,16 @@ watch(totalPages, (pages) => {
             @click="emit('select-local', local.id)"
           >
             <AxonometricMassing :count="local.buildingCount" />
-            <span class="mt-1 block max-w-full truncate text-xs font-extrabold text-slate-900 transition-colors group-hover:text-primary-700 sm:text-sm" :title="local.nombre">
+            <span class="mt-1 block max-w-full text-sm font-extrabold text-slate-900 transition-colors group-hover:text-primary-700 sm:text-base" :title="local.nombre">
               {{ local.nombre }}
             </span>
             <span class="mt-1 block max-w-full truncate font-mono text-[9px] font-semibold uppercase tracking-wide text-slate-400">
               {{ local.codigo }}
             </span>
-            <span class="mt-1.5 block text-[10px] text-slate-600">
+            <span class="mt-2 block rounded-full border border-slate-200/70 bg-white/80 px-3 py-1 text-xs text-slate-600">
               {{ local.buildingCount }} {{ local.buildingCount === 1 ? 'pabellón' : 'pabellones' }}
             </span>
-            <span class="mt-2 inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-[10px] font-bold text-primary-700 transition-colors group-hover:bg-primary-50">
+            <span class="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-xs font-bold text-primary-700 transition-colors group-hover:bg-primary-50">
               Abrir croquis
               <span aria-hidden="true">→</span>
             </span>
@@ -169,6 +169,12 @@ watch(totalPages, (pages) => {
 
 .site-node {
   -webkit-tap-highlight-color: transparent;
+  border: 1px solid transparent;
+}
+
+.site-node:hover {
+  border-color: #dce6f2;
+  box-shadow: 0 8px 24px rgb(36 63 95 / 5%);
 }
 
 @media (max-width: 639px) {
@@ -188,14 +194,14 @@ watch(totalPages, (pages) => {
   .site-node {
     display: grid;
     grid-template-columns: minmax(6rem, 0.8fr) minmax(0, 1.2fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     align-items: center;
     column-gap: 0.75rem;
     text-align: left;
   }
 
   .site-node :deep(.massing-art) {
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     width: 100%;
   }
 }
